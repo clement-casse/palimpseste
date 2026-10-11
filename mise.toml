@@ -1,0 +1,25 @@
+[tools]
+rust = { version = "1.99.0", mr_boxington = true }
+mr-boxington = "latest"
+"cargo:cargo-sort" = "latest"
+"cargo:cargo-nextest" = "latest"
+"cargo:cargo-llvm-cov" = "latest"
+"cargo:cargo-tarpaulin" = "latest"
+
+[tasks.fmt]
+run = "cargo fmt --all -- --config group_imports=StdExternalCrate,imports_granularity=Crate,format_code_in_doc_comments=true"
+
+[tasks.lint]
+run = "cargo clippy --workspace --all-targets -- -D warnings"
+
+[tasks.test]
+run = "cargo nextest run --workspace --no-tests=pass"
+
+[tasks.doc-test]
+run = "cargo test --doc --workspace"
+
+[tasks.coverage]
+run = "cargo tarpaulin --workspace --engine llvm --out Stdout --out Xml --output-dir target/coverage"
+
+[tasks.check]
+depends = ["fmt", "lint", "test", "doc-test"]
