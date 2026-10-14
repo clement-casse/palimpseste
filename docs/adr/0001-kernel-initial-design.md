@@ -2,7 +2,8 @@
 
 Date: 2026-10-13, amended 2026-10-14 (dependencies; violations and waivers;
 review: contribution sources, static identifiers, notices; ergonomics;
-code review: clamped totals, duplicate waivers; severity of deviations).
+code review: clamped totals, duplicate waivers; severity of deviations;
+conversions into builder parameters).
 Status: accepted.
 
 ## Context
@@ -51,6 +52,15 @@ the kernel scope.
   the developer before it lands.
 - **No serde.** Serialization stays out of scope, so the unused `serde`
   workspace dependency is removed.
+- **Conversions into builder parameters.** Builder methods take newtypes as
+  `impl Into<…>`: `Voie::with_ability` accepts a `u8` rank and a string
+  ability identifier (`From<u8> for Rank`, `From<&str>` and `From<String>`
+  for `AbilityId`). The conversions are infallible because the newtypes
+  carry no game bounds. `Rank` has a single integer conversion, so integer
+  literals keep inferring; a second one would break every literal call site
+  in the engines. `Author` gets no conversion: in `Waiver::new` and
+  `Adjustment::new` it sits next to a string reason, and a conversion would
+  let the two be swapped silently.
 - **Doc tests.** The crate documentation carries a runnable example of the
   whole flow. Nextest does not run doc tests, so a `doc-test` mise task
   (`cargo test --doc`) runs them and `check` depends on it.

@@ -3,5 +3,12 @@
 version = 4
 
 [[package]]
+name = "co-contemporain"
+version = "0.1.0"
+dependencies = [
+ "co-kernel",
+]
+
+[[package]]
 name = "co-kernel"
 version = "0.1.0"

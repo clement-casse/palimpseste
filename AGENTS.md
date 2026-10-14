@@ -8,7 +8,7 @@ A companion application for the French tabletop RPG *Chroniques Oubliées* (COF2
 The long-term goal is a character editor, later a campaign tracker.
 Each ruleset and each variant will be a **WorldEngine**: rules written as Rust code, composed from mechanics, with game content kept as data.
 
-**Current phase: the kernel only.** Everything below is scoped to it.
+**Current phase: the kernel and the COC2 character creation engine.** Everything below is scoped to them.
 
 ## Current scope: `co-kernel`
 
@@ -20,18 +20,32 @@ In scope:
 - **Voie skeleton**: a voie, its ranks, the abilities attached to ranks. Structure only, no rule about costs or budgets.
 - **Derived values with breakdown**: a computed value together with the list of contributions that produced it (source, amount).
 - **Manual adjustments**: attributed contributions added by a user to a derived value or a budget.
-- **Violations**: computed findings about a character, with a stable rule identifier, the emitting mechanic, a subject, parameters, and a category (`Incomplete`, `Deviation`, `Uncomputable`, `Notice`).
+- **Violations**: computed findings about a character, with a stable rule identifier, the emitting mechanic, a subject, parameters, and a category (`Incomplete`, `Deviation` with its severity, `Uncomputable`, `Notice`).
 - **Waivers**: persisted, attributed acceptance of a `Deviation` (rule identifier, subject, author, reason).
 - **Violation report**: aggregation of violations and matching against waivers.
 
+Out of scope for the kernel: anything engine-specific (formulas, budgets, tables, game content). It lives in the engine crates.
+
+## Current scope: `co-contemporain`
+
+The COC2 engine, core rules only (no variant, no universe), **character creation** only (see `docs/adr/0002-co-contemporain-creation-engine.md`).
+
+In scope:
+
+- **Creation choices**: age (and the age bracket derived from it), domaine, ranks acquired per voie, traits distinctifs with their points, characteristic points allocated.
+- **Content read by the creation rules**: the 18 domaines with their voie slots, the 18 voies, the traits catalogue and sequels, the age-bracket limits, as enums and `match` tables.
+- **Creation budgets and limits**: characteristic points, capacity points, maximum voies and rank, trait balance, characteristic bounds, domaine voies, social class.
+- **Secondary characteristics**: Init, DEF, ATC and ATD per weapon category, contact DM bonus, CG, health scale length.
+
 Out of scope, do not implement or prepare for:
 
-- any concrete engine (COC2, COF2, variants), their formulas, budgets or tables;
-- game content (voies, abilities, traits, profiles), data files and data formats;
-- persistence, serialization, `serde`;
-- user interface, networking, users, campaigns, play state (current hit points, resources), dice rolling.
+- COF2, variants (COC2 3d6, ...) and universe rules (échelle d'évolution);
+- combat resolution and weapon data (dice, bonus critique, critical range, arme de prédilection), protections, inventory and starting equipment;
+- progression (XP, rank costs after creation, rank 5 characteristic increase);
+- data files and data formats, persistence, serialization, `serde`;
+- user interface, networking, users, campaigns, play state (health scale damage, resources), dice rolling.
 
-Engines are added in later deliveries. Do not add extension points, traits, generics or modules "for later". If a task seems to require something out of scope, stop and ask.
+Other engines are added in later deliveries. Do not add extension points, traits, generics or modules "for later". If a task seems to require something out of scope, stop and ask.
 
 ## Design principles
 
@@ -48,6 +62,7 @@ Engines are added in later deliveries. Do not add extension points, traits, gene
 - Stable toolchain, edition 2024. Tool versions and tasks are managed with [mise](https://mise.jdx.dev) (`mise.toml`); do not add `rust-toolchain.toml`.
 - Lints (no `unsafe`, no `unwrap`/`expect`/`panic!` outside tests, missing docs, ...) are enforced by `[workspace.lints]` in `Cargo.toml` and `.clippy.toml`. Do not silence them; fix the code.
 - Prefer enums and newtypes over strings and bare integers. Newtypes carry meaning (a rank is not a level), not game limits.
+- Builder methods (`with_*`, `without_*`) take their newtype parameters as `impl Into<Newtype>`, and those newtypes implement `From<primitive>` (infallible: newtypes carry no game bounds), so callers write `.with_age(32)`. Give each integer newtype exactly one `From<integer>` impl: a second one breaks inference of integer literals (`with_age(32)` falls back to `i32` and fails). Never let two parameters of one method convert from the same primitive, since swapping them would compile: this is why `Author` stays explicit in `Waiver::new` and `Adjustment::new`, next to a string `reason`. Constructors (`new`) keep their explicit parameters.
 - Keep the public API minimal; anything not needed by a test or a documented use stays private.
 - Dependencies: conventional, widely used crates (e.g. `thiserror`, `anyhow`) are allowed when they make the domain cleaner to implement; ask before adding any crate. No `tokio` or other async runtime, and no async code (see `docs/adr/0001-kernel-initial-design.md`).
 - Run common tasks through the mise task runner (`mise run <task>`; list them with `mise tasks`), not by calling cargo directly: `fmt`, `lint`, `test`, `doc-test`, `coverage`, `check`.
@@ -61,14 +76,15 @@ Cargo.toml            # virtual workspace
 mise.toml             # tool versions and tasks
 .clippy.toml
 docs/adr/             # architecture decision records
-crates/co-kernel/     # co-kernel, the only crate at this stage
+crates/co-kernel/     # co-kernel: concepts shared by every engine
+crates/co-contemporain/ # COC2 engine: character creation
 ```
 
 Do not create other crates. A new crate or a new top-level directory is a structural decision: propose it, do not make it.
 
 ## Vocabulary
 
-Code identifiers are in English. Game terms map as follows.
+Code identifiers are in English. Game terms map as follows. Game content (names of domaines, voies, traits, sequels, social classes) keeps its French name without accents, as enum variants (`Voie::ArmesDeContact`, `Trait::ForceDeLaNature`).
 
 | Game term (FR) | Code |
 |---|---|
@@ -81,11 +97,21 @@ Code identifiers are in English. Game terms map as follows.
 | dérogation acceptée | `Waiver` |
 | ajustement manuel | `Adjustment` |
 | valeur dérivée | `DerivedValue` |
+| sévérité (indicative, règle, jamais) | `Severity` (`Recommended`, `Standard`, `Absolute`) |
+| domaine | `Domaine` (kept) |
+| tranche d'âge | `AgeBracket` |
+| trait distinctif | `Trait` |
+| séquelle | `Sequel` |
+| classe sociale | `SocialClass` |
+| échelle de santé | `HealthScale` |
+| capacité de guérison (CG) | `HealingCapacity` |
+| Init, DEF | `Initiative`, `Defence` |
+| ATC, ATD | `Attack(AttackMode)` |
 
 ## Working rules for agents
 
 - Make the smallest change that fulfils the task. Do not refactor unrelated code.
 - Write tests first or alongside the change; every violation category needs at least one test.
-- Never copy rulebook text into the repository. Test fixtures use invented or minimal data.
+- Never copy rulebook text into the repository. Test fixtures use invented or minimal data; the book's worked characters (co-rules `examples/`) may be fixtures, as choices and numbers only.
 - If a decision affects the structure (new concept in the public API, new crate, new dependency, change to the principles above), stop and ask, and record the outcome in `docs/adr/`.
 - When unsure whether something belongs to the kernel, it does not.
