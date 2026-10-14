@@ -48,9 +48,9 @@ impl Waiver {
     }
 
     /// Whether this waiver accepts `violation`: same rule, same subject, and
-    /// a `Deviation`. Parameters are ignored.
+    /// a `Deviation` of any severity. Parameters are ignored.
     pub(crate) fn matches(&self, violation: &Violation) -> bool {
-        violation.category() == Category::Deviation
+        matches!(violation.category(), Category::Deviation(_))
             && violation.rule() == &self.rule
             && violation.subject() == &self.subject
     }
@@ -59,7 +59,7 @@ impl Waiver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Characteristic, Mechanic, ParameterValue};
+    use crate::{Characteristic, Mechanic, ParameterValue, Severity};
 
     fn waiver() -> Waiver {
         Waiver::new(
@@ -84,10 +84,26 @@ mod tests {
         let deviation = violation(
             "TEST.RULE",
             Subject::Characteristic(Characteristic::For),
-            Category::Deviation,
+            Category::Deviation(Severity::Standard),
         )
         .with_parameter("value", ParameterValue::Integer(9));
         assert!(waiver().matches(&deviation));
+    }
+
+    #[test]
+    fn matches_a_deviation_whatever_its_severity() {
+        for severity in [
+            Severity::Recommended,
+            Severity::Standard,
+            Severity::Absolute,
+        ] {
+            let deviation = violation(
+                "TEST.RULE",
+                Subject::Characteristic(Characteristic::For),
+                Category::Deviation(severity),
+            );
+            assert!(waiver().matches(&deviation));
+        }
     }
 
     #[test]
@@ -97,7 +113,7 @@ mod tests {
             RULE,
             Mechanic::new("test-mechanic"),
             Subject::Characteristic(Characteristic::For),
-            Category::Deviation,
+            Category::Deviation(Severity::Standard),
         );
         assert!(waiver().matches(&deviation));
     }
@@ -105,11 +121,15 @@ mod tests {
     #[test]
     fn does_not_match_another_rule_or_subject() {
         let for_subject = Subject::Characteristic(Characteristic::For);
-        let other_rule = violation("TEST.OTHER", for_subject, Category::Deviation);
+        let other_rule = violation(
+            "TEST.OTHER",
+            for_subject,
+            Category::Deviation(Severity::Standard),
+        );
         let other_subject = violation(
             "TEST.RULE",
             Subject::Characteristic(Characteristic::Agi),
-            Category::Deviation,
+            Category::Deviation(Severity::Standard),
         );
         assert!(!waiver().matches(&other_rule));
         assert!(!waiver().matches(&other_subject));

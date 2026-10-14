@@ -96,13 +96,27 @@ pub enum Subject {
     Value(ValueId),
 }
 
+/// How strongly the book states a broken rule.
+///
+/// Display only: a waiver accepts a deviation whatever its severity, and
+/// the Game Master can waive an `Absolute` rule like any other.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Severity {
+    /// The book calls the rule indicative.
+    Recommended,
+    /// A book rule the Game Master may waive.
+    Standard,
+    /// The book says never.
+    Absolute,
+}
+
 /// The kind of a violation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Category {
     /// A required choice is missing.
     Incomplete,
     /// A rule is broken; only this category can be waived.
-    Deviation,
+    Deviation(Severity),
     /// A value cannot be computed from the current inputs.
     Uncomputable,
     /// Information only, such as a manual adjustment; never calls for action.
@@ -195,10 +209,15 @@ impl Violation {
         Self::new(rule, mechanic, subject, Category::Incomplete)
     }
 
-    /// Creates a [`Deviation`](Category::Deviation) violation.
+    /// Creates a [`Deviation`](Category::Deviation) violation of `severity`.
     #[must_use]
-    pub fn deviation(rule: RuleId, mechanic: Mechanic, subject: Subject) -> Self {
-        Self::new(rule, mechanic, subject, Category::Deviation)
+    pub fn deviation(
+        rule: RuleId,
+        mechanic: Mechanic,
+        subject: Subject,
+        severity: Severity,
+    ) -> Self {
+        Self::new(rule, mechanic, subject, Category::Deviation(severity))
     }
 
     /// Creates an [`Uncomputable`](Category::Uncomputable) violation.
@@ -331,7 +350,7 @@ mod tests {
     fn every_category_can_be_built() {
         for category in [
             Category::Incomplete,
-            Category::Deviation,
+            Category::Deviation(Severity::Standard),
             Category::Uncomputable,
             Category::Notice,
         ] {
@@ -349,18 +368,32 @@ mod tests {
         const MECHANIC: Mechanic = Mechanic::new("test-mechanic");
         let built = [
             Violation::incomplete(RULE, MECHANIC, Subject::Character),
-            Violation::deviation(RULE, MECHANIC, Subject::Character),
+            Violation::deviation(RULE, MECHANIC, Subject::Character, Severity::Standard),
             Violation::uncomputable(RULE, MECHANIC, Subject::Character),
             Violation::notice(RULE, MECHANIC, Subject::Character),
         ];
         let expected = [
             Category::Incomplete,
-            Category::Deviation,
+            Category::Deviation(Severity::Standard),
             Category::Uncomputable,
             Category::Notice,
         ];
         for (violation, category) in built.into_iter().zip(expected) {
             assert_eq!(violation, self::violation(category));
+        }
+    }
+
+    #[test]
+    fn deviation_keeps_its_severity() {
+        const RULE: RuleId = RuleId::from_static("TEST.RULE");
+        const MECHANIC: Mechanic = Mechanic::new("test-mechanic");
+        for severity in [
+            Severity::Recommended,
+            Severity::Standard,
+            Severity::Absolute,
+        ] {
+            let deviation = Violation::deviation(RULE, MECHANIC, Subject::Character, severity);
+            assert_eq!(deviation.category(), Category::Deviation(severity));
         }
     }
 
@@ -379,7 +412,7 @@ mod tests {
             ParameterValue::from("owned".to_owned()),
             ParameterValue::Text("owned".to_owned())
         );
-        let violation = violation(Category::Deviation)
+        let violation = violation(Category::Deviation(Severity::Standard))
             .with_parameter("value", 7)
             .with_parameter("label", "test");
         assert_eq!(
@@ -394,7 +427,7 @@ mod tests {
 
     #[test]
     fn parameters_keep_insertion_order() {
-        let violation = violation(Category::Deviation)
+        let violation = violation(Category::Deviation(Severity::Standard))
             .with_parameter("value", ParameterValue::Integer(7))
             .with_parameter("max", ParameterValue::Integer(5));
         let names: Vec<_> = violation.parameters().iter().map(Parameter::name).collect();

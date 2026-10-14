@@ -2,7 +2,7 @@
 
 Date: 2026-10-13, amended 2026-10-14 (dependencies; violations and waivers;
 review: contribution sources, static identifiers, notices; ergonomics;
-code review: clamped totals, duplicate waivers).
+code review: clamped totals, duplicate waivers; severity of deviations).
 Status: accepted.
 
 ## Context
@@ -85,6 +85,12 @@ the kernel scope.
   project rule (principle 4), not a book rule. It is exposed as
   `ADJUSTMENT_RULE`, so callers recognise adjustment notices without
   comparing strings.
-- **Severity is deferred.** The co-rules skill gives soft limits a severity
-  (recommended, standard, absolute). It is added when an engine first emits
-  soft-limit deviations.
+- **Severity of deviations.** The co-rules skill gives soft limits a severity
+  (recommended, standard, absolute). It was deferred until an engine emitted
+  soft-limit deviations; `co-contemporain` does, so a deviation now carries
+  it: `Category::Deviation(Severity)`. Severity is for display: a waiver
+  matches a deviation whatever its severity, and the Game Master can waive an
+  `Absolute` rule like any other. Because matching ignores severity, an
+  engine gives each soft limit of a distinct severity its own rule
+  identifier; otherwise a waiver granted for a recommended bound would also
+  accept the absolute one on the same subject.

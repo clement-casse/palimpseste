@@ -111,7 +111,9 @@ impl ViolationReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Adjustment, Author, Mechanic, RuleId, Subject, VoieId, adjustment_notice};
+    use crate::{
+        Adjustment, Author, Mechanic, RuleId, Severity, Subject, VoieId, adjustment_notice,
+    };
 
     fn violation(rule: &str, category: Category) -> Violation {
         Violation::new(
@@ -135,7 +137,7 @@ mod tests {
     fn report_does_not_depend_on_input_order() {
         let a = violation("TEST.A", Category::Incomplete);
         let b = violation("TEST.B", Category::Uncomputable);
-        let c = violation("TEST.C", Category::Deviation);
+        let c = violation("TEST.C", Category::Deviation(Severity::Standard));
         let waivers = [waiver("TEST.C")];
         let forward = ViolationReport::new(vec![a.clone(), b.clone(), c.clone()], &waivers);
         let backward = ViolationReport::new(vec![c, b, a], &waivers);
@@ -151,7 +153,10 @@ mod tests {
     #[test]
     fn waived_deviation_is_not_open() {
         let report = ViolationReport::new(
-            vec![violation("TEST.DEVIATION", Category::Deviation)],
+            vec![violation(
+                "TEST.DEVIATION",
+                Category::Deviation(Severity::Standard),
+            )],
             &[waiver("TEST.DEVIATION")],
         );
         assert!(report.entries()[0].is_waived());
@@ -168,7 +173,7 @@ mod tests {
     fn unwaived_findings_other_than_notices_are_open() {
         for category in [
             Category::Incomplete,
-            Category::Deviation,
+            Category::Deviation(Severity::Standard),
             Category::Uncomputable,
         ] {
             let report = ViolationReport::new(vec![violation("TEST.RULE", category)], &[]);
@@ -181,7 +186,10 @@ mod tests {
     #[test]
     fn deviation_waived_for_another_rule_stays_open() {
         let report = ViolationReport::new(
-            vec![violation("TEST.DEVIATION", Category::Deviation)],
+            vec![violation(
+                "TEST.DEVIATION",
+                Category::Deviation(Severity::Standard),
+            )],
             &[waiver("TEST.OTHER")],
         );
         assert!(!report.entries()[0].is_waived());
@@ -191,8 +199,10 @@ mod tests {
 
     #[test]
     fn one_waiver_accepts_deviations_whatever_their_parameters() {
-        let low = violation("TEST.DEVIATION", Category::Deviation).with_parameter("value", 6);
-        let high = violation("TEST.DEVIATION", Category::Deviation).with_parameter("value", 9);
+        let low = violation("TEST.DEVIATION", Category::Deviation(Severity::Standard))
+            .with_parameter("value", 6);
+        let high = violation("TEST.DEVIATION", Category::Deviation(Severity::Standard))
+            .with_parameter("value", 9);
         let report = ViolationReport::new(vec![low, high], &[waiver("TEST.DEVIATION")]);
         assert!(report.entries().iter().all(ReportEntry::is_waived));
         assert!(report.is_clean());
@@ -209,7 +219,10 @@ mod tests {
             "duplicate reason",
         );
         let report = ViolationReport::new(
-            vec![violation("TEST.DEVIATION", Category::Deviation)],
+            vec![violation(
+                "TEST.DEVIATION",
+                Category::Deviation(Severity::Standard),
+            )],
             &[first.clone(), duplicate.clone()],
         );
         assert_eq!(report.entries()[0].waiver(), Some(&first));
@@ -254,7 +267,10 @@ mod tests {
     #[test]
     fn waiver_matching_nothing_is_unused() {
         let report = ViolationReport::new(
-            vec![violation("TEST.DEVIATION", Category::Deviation)],
+            vec![violation(
+                "TEST.DEVIATION",
+                Category::Deviation(Severity::Standard),
+            )],
             &[waiver("TEST.STALE"), waiver("TEST.DEVIATION")],
         );
         assert!(report.is_clean());
