@@ -2,14 +2,14 @@
 //! creation, core rules only.
 //!
 //! A [`Character`] holds the creation choices (age, domaine, voie ranks,
-//! traits, characteristic points) with the Game Master's adjustments and
-//! waivers. Every other value is computed with its breakdown, and every
-//! broken rule is reported as a violation. Rule identifiers trace to the
-//! co-rules skill.
+//! traits, characteristic points, items carried, protections worn) with the
+//! Game Master's adjustments and waivers. Every other value is computed with
+//! its breakdown, and every broken rule is reported as a violation. Rule
+//! identifiers trace to the co-rules skill.
 //!
 //! ```
-//! use co_contemporain::{Character, Domaine, Trait, Value, Voie};
-//! use co_kernel::Characteristic;
+//! use co_contemporain::{Character, Domaine, Trait, Value, Voie, Weapon};
+//! use co_kernel::{Characteristic, Dice};
 //!
 //! let character = Character::new()
 //!     .with_age(24)
@@ -32,6 +32,10 @@
 //! // Init = 10 + INT 0 + PER 2, and Rapide +3.
 //! let initiative = character.value(Value::Initiative);
 //! assert_eq!(initiative.map(|v| v.total()), Some(15));
+//! // Bare hands: 1d4 + FOR 2.
+//! assert_eq!(character.damage_dice(Weapon::MainsNues), Dice::new([4]));
+//! let damage = character.value(Value::Damage(Weapon::MainsNues));
+//! assert_eq!(damage.map(|v| v.total()), Some(2));
 //! assert!(character.report().is_clean());
 //! ```
 
@@ -39,14 +43,20 @@ mod age;
 mod character;
 mod characteristics;
 mod domaine;
+mod equipment;
+mod protection;
 mod rules;
 mod secondary;
 mod traits;
 mod voie;
+mod weapon;
 
 pub use age::{Age, AgeBracket};
 pub use character::{AttackMode, Character, Target, Value};
 pub use characteristics::ALLOCATED_POINTS;
 pub use domaine::Domaine;
+pub use equipment::{Item, ItemName, Quantity};
+pub use protection::Protection;
 pub use traits::{Sequel, SocialClass, Trait, TraitPoints};
 pub use voie::Voie;
+pub use weapon::Weapon;

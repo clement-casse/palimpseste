@@ -1,13 +1,13 @@
 //! Acceptance test: Ionas Melenwë, high-elf ensorceleur of the COF2 book
 //! (COF p. 20-40), level 1, from the co-rules fixture `examples/cof2-ionas.md`.
 //!
-//! Deferred with weapons: the DM of the bâton ferré (1d6-2) and of Choc
-//! (1d4+4).
+//! Deferred with spell effects: the DM of Choc (1d4+4).
 
 use co_fantasy::{
-    AttackMode, Character, Family, Peuple, Profil, RecoveryDie, SERIES_VALUE, Series, Value, Voie,
+    AttackMode, Character, Family, Money, Peuple, Profil, RecoveryDie, SERIES_VALUE, Series, Value,
+    Voie, Weapon, WeaponUse,
 };
-use co_kernel::{AbilityId, Characteristic, Characteristics, Source};
+use co_kernel::{AbilityId, Characteristic, Characteristics, Dice, Source};
 
 fn ionas() -> Character {
     let values = [
@@ -35,6 +35,12 @@ fn ionas() -> Character {
         .with_rank(Voie::Invocation, 1)
         // Mage extra capacité: Serviteur invisible.
         .with_rank(Voie::Invocation, 2)
+        // Starting equipment; the optional extra weapon was traded with the
+        // GM for luxurious clothes, a free text item.
+        .with_item(Weapon::BatonFerre, 1)
+        .with_item(Weapon::Dague, 1)
+        .with_item("luxurious clothes", 1)
+        .with_purse(Money::pa(7))
 }
 
 fn total(character: &Character, value: Value) -> Option<i32> {
@@ -123,6 +129,18 @@ fn attacks() {
     assert_eq!(attack(AttackMode::Contact), Some(-1));
     assert_eq!(attack(AttackMode::Ranged), Some(2));
     assert_eq!(attack(AttackMode::Magic), Some(3));
+}
+
+#[test]
+fn damage() {
+    // Bâton ferré, two-handed: 1d6 + FOR (-2), negative FOR applies.
+    let use_ = WeaponUse::TwoHanded;
+    assert_eq!(Weapon::BatonFerre.dice(use_), Some(Dice::new([6])));
+    assert_eq!(
+        total(&ionas(), Value::Damage(Weapon::BatonFerre, use_)),
+        Some(-2)
+    );
+    assert!(Profil::Ensorceleur.masters(Weapon::BatonFerre));
 }
 
 #[test]

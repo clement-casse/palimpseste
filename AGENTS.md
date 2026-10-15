@@ -23,44 +23,47 @@ In scope:
 - **Violations**: computed findings about a character, with a stable rule identifier, the emitting mechanic, a subject, parameters, and a category (`Incomplete`, `Deviation` with its severity, `Uncomputable`, `Notice`).
 - **Waivers**: persisted, attributed acceptance of a `Deviation` (rule identifier, subject, author, reason).
 - **Violation report**: aggregation of violations and matching against waivers.
+- **Dice**: the dice to roll for a value, as a list of dice (`Dice`, `Die`), described but never rolled (see `docs/adr/0004-equipment-and-money.md`).
 
 Out of scope for the kernel: anything engine-specific (formulas, budgets, tables, game content). It lives in the engine crates.
 
 ## Current scope: `co-contemporain`
 
-The COC2 engine, core rules only (no variant, no universe), **character creation** only (see `docs/adr/0002-co-contemporain-creation-engine.md`).
+The COC2 engine, core rules only (no variant, no universe), **character creation** only (see `docs/adr/0002-co-contemporain-creation-engine.md` and `docs/adr/0004-equipment-and-money.md`).
 
 In scope:
 
-- **Creation choices**: age (and the age bracket derived from it), domaine, ranks acquired per voie, traits distinctifs with their points, characteristic points allocated.
-- **Content read by the creation rules**: the 18 domaines with their voie slots, the 18 voies, the traits catalogue and sequels, the age-bracket limits, as enums and `match` tables.
-- **Creation budgets and limits**: characteristic points, capacity points, maximum voies and rank, trait balance, characteristic bounds, domaine voies, social class.
-- **Secondary characteristics**: Init, DEF, ATC and ATD per weapon category, contact DM bonus, CG, health scale length.
+- **Creation choices**: age (and the age bracket derived from it), domaine, ranks acquired per voie, traits distinctifs with their points, characteristic points allocated, items carried (weapons, free text items), protections worn.
+- **Content read by the creation rules**: the 18 domaines with their voie slots, the 18 voies, the traits catalogue and sequels, the age-bracket limits, the weapon and protection tables, as enums and `match` tables.
+- **Creation budgets and limits**: characteristic points, capacity points, maximum voies and rank, trait balance, characteristic bounds, domaine voies, social class, starting equipment of the weapon voies.
+- **Secondary characteristics**: Init, DEF, ATC and ATD per weapon category, contact DM bonus, CG, health scale length, protection RD and malus, weapon damage dice and DM, bonus critique and critical range.
 
 Out of scope, do not implement or prepare for:
 
 - variants (COC2 3d6, ...) and universe rules (échelle d'évolution);
-- combat resolution and weapon data (dice, bonus critique, critical range, arme de prédilection), protections, inventory and starting equipment;
+- combat resolution, arme de prédilection, weapon range, magazine and reach, items without a rule (they stay free text);
+- money, prices, purchases and the era: spending waits for campaign initialization (D-25);
 - progression (XP, rank costs after creation, rank 5 characteristic increase);
 - data files and data formats, persistence, serialization, `serde`;
 - user interface, networking, users, campaigns, play state (health scale damage, resources), dice rolling.
 
 ## Current scope: `co-fantasy`
 
-The COF2 engine, core rules only (no variant), **character creation at level 1** only (see `docs/adr/0003-co-fantasy-creation-engine.md`).
+The COF2 engine, core rules only (no variant), **character creation at level 1** only (see `docs/adr/0003-co-fantasy-creation-engine.md` and `docs/adr/0004-equipment-and-money.md`).
 
 In scope:
 
-- **Creation choices**: profil (and the family derived from it), peuple, value series and the value assigned to each characteristic, peuple bonus and malus, ranks acquired per voie, armour and shield.
-- **Content read by the creation rules**: the 4 families, the 14 profils with their voies, key and magic characteristics and armour limits, the 8 peuples with their modifiers and voie de peuple, the 3 value series, the 78 voies reachable at level 1, the armour and shield table, as enums and `match` tables.
-- **Creation limits**: series assignment and its advice, peuple modifiers, characteristic bounds, two profil voies and the voie de peuple, voie du mage, mage extra capacité, level required per rank, armour limits.
-- **Derived values**: PV, DR (count and die), PC, PM, Init, DEF with armour and shield, contact, ranged and magic attack values, with the documented effects of rank 1-2 capacités (D-22) and the documented spells (D-23).
+- **Creation choices**: profil (and the family derived from it), peuple, value series and the value assigned to each characteristic, peuple bonus and malus, ranks acquired per voie, armour and shield, items carried (weapons, free text items), the purse rolled.
+- **Content read by the creation rules**: the 4 families, the 14 profils with their voies, key and magic characteristics, armour limits, weapon mastery and starting equipment, the 8 peuples with their modifiers and voie de peuple, the 3 value series, the 78 voies reachable at level 1, the armour and shield table, the weapon tables, the currency, as enums and `match` tables.
+- **Creation limits**: series assignment and its advice, peuple modifiers, characteristic bounds, two profil voies and the voie de peuple, voie du mage, mage extra capacité, level required per rank, armour limits, starting equipment and purse, arc long strength, halfelin weapon size.
+- **Derived values**: PV, DR (count and die), PC, PM, Init, DEF with armour and shield, contact, ranged and magic attack values, weapon damage dice and DM, critical range, money held, with the documented effects of rank 1-2 capacités (D-22) and the documented spells (D-23).
 
 Out of scope, do not implement or prepare for:
 
 - variants, prestige voies, hybrid profils;
 - progression (levels above 1, capacity points, PV per level, orphan point, changement d'orientation);
-- weapon data and DM, critical ranges, competence bonuses, languages and talent secondaire, capacités calling other capacités, armour malus to tests, starting equipment, final touch;
+- competence bonuses, languages and talent secondaire, capacités calling other capacités, armour malus to tests, final touch, unarmed attacks, weapon range, items without a rule (they stay free text);
+- prices, purchases and spending: they wait for campaign initialization (D-25);
 - data files and data formats, persistence, serialization, `serde`;
 - user interface, networking, users, campaigns, play state (current PV, PC, PM, DR), dice rolling.
 
@@ -81,7 +84,7 @@ Other engines are added in later deliveries. Do not add extension points, traits
 - Stable toolchain, edition 2024. Tool versions and tasks are managed with [mise](https://mise.jdx.dev) (`mise.toml`); do not add `rust-toolchain.toml`.
 - Lints (no `unsafe`, no `unwrap`/`expect`/`panic!` outside tests, missing docs, ...) are enforced by `[workspace.lints]` in `Cargo.toml` and `.clippy.toml`. Do not silence them; fix the code.
 - Prefer enums and newtypes over strings and bare integers. Newtypes carry meaning (a rank is not a level), not game limits.
-- Builder methods (`with_*`, `without_*`) take their newtype parameters as `impl Into<Newtype>`, and those newtypes implement `From<primitive>` (infallible: newtypes carry no game bounds), so callers write `.with_age(32)`. Give each integer newtype exactly one `From<integer>` impl: a second one breaks inference of integer literals (`with_age(32)` falls back to `i32` and fails). Never let two parameters of one method convert from the same primitive, since swapping them would compile: this is why `Author` stays explicit in `Waiver::new` and `Adjustment::new`, next to a string `reason`. Constructors (`new`) keep their explicit parameters.
+- Builder methods (`with_*`, `without_*`) take their newtype parameters as `impl Into<Newtype>`, and those newtypes implement `From<primitive>` (infallible: newtypes carry no game bounds), so callers write `.with_age(32)`. Give each integer newtype exactly one `From<integer>` impl: a second one breaks inference of integer literals (`with_age(32)` falls back to `i32` and fails). Never let two parameters of one method convert from the same primitive, since swapping them would compile: this is why `Author` stays explicit in `Waiver::new` and `Adjustment::new`, next to a string `reason`. Constructors (`new`) keep their explicit parameters. Money is the exception to `From<integer>`: an engine's `Money` is built from a named coin (`Money::pa(7)`), since a bare integer would hide the coin.
 - Keep the public API minimal; anything not needed by a test or a documented use stays private.
 - Dependencies: conventional, widely used crates (e.g. `thiserror`, `anyhow`) are allowed when they make the domain cleaner to implement; ask before adding any crate. No `tokio` or other async runtime, and no async code (see `docs/adr/0001-kernel-initial-design.md`).
 - Run common tasks through the mise task runner (`mise run <task>`; list them with `mise tasks`), not by calling cargo directly: `fmt`, `lint`, `test`, `doc-test`, `coverage`, `check`.
@@ -137,6 +140,14 @@ Code identifiers are in English. Game terms map as follows. Game content (names 
 | points de mana (PM) | `ManaPoints` |
 | armure, bouclier | `Armour`, `Shield` |
 | attaque au contact, à distance, magique | `Attack(AttackMode::Contact)`, `Ranged`, `Magic` |
+| arme, mains nues | `Weapon`, `Weapon::MainsNues` (COC2) |
+| protection | `Protection` |
+| objet, quantité | `Item`, `ItemName` (free text), `Quantity` |
+| dés, dé | `Dice`, `Die` |
+| dommages (DM) | `Damage` |
+| bonus critique, zone de critique | `CriticalBonus`, `CriticalRange` |
+| réduction des dommages (RD) | `DamageReduction` |
+| bourse, argent | purse, `Money` |
 
 ## Working rules for agents
 

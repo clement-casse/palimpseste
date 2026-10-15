@@ -26,20 +26,26 @@ fn with_ability(
     }
 }
 
-/// Adds `amount` from the rank-1 capacité of the voie de peuple `voie`:
-/// acquired in that voie, or kept through the voie du mage that replaced it
-/// (COF.CRE.VOIE-DU-MAGE).
+/// Whether the character has the rank-1 capacité of the voie de peuple
+/// `voie`: acquired in that voie, or kept through the voie du mage that
+/// replaced it (COF.CRE.VOIE-DU-MAGE).
+pub(crate) fn has_peuple_ability(character: &Character, voie: Voie) -> bool {
+    let first_rank = Rank::new(1);
+    let kept = character.peuple().and_then(crate::Peuple::voie) == Some(voie)
+        && character.has_rank(Voie::Mage, first_rank);
+    character.has_rank(voie, first_rank) || kept
+}
+
+/// Adds `amount` from the rank-1 capacité of the voie de peuple `voie`, when
+/// the character has it.
 fn with_peuple_ability(
     value: DerivedValue,
     character: &Character,
     voie: Voie,
     amount: i32,
 ) -> DerivedValue {
-    let first_rank = Rank::new(1);
-    let kept = character.peuple().and_then(crate::Peuple::voie) == Some(voie)
-        && character.has_rank(Voie::Mage, first_rank);
-    if character.has_rank(voie, first_rank) || kept {
-        value.with(Source::Ability(voie.ability(first_rank)), amount)
+    if has_peuple_ability(character, voie) {
+        value.with(Source::Ability(voie.ability(Rank::new(1))), amount)
     } else {
         value
     }

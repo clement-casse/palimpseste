@@ -1,13 +1,11 @@
 //! Acceptance test: Amelia Steele, the worked character of the COC2 book
 //! (COC p. 14-28), from the co-rules fixture `examples/coc2-amelia-steele.md`.
-//!
-//! Deferred with weapons: the damage dice (1d4 unarmed, 1d6 couteau) and the
-//! bonus critique (4, 6). Their flat part is the contact DM bonus below.
 
 use co_contemporain::{
     ALLOCATED_POINTS, AgeBracket, AttackMode, Character, Domaine, SocialClass, Trait, Value, Voie,
+    Weapon,
 };
-use co_kernel::{Characteristic, Characteristics, Source};
+use co_kernel::{Characteristic, Characteristics, Dice, Source};
 
 fn amelia_steele() -> Character {
     let ranks = [
@@ -45,11 +43,23 @@ fn amelia_steele() -> Character {
     let character = traits
         .into_iter()
         .fold(character, |c, (t, points)| c.with_trait(t, points));
-    points
+    let character = points
         .into_iter()
         .fold(character, |c, (characteristic, points)| {
             c.with_carac_points(characteristic, points)
-        })
+        });
+    // Her lucky Bowie knife comes with the voie des armes de contact; the
+    // rest of her sheet is free text.
+    [
+        "motorbike",
+        "hiking gear",
+        "cigar case",
+        "metal whisky flask",
+    ]
+    .into_iter()
+    .fold(character.with_item(Weapon::Couteau, 1), |c, item| {
+        c.with_item(item, 1)
+    })
 }
 
 fn total(character: &Character, value: Value) -> Option<i32> {
@@ -131,6 +141,31 @@ fn attacks() {
     assert_eq!(attack(AttackMode::HeavyWeapon), Some(2));
     // FOR 1 + Force de la nature 1: the "+2" of 1d4+2 and 1d6+2.
     assert_eq!(total(&amelia, Value::ContactDamageBonus), Some(2));
+}
+
+#[test]
+fn weapons() {
+    let amelia = amelia_steele();
+    // Unarmed: ATC +1, 1d4+2, bonus critique 4.
+    let unarmed = Weapon::MainsNues;
+    assert_eq!(
+        total(&amelia, Value::Attack(unarmed.attack_mode())),
+        Some(1)
+    );
+    assert_eq!(amelia.damage_dice(unarmed), Dice::new([4]));
+    assert_eq!(total(&amelia, Value::Damage(unarmed)), Some(2));
+    assert_eq!(total(&amelia, Value::CriticalBonus(unarmed)), Some(4));
+    // Couteau: ATC +2, 1d6+2, bonus critique 6.
+    let couteau = Weapon::Couteau;
+    assert_eq!(
+        total(&amelia, Value::Attack(couteau.attack_mode())),
+        Some(2)
+    );
+    assert_eq!(amelia.damage_dice(couteau), Dice::new([6]));
+    assert_eq!(total(&amelia, Value::Damage(couteau)), Some(2));
+    assert_eq!(total(&amelia, Value::CriticalBonus(couteau)), Some(6));
+    assert_eq!(total(&amelia, Value::CriticalRange(couteau)), Some(20));
+    assert_eq!(total(&amelia, Value::DamageReduction), Some(0));
 }
 
 #[test]

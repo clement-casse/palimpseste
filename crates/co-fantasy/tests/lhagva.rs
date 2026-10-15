@@ -1,12 +1,11 @@
 //! Acceptance test: Lhagva, human barbarian of the COF2 book (COF p. 20-40),
 //! level 1, from the co-rules fixture `examples/cof2-lhagva.md`.
-//!
-//! Deferred with weapons: the DM of the cimeterre (1d8+3) and javelot (1d6).
 
 use co_fantasy::{
-    Armour, AttackMode, Character, Family, Peuple, Profil, RecoveryDie, Series, Shield, Value, Voie,
+    Armour, AttackMode, Character, Family, Money, Peuple, Profil, RecoveryDie, Series, Shield,
+    Value, Voie, Weapon, WeaponUse,
 };
-use co_kernel::{AbilityId, Characteristic, Characteristics, Source};
+use co_kernel::{AbilityId, Characteristic, Characteristics, Dice, Source};
 
 fn lhagva() -> Character {
     let values = [
@@ -32,8 +31,16 @@ fn lhagva() -> Character {
         .with_rank(Voie::Pourfendeur, 1)
         .with_rank(Voie::Rage, 1)
         .with_rank(Voie::Humain, 1)
+        // Starting equipment: the "one-handed d8 weapon and shield" option,
+        // her cimeterre treated as an épée longue.
         .with_armour(Armour::CuirSimple)
         .with_shield(Shield::GrandBouclier)
+        .with_item(Weapon::EpeeLongue, 1)
+        .with_item(Weapon::Javelot, 2)
+        .with_item(Weapon::Dague, 1)
+        .with_item("adventurer's bag", 1)
+        // The pre-generated purse: the average of 2d6 pa.
+        .with_purse(Money::pa(7))
 }
 
 fn total(character: &Character, value: Value) -> Option<i32> {
@@ -118,6 +125,35 @@ fn attacks() {
     assert_eq!(attack(AttackMode::Contact), Some(4));
     assert_eq!(attack(AttackMode::Ranged), Some(2));
     assert_eq!(attack(AttackMode::Magic), Some(2));
+}
+
+#[test]
+fn damage() {
+    let lhagva = lhagva();
+    // Cimeterre: 1d8 + FOR 3.
+    let cimeterre = WeaponUse::OneHanded;
+    assert_eq!(Weapon::EpeeLongue.dice(cimeterre), Some(Dice::new([8])));
+    assert_eq!(
+        total(&lhagva, Value::Damage(Weapon::EpeeLongue, cimeterre)),
+        Some(3)
+    );
+    assert_eq!(cimeterre.attack_mode(), AttackMode::Contact);
+    // Javelot: 1d6, no characteristic.
+    let javelot = WeaponUse::Ranged;
+    assert_eq!(Weapon::Javelot.dice(javelot), Some(Dice::new([6])));
+    assert_eq!(
+        total(&lhagva, Value::Damage(Weapon::Javelot, javelot)),
+        Some(0)
+    );
+    assert_eq!(
+        total(&lhagva, Value::CriticalRange(Weapon::EpeeLongue)),
+        Some(20)
+    );
+}
+
+#[test]
+fn money() {
+    assert_eq!(total(&lhagva(), Value::Money), Some(Money::pa(7).in_pc()));
 }
 
 #[test]

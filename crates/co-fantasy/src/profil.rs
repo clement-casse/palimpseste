@@ -3,7 +3,7 @@
 use co_kernel::{Characteristic, Subject, ValueId, Violation};
 
 use crate::{
-    Armour, Character, Shield, Voie,
+    Armour, Character, Shield, Voie, Weapon,
     rules::{PROFIL, PROFIL_MECHANIC, PROFIL_VALUE},
 };
 
@@ -212,6 +212,47 @@ impl Profil {
         }
     }
 
+    /// Whether the profil masters `weapon` (COF.CNT.PROFILS,
+    /// COF.DER.WEAPON-PROFICIENCY). A weapon not mastered gives a dé malus
+    /// to the attack test; carrying it is not a violation. Only the
+    /// arquebusier masters powder weapons.
+    ///
+    /// "Bâton" covers the bâton and the bâton ferré, the barbare's "complex
+    /// technology" means powder weapons, and every weapon eligible as the
+    /// ensorceleur's weapon of choice counts as mastered, since the choice is
+    /// not recorded (D-28).
+    #[must_use]
+    pub fn masters(self, weapon: Weapon) -> bool {
+        use Weapon::{ArbaleteLegere, ArcCourt, Baton, BatonFerre, Dague, Epieu, Javelot, Marteau};
+        let powder = weapon.is_powder();
+        match self {
+            Self::Arquebusier => weapon.is_one_handed_contact() || weapon.is_ranged(),
+            Self::Barde => weapon.is_one_handed() && !powder,
+            Self::Rodeur | Self::Voleur => {
+                (weapon.is_one_handed_contact() || weapon.is_ranged()) && !powder
+            }
+            Self::Barbare => !weapon.is_crossbow() && !powder,
+            Self::Chevalier => weapon.is_contact(),
+            Self::Guerrier | Self::Moine => !powder,
+            Self::Ensorceleur => {
+                matches!(weapon, Dague | BatonFerre | ArbaleteLegere)
+                    || (weapon.highest_damage() <= ENSORCELEUR_CHOICE_MAX && !powder)
+            }
+            Self::Forgesort => matches!(
+                weapon,
+                Dague | Baton | BatonFerre | Marteau | ArbaleteLegere
+            ),
+            Self::Magicien | Self::Sorcier => matches!(weapon, Dague | Baton | BatonFerre),
+            Self::Druide => matches!(
+                weapon,
+                Dague | Baton | BatonFerre | Epieu | Javelot | ArcCourt
+            ),
+            Self::Pretre => {
+                (weapon.is_blunt() && weapon.is_one_handed()) || matches!(weapon, BatonFerre)
+            }
+        }
+    }
+
     /// The largest shield the profil's capacités allow, `None` for no shield.
     pub(crate) const fn shield_limit(self) -> Option<Shield> {
         match self {
@@ -229,6 +270,9 @@ impl Profil {
         }
     }
 }
+
+/// The highest damage of the ensorceleur's weapon of choice: 1d6.
+const ENSORCELEUR_CHOICE_MAX: i32 = 6;
 
 /// Checks that a profil is chosen.
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
@@ -269,6 +313,30 @@ mod tests {
         assert_eq!(Family::Combattants.vigour_per_level(), 5);
         assert_eq!(Family::Mages.recovery_die(), RecoveryDie::D6);
         assert_eq!(Family::Mystiques.id().as_str(), "cof.family.mystiques");
+    }
+
+    #[test]
+    fn mastery_follows_the_profil() {
+        assert!(Profil::Arquebusier.masters(Weapon::Petoire));
+        assert!(!Profil::Guerrier.masters(Weapon::Petoire));
+        assert!(Profil::Guerrier.masters(Weapon::ArcLong));
+        assert!(!Profil::Barbare.masters(Weapon::ArbaleteLegere));
+        assert!(Profil::Barbare.masters(Weapon::HacheADeuxMains));
+        assert!(!Profil::Chevalier.masters(Weapon::ArcCourt));
+        assert!(Profil::Chevalier.masters(Weapon::Dague));
+        assert!(Profil::Barde.masters(Weapon::Rapiere));
+        assert!(!Profil::Barde.masters(Weapon::EpeeADeuxMains));
+        assert!(Profil::Voleur.masters(Weapon::ArcCourt));
+        assert!(!Profil::Voleur.masters(Weapon::EpeeADeuxMains));
+        assert!(Profil::Ensorceleur.masters(Weapon::EpeeCourte));
+        assert!(!Profil::Ensorceleur.masters(Weapon::EpeeLongue));
+        assert!(Profil::Magicien.masters(Weapon::BatonFerre));
+        assert!(!Profil::Magicien.masters(Weapon::EpeeCourte));
+        assert!(Profil::Pretre.masters(Weapon::Masse));
+        assert!(Profil::Pretre.masters(Weapon::BatonFerre));
+        assert!(!Profil::Pretre.masters(Weapon::EpeeCourte));
+        assert!(Profil::Druide.masters(Weapon::Epieu));
+        assert!(Profil::Moine.masters(Weapon::Vivelame));
     }
 
     #[test]

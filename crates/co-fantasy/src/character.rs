@@ -9,8 +9,9 @@ use co_kernel::{
 };
 
 use crate::{
-    Armour, Family, Peuple, Profil, RecoveryDie, Series, Shield, Voie, armour, characteristics,
-    derived, peuple, profil, voie,
+    Armour, Family, Item, Money, Peuple, Profil, Quantity, RecoveryDie, Series, Shield, Voie,
+    Weapon, WeaponUse, armour, characteristics, derived, equipment, money, peuple, profil, voie,
+    weapon,
 };
 
 /// The kind of attack an attack value applies to.
@@ -41,13 +42,23 @@ pub enum Value {
     Defence,
     /// Attack value (COF.DER.ATTACK).
     Attack(AttackMode),
+    /// DM added to the weapon's dice in a use (COF.DER.DM).
+    Damage(Weapon, WeaponUse),
+    /// Lowest natural roll of a critical success with a weapon
+    /// (COF.DER.CRIT-RANGE).
+    CriticalRange(Weapon),
+    /// Money held, in pc: the purse at creation (COF.CRE.EQUIPMENT).
+    Money,
 }
 
 impl Value {
     /// Returns the kernel identifier of the value.
     #[must_use]
-    pub const fn id(self) -> ValueId {
+    pub fn id(self) -> ValueId {
         ValueId::from_static(match self {
+            Self::Damage(weapon, weapon_use) => return weapon::damage_id(weapon, weapon_use),
+            Self::CriticalRange(weapon) => return weapon::critical_range_id(weapon),
+            Self::Money => "cof.money",
             Self::VigourPoints => "cof.vigour-points",
             Self::RecoveryDice => "cof.recovery-dice",
             Self::LuckPoints => "cof.luck-points",
@@ -96,6 +107,8 @@ pub struct Character {
     voies: BTreeMap<Voie, BTreeSet<Rank>>,
     armour: Option<Armour>,
     shield: Option<Shield>,
+    items: BTreeMap<Item, Quantity>,
+    purse: Option<Money>,
     adjustments: Vec<(Target, Adjustment)>,
     waivers: Vec<Waiver>,
 }
@@ -241,6 +254,41 @@ impl Character {
         self
     }
 
+    /// Carries `quantity` of `item`, replacing any quantity already carried;
+    /// a quantity of 0 gives the item up.
+    #[must_use]
+    pub fn with_item(mut self, item: impl Into<Item>, quantity: impl Into<Quantity>) -> Self {
+        let item = item.into();
+        let quantity = quantity.into();
+        if quantity.get() == 0 {
+            self.items.remove(&item);
+        } else {
+            self.items.insert(item, quantity);
+        }
+        self
+    }
+
+    /// Gives up `item`.
+    #[must_use]
+    pub fn without_item(mut self, item: impl Into<Item>) -> Self {
+        self.items.remove(&item.into());
+        self
+    }
+
+    /// Sets the purse rolled for the starting equipment (2d6 pa).
+    #[must_use]
+    pub const fn with_purse(mut self, purse: Money) -> Self {
+        self.purse = Some(purse);
+        self
+    }
+
+    /// Gives up the purse.
+    #[must_use]
+    pub const fn without_purse(mut self) -> Self {
+        self.purse = None;
+        self
+    }
+
     /// Adds a manual adjustment to `target`.
     #[must_use]
     pub fn with_adjustment(mut self, target: Target, adjustment: Adjustment) -> Self {
@@ -285,7 +333,9 @@ impl Character {
     /// Returns `value` and its breakdown.
     ///
     /// PV, DR and PC are `None` while the profil is unknown, PM while no
-    /// spell is known. Their adjustments then still surface as notices.
+    /// spell is known, the money while the purse is not rolled, a weapon's
+    /// DM when the weapon cannot be used that way. Their adjustments then
+    /// still surface as notices.
     #[must_use]
     pub fn value(&self, value: Value) -> Option<DerivedValue> {
         let values = self.characteristics();
@@ -297,6 +347,9 @@ impl Character {
             Value::Initiative => derived::initiative(self, &values),
             Value::Defence => derived::defence(self, &values),
             Value::Attack(mode) => derived::attack(self, &values, mode),
+            Value::Damage(weapon, weapon_use) => weapon::damage(&values, weapon, weapon_use)?,
+            Value::CriticalRange(weapon) => weapon::critical_range(weapon),
+            Value::Money => money::money(self)?,
         };
         Some(self.adjusted(Target::Value(value), base))
     }
@@ -310,6 +363,9 @@ impl Character {
         characteristics::check(self, &mut violations);
         voie::check(self, &mut violations);
         armour::check(self, &mut violations);
+        equipment::check(self, &mut violations);
+        money::check(self, &mut violations);
+        weapon::check(self, &mut violations);
         derived::check(self, &mut violations);
         violations.extend(
             self.adjustments
@@ -367,6 +423,23 @@ impl Character {
         self.shield
     }
 
+    pub(crate) const fn purse(&self) -> Option<Money> {
+        self.purse
+    }
+
+    /// The weapons carried, with their quantity, in weapon order.
+    pub(crate) fn weapons_carried(&self) -> impl Iterator<Item = (Weapon, Quantity)> + '_ {
+        self.items.iter().filter_map(|(item, quantity)| match item {
+            Item::Weapon(weapon) => Some((*weapon, *quantity)),
+            Item::Other(_) => None,
+        })
+    }
+
+    /// The weapons carried, in weapon order.
+    pub(crate) fn weapons(&self) -> impl Iterator<Item = Weapon> + '_ {
+        self.weapons_carried().map(|(weapon, _)| weapon)
+    }
+
     /// Appends the adjustments made to `target`, in the order they were added.
     fn adjusted(&self, target: Target, value: DerivedValue) -> DerivedValue {
         self.adjustments
@@ -403,6 +476,7 @@ mod tests {
                 "COF.CRE.CARAC-SERIES",
                 "COF.CRE.VOIES",
                 "COF.CRE.VOIES",
+                "COF.CRE.EQUIPMENT",
             ]
         );
     }
@@ -474,9 +548,13 @@ mod tests {
             .with_rank(Voie::Rage, 1)
             .with_rank(Voie::Assassin, 3)
             .with_armour(Armour::CotteDeMailles)
+            .with_item(Weapon::ArcLong, 2)
+            .with_purse(Money::pa(20))
             .with_series_value(Characteristic::For, 7);
         let backward = Character::new()
             .with_series_value(Characteristic::For, 7)
+            .with_purse(Money::pa(20))
+            .with_item(Weapon::ArcLong, 2)
             .with_armour(Armour::CotteDeMailles)
             .with_rank(Voie::Assassin, 3)
             .with_rank(Voie::Rage, 1)
@@ -497,6 +575,9 @@ mod tests {
             .with_rank(Voie::Rage, 1)
             .with_armour(Armour::CuirSimple)
             .with_shield(Shield::PetitBouclier)
+            .with_item(Weapon::Dague, 2)
+            .with_item("rope", 1)
+            .with_purse(Money::pa(7))
             .without_profil()
             .without_peuple()
             .without_series()
@@ -506,7 +587,11 @@ mod tests {
             .without_rank(Voie::Rage, 1)
             .without_rank(Voie::Brute, 1)
             .without_armour()
-            .without_shield();
+            .without_shield()
+            .without_item(Weapon::Dague)
+            .with_item("rope", 0)
+            .without_item("lantern")
+            .without_purse();
         assert_eq!(character, Character::new());
     }
 }

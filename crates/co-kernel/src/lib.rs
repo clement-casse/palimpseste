@@ -62,6 +62,7 @@
 mod adjustment;
 mod characteristic;
 mod derived;
+mod dice;
 mod report;
 mod violation;
 mod voie;
@@ -70,6 +71,7 @@ mod waiver;
 pub use adjustment::{Adjustment, Author};
 pub use characteristic::{Characteristic, CharacteristicValue, Characteristics};
 pub use derived::{Contribution, DerivedValue, Source};
+pub use dice::{Dice, Die};
 pub use report::{ReportEntry, ViolationReport};
 pub use violation::{
     ADJUSTMENT_RULE, Category, Mechanic, Parameter, ParameterValue, RuleId, Severity, Subject,

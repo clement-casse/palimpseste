@@ -3,13 +3,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use co_kernel::{
-    Adjustment, Characteristic, CharacteristicValue, Characteristics, DerivedValue, Rank, Subject,
-    ValueId, Violation, ViolationReport, Waiver, adjustment_notice,
+    Adjustment, Characteristic, CharacteristicValue, Characteristics, DerivedValue, Dice, Rank,
+    Subject, ValueId, Violation, ViolationReport, Waiver, adjustment_notice,
 };
 
 use crate::{
-    Age, AgeBracket, Domaine, SocialClass, Trait, TraitPoints, Voie, age, characteristics, domaine,
-    secondary, traits, voie,
+    Age, AgeBracket, Domaine, Item, Protection, Quantity, SocialClass, Trait, TraitPoints, Voie,
+    Weapon, age, characteristics, domaine, equipment, protection, secondary, traits, voie, weapon,
 };
 
 /// The weapon category an attack value applies to.
@@ -48,13 +48,30 @@ pub enum Value {
     MaxVoies,
     /// Highest rank allowed at creation (COC.CRE.AGE-BRACKET).
     MaxRank,
+    /// DM added to a weapon's dice (COC.DER.DM-BONUS).
+    Damage(Weapon),
+    /// Bonus critique of a weapon (COC.DER.CRIT-BONUS).
+    CriticalBonus(Weapon),
+    /// Lowest natural roll of a critical success with a weapon
+    /// (COC.DER.CRIT-RANGE).
+    CriticalRange(Weapon),
+    /// RD of the protections worn (COC.EQP.PROTECTIONS).
+    DamageReduction,
+    /// Modifier to AGI tests from the protections worn (COC.EQP.PROTECTIONS,
+    /// D-05).
+    AgiTestModifier,
 }
 
 impl Value {
     /// Returns the kernel identifier of the value.
     #[must_use]
-    pub const fn id(self) -> ValueId {
+    pub fn id(self) -> ValueId {
         ValueId::from_static(match self {
+            Self::Damage(w) => return weapon::value_id("damage", w),
+            Self::CriticalBonus(w) => return weapon::value_id("critical-bonus", w),
+            Self::CriticalRange(w) => return weapon::value_id("critical-range", w),
+            Self::DamageReduction => "coc.damage-reduction",
+            Self::AgiTestModifier => "coc.agi-test-modifier",
             Self::Initiative => "coc.initiative",
             Self::Defence => "coc.defence",
             Self::Attack(AttackMode::Unarmed) => "coc.attack.unarmed",
@@ -103,6 +120,8 @@ pub struct Character {
     voies: BTreeMap<Voie, BTreeSet<Rank>>,
     traits: BTreeMap<Trait, TraitPoints>,
     allocated: Characteristics,
+    items: BTreeMap<Item, Quantity>,
+    protections: BTreeSet<Protection>,
     adjustments: Vec<(Target, Adjustment)>,
     waivers: Vec<Waiver>,
 }
@@ -170,6 +189,41 @@ impl Character {
         self
     }
 
+    /// Carries `quantity` of `item`, replacing any quantity already carried;
+    /// a quantity of 0 gives the item up.
+    #[must_use]
+    pub fn with_item(mut self, item: impl Into<Item>, quantity: impl Into<Quantity>) -> Self {
+        let item = item.into();
+        let quantity = quantity.into();
+        if quantity.get() == 0 {
+            self.items.remove(&item);
+        } else {
+            self.items.insert(item, quantity);
+        }
+        self
+    }
+
+    /// Gives up `item`.
+    #[must_use]
+    pub fn without_item(mut self, item: impl Into<Item>) -> Self {
+        self.items.remove(&item.into());
+        self
+    }
+
+    /// Puts on `protection`; a helmet is worn with any other protection.
+    #[must_use]
+    pub fn with_protection(mut self, protection: Protection) -> Self {
+        self.protections.insert(protection);
+        self
+    }
+
+    /// Takes off `protection`.
+    #[must_use]
+    pub fn without_protection(mut self, protection: Protection) -> Self {
+        self.protections.remove(&protection);
+        self
+    }
+
     /// Adds a manual adjustment to `target`.
     #[must_use]
     pub fn with_adjustment(mut self, target: Target, adjustment: Adjustment) -> Self {
@@ -207,9 +261,10 @@ impl Character {
 
     /// Returns `value` and its breakdown.
     ///
-    /// Only the budgets (`CaracPoints`, `CapacityPoints`, `MaxVoies`,
-    /// `MaxRank`) can be `None`: while the age bracket is unknown. Their
-    /// adjustments then still surface as notices.
+    /// The budgets (`CaracPoints`, `CapacityPoints`, `MaxVoies`, `MaxRank`)
+    /// are `None` while the age bracket is unknown, and the bonus critique
+    /// of an area weapon is always `None`. Their adjustments then still
+    /// surface as notices.
     #[must_use]
     pub fn value(&self, value: Value) -> Option<DerivedValue> {
         let values = self.characteristics();
@@ -223,8 +278,20 @@ impl Character {
             Value::CaracPoints | Value::CapacityPoints | Value::MaxVoies | Value::MaxRank => {
                 age::budget(self, value)?
             }
+            Value::Damage(w) => weapon::damage(self, &values, w),
+            Value::CriticalBonus(w) => weapon::critical_bonus(self, &values, w)?,
+            Value::CriticalRange(w) => weapon::critical_range(self, w),
+            Value::DamageReduction => protection::damage_reduction(self),
+            Value::AgiTestModifier => protection::with_malus(DerivedValue::new(), self),
         };
         Some(self.adjusted(Target::Value(value), base))
+    }
+
+    /// Returns the dice rolled for the DM of `weapon`: the table's, 1d6
+    /// unarmed with the combat à mains nues rank 2.
+    #[must_use]
+    pub fn damage_dice(&self, weapon: Weapon) -> Dice {
+        weapon::damage_dice(self, weapon)
     }
 
     /// Returns the characteristic points allocated, lowered characteristics
@@ -279,6 +346,7 @@ impl Character {
         voie::check(self, &mut violations);
         traits::check(self, &mut violations);
         characteristics::check(self, &mut violations);
+        equipment::check(self, &mut violations);
         violations.extend(
             self.adjustments
                 .iter()
@@ -335,6 +403,19 @@ impl Character {
 
     pub(crate) fn allocated_points(&self, characteristic: Characteristic) -> i32 {
         self.allocated[characteristic].get()
+    }
+
+    /// The weapons carried, with their quantity, in weapon order.
+    pub(crate) fn weapons_carried(&self) -> impl Iterator<Item = (Weapon, Quantity)> + '_ {
+        self.items.iter().filter_map(|(item, quantity)| match item {
+            Item::Weapon(weapon) => Some((*weapon, *quantity)),
+            Item::Other(_) => None,
+        })
+    }
+
+    /// The protections worn, in protection order.
+    pub(crate) fn protections(&self) -> impl Iterator<Item = Protection> + '_ {
+        self.protections.iter().copied()
     }
 
     fn trait_values(&self) -> impl Iterator<Item = i32> + '_ {
@@ -498,9 +579,17 @@ mod tests {
         let character = Character::new()
             .with_rank(Voie::Crime, 1)
             .with_trait(Trait::Rapide, 2)
+            .with_item(Weapon::Couteau, 1)
+            .with_item("notebook", 2)
+            .with_protection(Protection::Casque)
             .without_rank(Voie::Crime, 1)
             .without_trait(Trait::Rapide)
-            .without_rank(Voie::Survie, 1);
+            .without_rank(Voie::Survie, 1)
+            .without_item(Weapon::Couteau)
+            .with_item("notebook", 0)
+            .without_item("torch")
+            .without_protection(Protection::Casque)
+            .without_protection(Protection::GiletSouple);
         assert_eq!(character, Character::new());
     }
 }

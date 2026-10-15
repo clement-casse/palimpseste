@@ -42,6 +42,11 @@ pub(crate) const DEF: RuleId = RuleId::from_static("COC.DER.DEF");
 pub(crate) const CG: RuleId = RuleId::from_static("COC.DER.CG");
 /// COC.DER.HEALTH-SCALE: 20 steps by default.
 pub(crate) const HEALTH_SCALE: RuleId = RuleId::from_static("COC.DER.HEALTH-SCALE");
+/// COC.DER.CRIT-RANGE: critical success on a natural 20 by default.
+pub(crate) const CRIT_RANGE: RuleId = RuleId::from_static("COC.DER.CRIT-RANGE");
+/// COC.CRE.EQUIPMENT: the starting equipment of the voies acquired (D-26,
+/// D-30).
+pub(crate) const EQUIPMENT: RuleId = RuleId::from_static("COC.CRE.EQUIPMENT");
 
 /// Age and age bracket checks.
 pub(crate) const AGE_MECHANIC: Mechanic = Mechanic::new("coc.age");
@@ -53,6 +58,8 @@ pub(crate) const VOIE_MECHANIC: Mechanic = Mechanic::new("coc.voies");
 pub(crate) const TRAIT_MECHANIC: Mechanic = Mechanic::new("coc.traits");
 /// Characteristic checks.
 pub(crate) const CARAC_MECHANIC: Mechanic = Mechanic::new("coc.characteristics");
+/// Starting equipment checks.
+pub(crate) const EQUIPMENT_MECHANIC: Mechanic = Mechanic::new("coc.equipment");
 
 /// The character's age.
 pub(crate) const AGE: ValueId = ValueId::from_static("coc.age");

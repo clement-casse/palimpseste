@@ -3,7 +3,7 @@
 use co_kernel::{Characteristic, Characteristics, DerivedValue, Rank, Source};
 
 use crate::{
-    AgeBracket, AttackMode, Character, Sequel, Trait, Voie,
+    AgeBracket, AttackMode, Character, Sequel, Trait, Voie, protection,
     rules::{CG, DEF, HEALTH_SCALE, INIT},
 };
 
@@ -21,7 +21,8 @@ fn with_adolescent_bonus(value: DerivedValue, character: &Character) -> DerivedV
     }
 }
 
-/// Init = 10 + INT + PER (COC.DER.INIT), with Rapide +3 and Crime rank 2 +2.
+/// Init = 10 + INT + PER (COC.DER.INIT), with Rapide +3, Crime rank 2 +2
+/// and the malus of the protections worn.
 pub(crate) fn initiative(character: &Character, values: &Characteristics) -> DerivedValue {
     let mut value = DerivedValue::new()
         .with(Source::Rule(INIT), 10)
@@ -34,7 +35,7 @@ pub(crate) fn initiative(character: &Character, values: &Characteristics) -> Der
     if character.has_rank(Voie::Crime, crime_rank) {
         value = value.with(Source::Ability(Voie::Crime.ability(crime_rank)), 2);
     }
-    with_adolescent_bonus(value, character)
+    protection::with_malus(with_adolescent_bonus(value, character), character)
 }
 
 /// DEF = 10 + AGI + PER (COC.DER.DEF).
@@ -47,7 +48,8 @@ pub(crate) fn defence(character: &Character, values: &Characteristics) -> Derive
 }
 
 /// ATC = FOR (COC.DER.ATC) or ATD = AGI (COC.DER.ATD), plus the rank reached
-/// in the voie matching the attack mode (CO.VOIE.RANK-SCALING).
+/// in the voie matching the attack mode (CO.VOIE.RANK-SCALING); ATC takes
+/// the malus of the protections worn.
 pub(crate) fn attack(
     character: &Character,
     values: &Characteristics,
@@ -59,11 +61,14 @@ pub(crate) fn attack(
         AttackMode::RangedWeapon => (Characteristic::Agi, Voie::ArmesADistance),
         AttackMode::HeavyWeapon => (Characteristic::Agi, Voie::ArmesLourdes),
     };
-    let value = DerivedValue::new().with_characteristic(values, characteristic);
+    let mut value = DerivedValue::new().with_characteristic(values, characteristic);
     let first_rank = Rank::new(1);
     if character.has_rank(voie, first_rank) {
         let rank = character.highest_rank(voie).map_or(0, Rank::get);
-        value.with(Source::Ability(voie.ability(first_rank)), i32::from(rank))
+        value = value.with(Source::Ability(voie.ability(first_rank)), i32::from(rank));
+    }
+    if characteristic == Characteristic::For {
+        protection::with_malus(value, character)
     } else {
         value
     }

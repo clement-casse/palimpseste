@@ -2,13 +2,15 @@
 //! level 1, core rules only.
 //!
 //! A [`Character`] holds the creation choices (profil, peuple, value series
-//! and its assignment, peuple modifiers, voie ranks, armour and shield) with
-//! the Game Master's adjustments and waivers. Every other value is computed
+//! and its assignment, peuple modifiers, voie ranks, armour and shield,
+//! items carried, purse) with the Game Master's adjustments and waivers. Every other value is computed
 //! with its breakdown, and every broken rule is reported as a violation.
 //! Rule identifiers trace to the co-rules skill.
 //!
 //! ```
-//! use co_fantasy::{Armour, Character, Peuple, Profil, Series, Shield, Value, Voie};
+//! use co_fantasy::{
+//!     Armour, Character, Money, Peuple, Profil, Series, Shield, Value, Voie, Weapon, WeaponUse,
+//! };
 //! use co_kernel::Characteristic;
 //!
 //! let character = Character::new()
@@ -27,7 +29,11 @@
 //!     .with_rank(Voie::Soldat, 1)
 //!     .with_rank(Voie::Nain, 1)
 //!     .with_armour(Armour::ChemiseDeMailles)
-//!     .with_shield(Shield::GrandBouclier);
+//!     .with_shield(Shield::GrandBouclier)
+//!     .with_item(Weapon::EpeeLongue, 1)
+//!     .with_item(Weapon::HacheADeuxMains, 1)
+//!     .with_item("adventurer's bag", 1)
+//!     .with_purse(Money::pa(9));
 //!
 //! // The nain raises CON and lowers AGI.
 //! assert_eq!(character.characteristics()[Characteristic::Con].get(), 3);
@@ -37,6 +43,9 @@
 //! // DEF = 10 + AGI 1 + chemise de mailles 4 + grand bouclier 2.
 //! let defence = character.value(Value::Defence);
 //! assert_eq!(defence.map(|v| v.total()), Some(17));
+//! // The épée longue deals 1d8 + FOR 2.
+//! let damage = character.value(Value::Damage(Weapon::EpeeLongue, WeaponUse::OneHanded));
+//! assert_eq!(damage.map(|v| v.total()), Some(2));
 //! assert!(character.report().is_clean());
 //! ```
 
@@ -44,14 +53,20 @@ mod armour;
 mod character;
 mod characteristics;
 mod derived;
+mod equipment;
+mod money;
 mod peuple;
 mod profil;
 mod rules;
 mod voie;
+mod weapon;
 
 pub use armour::{Armour, Shield};
 pub use character::{AttackMode, Character, Target, Value};
 pub use characteristics::{SERIES_VALUE, Series};
+pub use equipment::{Item, ItemName, Quantity};
+pub use money::{Money, purse_dice};
 pub use peuple::Peuple;
 pub use profil::{Family, Profil, RecoveryDie};
 pub use voie::Voie;
+pub use weapon::{Weapon, WeaponUse};

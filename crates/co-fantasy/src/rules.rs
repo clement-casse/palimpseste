@@ -48,6 +48,15 @@ pub(crate) const INIT: RuleId = RuleId::from_static("COF.DER.INIT");
 pub(crate) const DEF: RuleId = RuleId::from_static("COF.DER.DEF");
 /// COF.DER.ARMOUR-LIMIT: the profil's armour and shield limits (D-24).
 pub(crate) const ARMOUR_LIMIT: RuleId = RuleId::from_static("COF.DER.ARMOUR-LIMIT");
+/// COF.CRE.EQUIPMENT: the profil's starting equipment and the purse (D-26,
+/// D-27).
+pub(crate) const EQUIPMENT: RuleId = RuleId::from_static("COF.CRE.EQUIPMENT");
+/// COF.DER.CRIT-RANGE: critical success on a natural 20 by default.
+pub(crate) const CRIT_RANGE: RuleId = RuleId::from_static("COF.DER.CRIT-RANGE");
+/// COF.EQP.RANGED: the arc long requires FOR +1 or more.
+pub(crate) const RANGED: RuleId = RuleId::from_static("COF.EQP.RANGED");
+/// COF.CNT.PEUPLES: weapons a halfelin can wield (Petite taille, D-29).
+pub(crate) const PEUPLES: RuleId = RuleId::from_static("COF.CNT.PEUPLES");
 
 /// Profil checks.
 pub(crate) const PROFIL_MECHANIC: Mechanic = Mechanic::new("cof.profil");
@@ -59,6 +68,10 @@ pub(crate) const CARAC_MECHANIC: Mechanic = Mechanic::new("cof.characteristics")
 pub(crate) const VOIE_MECHANIC: Mechanic = Mechanic::new("cof.voies");
 /// Armour and shield checks.
 pub(crate) const ARMOUR_MECHANIC: Mechanic = Mechanic::new("cof.armour");
+/// Starting equipment and purse checks.
+pub(crate) const EQUIPMENT_MECHANIC: Mechanic = Mechanic::new("cof.equipment");
+/// Weapon checks.
+pub(crate) const WEAPON_MECHANIC: Mechanic = Mechanic::new("cof.weapons");
 /// Derived value checks.
 pub(crate) const DERIVED_MECHANIC: Mechanic = Mechanic::new("cof.derived");
 
@@ -80,3 +93,5 @@ pub(crate) const PEUPLE_VOIE: ValueId = ValueId::from_static("cof.peuple-voie");
 pub(crate) const ARMOUR: ValueId = ValueId::from_static("cof.armour");
 /// The shield carried.
 pub(crate) const SHIELD: ValueId = ValueId::from_static("cof.shield");
+/// The purse of the starting equipment.
+pub(crate) const PURSE: ValueId = ValueId::from_static("cof.purse");
