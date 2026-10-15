@@ -8,8 +8,8 @@ use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId};
 use crate::{
     Character, Family, Profil,
     rules::{
-        LEVEL_REQ, MAGE_EXTRA, PEUPLE_VOIE, PROFIL_VOIES, VOIE_DU_MAGE, VOIE_MECHANIC, VOIE_ORDER,
-        VOIE_STRUCTURE, VOIES,
+        LEVEL, LEVEL_REQ, MAGE_EXTRA, PEUPLE_VOIE, PROFIL_VOIES, VOIE_DU_MAGE, VOIE_MECHANIC,
+        VOIE_ORDER, VOIE_STRUCTURE, VOIES,
     },
 };
 
@@ -321,9 +321,6 @@ const fn required_level(rank: u8) -> Option<i32> {
         3 => Some(3),
         4 => Some(5),
         5 => Some(7),
-        6 => Some(9),
-        7 => Some(11),
-        8 => Some(13),
         _ => None,
     }
 }
@@ -335,7 +332,8 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
         check_structure(voie, ranks, violations);
     }
     check_slots(character, violations);
-    check_ranks(character, violations);
+    check_level(character, violations);
+    check_mage_extra(character, violations);
 }
 
 /// CO.VOIE.STRUCTURE and CO.VOIE.ORDER for one voie.
@@ -352,7 +350,7 @@ fn check_structure(voie: Voie, ranks: &BTreeSet<Rank>, violations: &mut Vec<Viol
         .filter(|r| !ranks.contains(&Rank::new(*r)))
         .peekable();
     if let Some(&first) = missing.peek() {
-        let count = missing.fold(0_i32, |count, _| count.saturating_add(1));
+        let count = missing.fold(0_i32, |count, _| count + 1);
         violations.push(
             Violation::deviation(VOIE_ORDER, VOIE_MECHANIC, subject(), Severity::Standard)
                 .with_parameter("first_missing", i32::from(first))
@@ -366,13 +364,15 @@ fn check_structure(voie: Voie, ranks: &BTreeSet<Rank>, violations: &mut Vec<Viol
 fn check_slots(character: &Character, violations: &mut Vec<Violation>) {
     let profil = character.profil();
     let peuple = character.peuple();
-    let is_mage = character.family().map(|family| family == Family::Mages);
+    let non_mage = character
+        .family()
+        .is_some_and(|family| family != Family::Mages);
     let mut chosen = 0_i32;
     let mut peuple_slot = 0_i32;
     for (voie, _) in character.voies() {
         let foreign = if voie == Voie::Mage {
-            peuple_slot = peuple_slot.saturating_add(1);
-            if is_mage == Some(false) {
+            peuple_slot += 1;
+            if non_mage {
                 violations.push(Violation::deviation(
                     VOIE_DU_MAGE,
                     VOIE_MECHANIC,
@@ -382,10 +382,10 @@ fn check_slots(character: &Character, violations: &mut Vec<Violation>) {
             }
             false
         } else if voie.is_peuple_slot() {
-            peuple_slot = peuple_slot.saturating_add(1);
+            peuple_slot += 1;
             peuple.is_some_and(|peuple| !peuple.allows_voie(voie))
         } else {
-            chosen = chosen.saturating_add(1);
+            chosen += 1;
             profil.is_some_and(|profil| voie.profil() != Some(profil))
         };
         if foreign {
@@ -420,21 +420,24 @@ fn check_slots(character: &Character, violations: &mut Vec<Violation>) {
     violations.extend(count_violation(peuple_slot, 1, Subject::Value(PEUPLE_VOIE)));
 }
 
-/// COF.PRG.LEVEL-REQ and COF.CRE.MAGE-EXTRA: rank 1 only at level 1, except
-/// one rank 2 for the mage family, in a voie of its profil or the voie du
-/// mage.
-fn check_ranks(character: &Character, violations: &mut Vec<Violation>) {
-    let profil = character.profil();
-    let is_mage = character.family() == Some(Family::Mages);
-    let mut extras = 0_i32;
+/// Whether `voie` may hold the mage family's extra rank: a voie of the
+/// mage's profil or the voie du mage (COF.CRE.MAGE-EXTRA).
+fn may_hold_mage_extra(character: &Character, voie: Voie) -> bool {
+    character.family() == Some(Family::Mages)
+        && (voie == Voie::Mage || voie.profil() == character.profil())
+}
+
+/// COF.PRG.LEVEL-REQ: rank 1 only at level 1, rank 2 in a voie that may hold
+/// the mage extra.
+fn check_level(character: &Character, violations: &mut Vec<Violation>) {
     for (voie, ranks) in character.voies() {
-        let covers_extra = is_mage && (voie == Voie::Mage || voie.profil() == profil);
-        if covers_extra && ranks.contains(&MAGE_EXTRA_RANK) {
-            extras = extras.saturating_add(1);
-        }
-        let allowed = if covers_extra { 2 } else { 1 };
+        let allowed = if may_hold_mage_extra(character, voie) {
+            MAGE_EXTRA_RANK
+        } else {
+            Rank::new(1)
+        };
         if let Some(highest) = ranks.last().map(|rank| rank.get())
-            && highest > allowed
+            && highest > allowed.get()
         {
             let mut violation = Violation::deviation(
                 LEVEL_REQ,
@@ -443,26 +446,38 @@ fn check_ranks(character: &Character, violations: &mut Vec<Violation>) {
                 Severity::Standard,
             )
             .with_parameter("rank", i32::from(highest))
-            .with_parameter("level", 1);
+            .with_parameter("level", LEVEL);
             if let Some(required) = required_level(highest) {
                 violation = violation.with_parameter("required", required);
             }
             violations.push(violation);
         }
     }
-    if is_mage {
-        let violation = match extras {
-            0 => Violation::incomplete(MAGE_EXTRA, VOIE_MECHANIC, Subject::Character),
-            1 => return,
-            _ => Violation::deviation(
-                MAGE_EXTRA,
-                VOIE_MECHANIC,
-                Subject::Character,
-                Severity::Standard,
-            ),
-        };
-        violations.push(violation.with_parameter("extras", extras));
+}
+
+/// COF.CRE.MAGE-EXTRA: exactly one rank 2 for the mage family, in a voie of
+/// its profil or the voie du mage.
+fn check_mage_extra(character: &Character, violations: &mut Vec<Violation>) {
+    if character.family() != Some(Family::Mages) {
+        return;
     }
+    let extras = character
+        .voies()
+        .filter(|(voie, ranks)| {
+            may_hold_mage_extra(character, *voie) && ranks.contains(&MAGE_EXTRA_RANK)
+        })
+        .fold(0_i32, |extras, _| extras + 1);
+    let violation = match extras {
+        0 => Violation::incomplete(MAGE_EXTRA, VOIE_MECHANIC, Subject::Character),
+        1 => return,
+        _ => Violation::deviation(
+            MAGE_EXTRA,
+            VOIE_MECHANIC,
+            Subject::Character,
+            Severity::Standard,
+        ),
+    };
+    violations.push(violation.with_parameter("extras", extras));
 }
 
 #[cfg(test)]

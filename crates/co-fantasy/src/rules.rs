@@ -1,4 +1,4 @@
-//! Rule, mechanic and value identifiers.
+//! Rule, mechanic and value identifiers, and the level fixed at creation.
 //!
 //! Rule identifiers trace to the co-rules skill. Soft limits of different
 //! severities carry distinct rule identifiers, because a waiver matches on
@@ -34,6 +34,8 @@ pub(crate) const VOIE_DU_MAGE: RuleId = RuleId::from_static("COF.CRE.VOIE-DU-MAG
 pub(crate) const LEVEL_REQ: RuleId = RuleId::from_static("COF.PRG.LEVEL-REQ");
 /// COF.CRE.LEVEL1: every character starts at level 1.
 pub(crate) const LEVEL1: RuleId = RuleId::from_static("COF.CRE.LEVEL1");
+/// The level of every character at creation (COF.CRE.LEVEL1).
+pub(crate) const LEVEL: i32 = 1;
 /// COF.DER.DR: DR = 2 + CON.
 pub(crate) const DR: RuleId = RuleId::from_static("COF.DER.DR");
 /// COF.DER.PC: PC = 2 + CHA.

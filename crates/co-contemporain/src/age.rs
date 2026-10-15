@@ -109,8 +109,7 @@ pub(crate) struct Limits {
 }
 
 /// Returns the creation budget `value` from the age bracket, with the change
-/// D'un autre âge makes to it; `None` without a bracket or for a value that
-/// is not a budget.
+/// D'un autre âge makes to it; `None` without a bracket.
 pub(crate) fn budget(character: &Character, value: Value) -> Option<DerivedValue> {
     let bracket = character.age_bracket()?;
     let limits = bracket.limits();
@@ -119,6 +118,7 @@ pub(crate) fn budget(character: &Character, value: Value) -> Option<DerivedValue
         Value::CapacityPoints => (limits.capacity_points, -1, 2),
         Value::MaxVoies => (limits.max_voies, 0, 0),
         Value::MaxRank => (limits.max_rank, 0, 0),
+        // Unreachable: `Character::value` asks for the budgets only.
         _ => return None,
     };
     let budget = DerivedValue::new().with(Source::Rule(AGE_BRACKET), base);
@@ -191,7 +191,6 @@ mod tests {
         assert_eq!(budgets_at(40), [Some(8), Some(7), Some(5), Some(3)]);
         assert_eq!(budgets_at(60), [Some(6), Some(10), Some(6), Some(4)]);
         assert_eq!(budgets_at(8), [None; 4]);
-        assert_eq!(budget(&Character::new().with_age(20), Value::Defence), None);
     }
 
     #[test]

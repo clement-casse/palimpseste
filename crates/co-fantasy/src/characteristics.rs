@@ -18,11 +18,11 @@ pub const SERIES_VALUE: ValueId = ValueId::from_static("cof.series-value");
 /// One of the three value series to assign to the seven characteristics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Series {
-    /// Polyvalent: +2, +2, +2, +1, +1, 0, -1.
+    /// Polyvalent.
     Polyvalent,
-    /// Expert: +3, +2, +1, +1, 0, 0, -1.
+    /// Expert.
     Expert,
-    /// Spécialiste: +4, +2, +1, 0, 0, -1, -1.
+    /// Spécialiste.
     Specialiste,
 }
 
@@ -48,7 +48,7 @@ const MAGIC_MIN: i32 = 1;
 
 /// The characteristic the peuple lowers: the one chosen, or the only one the
 /// peuple offers.
-fn peuple_malus(character: &Character, peuple: Peuple) -> Option<Characteristic> {
+fn applied_malus(character: &Character, peuple: Peuple) -> Option<Characteristic> {
     character.peuple_malus().or(match peuple.malus_options() {
         [only] => Some(*only),
         _ => None,
@@ -66,7 +66,7 @@ pub(crate) fn characteristic(character: &Character, c: Characteristic) -> Derive
         if character.peuple_bonus() == Some(c) {
             value = value.with(Source::Value(peuple.id()), 1);
         }
-        if peuple_malus(character, peuple) == Some(c) {
+        if applied_malus(character, peuple) == Some(c) {
             value = value.with(Source::Value(peuple.id()), -1);
         }
     }
@@ -119,7 +119,7 @@ fn check_series(character: &Character, violations: &mut Vec<Violation>) {
         )),
         Some(_) => {}
     }
-    let count = assigned(character).fold(0_i32, |count, _| count.saturating_add(1));
+    let count = assigned(character).fold(0_i32, |count, _| count + 1);
     if count < 7 {
         violations.push(
             Violation::incomplete(CARAC_SERIES, CARAC_MECHANIC, subject())

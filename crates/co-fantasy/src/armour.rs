@@ -11,19 +11,19 @@ use crate::{
 /// An armour, from the lightest to the heaviest.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Armour {
-    /// Tissus matelassés, fourrures: DEF +1, AGI max +7.
+    /// Tissus matelassés, fourrures.
     TissusMatelasses,
-    /// Cuir simple: DEF +2, AGI max +6.
+    /// Cuir simple.
     CuirSimple,
-    /// Cuir renforcé, broigne: DEF +3, AGI max +5.
+    /// Cuir renforcé, broigne.
     CuirRenforce,
-    /// Chemise de mailles: DEF +4, AGI max +4.
+    /// Chemise de mailles.
     ChemiseDeMailles,
-    /// Cotte de mailles: DEF +5, AGI max +3.
+    /// Cotte de mailles.
     CotteDeMailles,
-    /// Armure de plaques: DEF +6, AGI max +2.
+    /// Armure de plaques.
     ArmureDePlaques,
-    /// Plaque complète: DEF +7, AGI max +1.
+    /// Plaque complète.
     PlaqueComplete,
 }
 
@@ -65,9 +65,9 @@ impl Armour {
 /// A shield, from the smallest to the largest.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Shield {
-    /// Petit bouclier: DEF +1.
+    /// Petit bouclier.
     PetitBouclier,
-    /// Grand bouclier: DEF +2.
+    /// Grand bouclier.
     GrandBouclier,
 }
 

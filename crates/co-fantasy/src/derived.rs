@@ -7,11 +7,8 @@ use co_kernel::{
 
 use crate::{
     AttackMode, Character, Family, Value, Voie,
-    rules::{DEF, DERIVED_MECHANIC, DR, INIT, LEVEL1, PC, PM},
+    rules::{DEF, DERIVED_MECHANIC, DR, INIT, LEVEL, LEVEL1, PC, PM},
 };
-
-/// The character's level at creation (COF.CRE.LEVEL1).
-const LEVEL: i32 = 1;
 
 /// Adds `amount` from the capacité at `rank` in `voie`, when acquired.
 fn with_ability(

@@ -123,25 +123,41 @@ impl Domaine {
 /// Checks the domaine choice, the voies retained from it, and the social
 /// class it calls for.
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
-    let subject = || Subject::Value(DOMAINE_VALUE);
     let Some(domaine) = character.domaine() else {
-        violations.push(Violation::incomplete(DOMAINE, DOMAINE_MECHANIC, subject()));
+        violations.push(Violation::incomplete(
+            DOMAINE,
+            DOMAINE_MECHANIC,
+            Subject::Value(DOMAINE_VALUE),
+        ));
         return;
     };
+    check_retained(character, domaine, violations);
+    check_social_class(character, domaine, violations);
+}
 
+/// COC.CRE.DOMAINE: enough voies retained from the domaine's slots.
+fn check_retained(character: &Character, domaine: Domaine, violations: &mut Vec<Violation>) {
     let retained = domaine
         .slots()
         .iter()
         .filter(|slot| slot.iter().any(|voie| character.has_voie(*voie)))
-        .fold(0_i32, |retained, _| retained.saturating_add(1));
+        .fold(0_i32, |retained, _| retained + 1);
     if retained < domaine.minimum_retained() {
         violations.push(
-            Violation::deviation(DOMAINE, DOMAINE_MECHANIC, subject(), Severity::Standard)
-                .with_parameter("retained", retained)
-                .with_parameter("min", domaine.minimum_retained()),
+            Violation::deviation(
+                DOMAINE,
+                DOMAINE_MECHANIC,
+                Subject::Value(DOMAINE_VALUE),
+                Severity::Standard,
+            )
+            .with_parameter("retained", retained)
+            .with_parameter("min", domaine.minimum_retained()),
         );
     }
+}
 
+/// COC.CNT.DOMAINES: the class trait an extra-professional domaine calls for.
+fn check_social_class(character: &Character, domaine: Domaine, violations: &mut Vec<Violation>) {
     // The subject is the missing trait: the two severities never share a
     // waiver.
     let (class_trait, severity) = match domaine {

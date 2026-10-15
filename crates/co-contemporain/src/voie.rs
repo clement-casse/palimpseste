@@ -1,5 +1,7 @@
 //! The 18 voies (COC.CNT.VOIES) and the checks on acquired ranks.
 
+use std::collections::BTreeSet;
+
 use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId};
 
 use crate::{
@@ -93,43 +95,63 @@ const ABSOLUTE_MAX_VOIES: i32 = 6;
 /// Checks the acquired ranks against the voie structure and the creation
 /// budgets.
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
-    let max_rank = character.value(Value::MaxRank).map(|v| v.total());
     for (voie, ranks) in character.voies() {
-        let subject = || Subject::Voie(voie.id());
-        for rank in ranks.iter().filter(|rank| !RANKS.contains(&rank.get())) {
-            violations.push(
-                Violation::deviation(VOIE_STRUCTURE, VOIE_MECHANIC, subject(), Severity::Standard)
-                    .with_parameter("rank", i32::from(rank.get())),
-            );
-        }
-        let highest = ranks.last().map_or(0, |rank| rank.get());
-        let mut missing = (1..highest)
-            .filter(|r| !ranks.contains(&Rank::new(*r)))
-            .peekable();
-        if let Some(&first) = missing.peek() {
-            let count = missing.fold(0_i32, |count, _| count.saturating_add(1));
-            violations.push(
-                Violation::deviation(VOIE_ORDER, VOIE_MECHANIC, subject(), Severity::Standard)
-                    .with_parameter("first_missing", i32::from(first))
-                    .with_parameter("missing", count),
-            );
-        }
-        if let Some(max) = max_rank
-            && i32::from(highest) > max
+        check_structure(voie, ranks, violations);
+    }
+    check_max_rank(character, violations);
+    check_voie_budget(character, violations);
+    check_max_voies(character, violations);
+    check_capacity_points(character, violations);
+}
+
+/// CO.VOIE.STRUCTURE and CO.VOIE.ORDER for one voie.
+fn check_structure(voie: Voie, ranks: &BTreeSet<Rank>, violations: &mut Vec<Violation>) {
+    let subject = || Subject::Voie(voie.id());
+    for rank in ranks.iter().filter(|rank| !RANKS.contains(&rank.get())) {
+        violations.push(
+            Violation::deviation(VOIE_STRUCTURE, VOIE_MECHANIC, subject(), Severity::Standard)
+                .with_parameter("rank", i32::from(rank.get())),
+        );
+    }
+    let highest = ranks.last().map_or(0, |rank| rank.get());
+    let mut missing = (1..highest)
+        .filter(|r| !ranks.contains(&Rank::new(*r)))
+        .peekable();
+    if let Some(&first) = missing.peek() {
+        let count = missing.fold(0_i32, |count, _| count + 1);
+        violations.push(
+            Violation::deviation(VOIE_ORDER, VOIE_MECHANIC, subject(), Severity::Standard)
+                .with_parameter("first_missing", i32::from(first))
+                .with_parameter("missing", count),
+        );
+    }
+}
+
+/// COC.CRE.CAPACITY-POINTS: no rank above the bracket's maximum.
+fn check_max_rank(character: &Character, violations: &mut Vec<Violation>) {
+    let Some(max) = character.value(Value::MaxRank).map(|v| v.total()) else {
+        return;
+    };
+    for (voie, ranks) in character.voies() {
+        if let Some(highest) = ranks.last().map(|rank| i32::from(rank.get()))
+            && highest > max
         {
             violations.push(
                 Violation::deviation(
                     CAPACITY_POINTS,
                     VOIE_MECHANIC,
-                    subject(),
+                    Subject::Voie(voie.id()),
                     Severity::Standard,
                 )
-                .with_parameter("rank", i32::from(highest))
+                .with_parameter("rank", highest)
                 .with_parameter("max", max),
             );
         }
     }
+}
 
+/// COC.CRE.CAPACITY-POINTS: no more voies than the bracket allows.
+fn check_voie_budget(character: &Character, violations: &mut Vec<Violation>) {
     let count = character.voie_count();
     if let Some(max) = character.value(Value::MaxVoies).map(|v| v.total())
         && count > max
@@ -145,6 +167,11 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
             .with_parameter("max", max),
         );
     }
+}
+
+/// COC.CRE.MAX-VOIES: six voies in total, whatever the bracket.
+fn check_max_voies(character: &Character, violations: &mut Vec<Violation>) {
+    let count = character.voie_count();
     if count > ABSOLUTE_MAX_VOIES {
         violations.push(
             Violation::deviation(
@@ -157,25 +184,27 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
             .with_parameter("max", ABSOLUTE_MAX_VOIES),
         );
     }
+}
 
-    if let Some(budget) = character.value(Value::CapacityPoints).map(|v| v.total()) {
-        let spent = character.capacity_points_spent();
-        let subject = Subject::Value(Value::CapacityPoints.id());
-        let violation = match spent.cmp(&budget) {
-            std::cmp::Ordering::Less => {
-                Violation::incomplete(CAPACITY_POINTS, VOIE_MECHANIC, subject)
-            }
-            std::cmp::Ordering::Greater => {
-                Violation::deviation(CAPACITY_POINTS, VOIE_MECHANIC, subject, Severity::Standard)
-            }
-            std::cmp::Ordering::Equal => return,
-        };
-        violations.push(
-            violation
-                .with_parameter("spent", spent)
-                .with_parameter("budget", budget),
-        );
-    }
+/// COC.CRE.CAPACITY-POINTS: the capacity points spent exactly.
+fn check_capacity_points(character: &Character, violations: &mut Vec<Violation>) {
+    let Some(budget) = character.value(Value::CapacityPoints).map(|v| v.total()) else {
+        return;
+    };
+    let spent = character.capacity_points_spent();
+    let subject = Subject::Value(Value::CapacityPoints.id());
+    let violation = match spent.cmp(&budget) {
+        std::cmp::Ordering::Less => Violation::incomplete(CAPACITY_POINTS, VOIE_MECHANIC, subject),
+        std::cmp::Ordering::Greater => {
+            Violation::deviation(CAPACITY_POINTS, VOIE_MECHANIC, subject, Severity::Standard)
+        }
+        std::cmp::Ordering::Equal => return,
+    };
+    violations.push(
+        violation
+            .with_parameter("spent", spent)
+            .with_parameter("budget", budget),
+    );
 }
 
 #[cfg(test)]

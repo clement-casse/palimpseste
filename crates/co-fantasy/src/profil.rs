@@ -10,13 +10,13 @@ use crate::{
 /// One of the four families of profils.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Family {
-    /// Aventuriers: 4 PV per level, d8, +1 PC.
+    /// Aventuriers.
     Aventuriers,
-    /// Combattants: 5 PV per level, d10.
+    /// Combattants.
     Combattants,
-    /// Mages: 3 PV per level, d6, one rank-2 capacité at creation.
+    /// Mages.
     Mages,
-    /// Mystiques: 4 PV per level, d8, +1 DR.
+    /// Mystiques.
     Mystiques,
 }
 

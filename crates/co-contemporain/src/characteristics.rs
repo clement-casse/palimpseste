@@ -73,34 +73,39 @@ fn absolute_max(character: &Character, c: Characteristic) -> i32 {
 
 /// Checks the points spent and the starting values.
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
-    if let Some(budget) = character.value(Value::CaracPoints).map(|v| v.total()) {
-        let spent = character.carac_points_spent();
-        let subject = Subject::Value(Value::CaracPoints.id());
-        let violation = match spent.cmp(&i64::from(budget)) {
-            std::cmp::Ordering::Less => {
-                Some(Violation::incomplete(CARAC_POINTS, CARAC_MECHANIC, subject))
-            }
-            std::cmp::Ordering::Greater => Some(Violation::deviation(
-                CARAC_POINTS,
-                CARAC_MECHANIC,
-                subject,
-                Severity::Recommended,
-            )),
-            std::cmp::Ordering::Equal => None,
-        };
-        if let Some(violation) = violation {
-            violations.push(
-                violation
-                    .with_parameter("spent", spent)
-                    .with_parameter("budget", budget),
-            );
-        }
-    }
+    check_points(character, violations);
+    check_lowered(character, violations);
+    check_physical(character, violations);
+    check_limits(character, violations);
+}
 
+/// COC.CRE.CARAC-POINTS: the characteristic points spent exactly.
+fn check_points(character: &Character, violations: &mut Vec<Violation>) {
+    let Some(budget) = character.value(Value::CaracPoints).map(|v| v.total()) else {
+        return;
+    };
+    let spent = character.carac_points_spent();
+    let subject = Subject::Value(Value::CaracPoints.id());
+    let violation = match spent.cmp(&i64::from(budget)) {
+        std::cmp::Ordering::Less => Violation::incomplete(CARAC_POINTS, CARAC_MECHANIC, subject),
+        std::cmp::Ordering::Greater => {
+            Violation::deviation(CARAC_POINTS, CARAC_MECHANIC, subject, Severity::Recommended)
+        }
+        std::cmp::Ordering::Equal => return,
+    };
+    violations.push(
+        violation
+            .with_parameter("spent", spent)
+            .with_parameter("budget", budget),
+    );
+}
+
+/// COC.CRE.CARAC-LOWERED (recommended): one characteristic lowered at most.
+fn check_lowered(character: &Character, violations: &mut Vec<Violation>) {
     let lowered = Characteristic::ALL
         .into_iter()
         .filter(|c| character.allocated_points(*c) < 0)
-        .fold(0_i32, |lowered, _| lowered.saturating_add(1));
+        .fold(0_i32, |lowered, _| lowered + 1);
     if lowered > 1 {
         violations.push(
             Violation::deviation(
@@ -113,27 +118,36 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
             .with_parameter("max", 1),
         );
     }
+}
 
+/// COC.CRE.CARAC-PHYSICAL (recommended): FOR, AGI and CON within the
+/// bracket's bounds (D-17).
+fn check_physical(character: &Character, violations: &mut Vec<Violation>) {
+    let Some(limits) = character.age_bracket().map(crate::AgeBracket::limits) else {
+        return;
+    };
     let values = character.characteristics();
-    if let Some(limits) = character.age_bracket().map(crate::AgeBracket::limits) {
-        for c in PHYSICAL {
-            let value = values[c].get();
-            if !(limits.physical_min..=limits.physical_max).contains(&value) {
-                violations.push(
-                    Violation::deviation(
-                        CARAC_PHYSICAL,
-                        CARAC_MECHANIC,
-                        Subject::Characteristic(c),
-                        Severity::Recommended,
-                    )
-                    .with_parameter("value", value)
-                    .with_parameter("min", limits.physical_min)
-                    .with_parameter("max", limits.physical_max),
-                );
-            }
+    for c in PHYSICAL {
+        let value = values[c].get();
+        if !(limits.physical_min..=limits.physical_max).contains(&value) {
+            violations.push(
+                Violation::deviation(
+                    CARAC_PHYSICAL,
+                    CARAC_MECHANIC,
+                    Subject::Characteristic(c),
+                    Severity::Recommended,
+                )
+                .with_parameter("value", value)
+                .with_parameter("min", limits.physical_min)
+                .with_parameter("max", limits.physical_max),
+            );
         }
     }
-    for (c, value) in values.iter() {
+}
+
+/// COC.CRE.CARAC-LIMITS (absolute): every starting value within its limits.
+fn check_limits(character: &Character, violations: &mut Vec<Violation>) {
+    for (c, value) in character.characteristics().iter() {
         let value = value.get();
         let max = absolute_max(character, c);
         if !(ABSOLUTE_MIN..=max).contains(&value) {

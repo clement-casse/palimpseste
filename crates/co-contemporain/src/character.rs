@@ -212,13 +212,13 @@ impl Character {
     /// adjustments then still surface as notices.
     #[must_use]
     pub fn value(&self, value: Value) -> Option<DerivedValue> {
-        let values = || self.characteristics();
+        let values = self.characteristics();
         let base = match value {
-            Value::Initiative => secondary::initiative(self, &values()),
-            Value::Defence => secondary::defence(self, &values()),
-            Value::Attack(mode) => secondary::attack(self, &values(), mode),
-            Value::ContactDamageBonus => secondary::contact_damage_bonus(self, &values()),
-            Value::HealingCapacity => secondary::healing_capacity(&values()),
+            Value::Initiative => secondary::initiative(self, &values),
+            Value::Defence => secondary::defence(self, &values),
+            Value::Attack(mode) => secondary::attack(self, &values, mode),
+            Value::ContactDamageBonus => secondary::contact_damage_bonus(self, &values),
+            Value::HealingCapacity => secondary::healing_capacity(&values),
             Value::HealthScale => secondary::health_scale(self),
             Value::CaracPoints | Value::CapacityPoints | Value::MaxVoies | Value::MaxRank => {
                 age::budget(self, value)?
@@ -239,21 +239,16 @@ impl Character {
             .sum()
     }
 
-    /// Returns the capacity points spent: one per rank acquired, saturating.
+    /// Returns the capacity points spent: one per rank acquired.
     #[must_use]
     pub fn capacity_points_spent(&self) -> i32 {
-        self.voies
-            .values()
-            .flatten()
-            .fold(0, |spent, _| spent.saturating_add(1))
+        self.voies.values().flatten().fold(0, |spent, _| spent + 1)
     }
 
-    /// Returns the number of voies with at least one rank, saturating.
+    /// Returns the number of voies with at least one rank.
     #[must_use]
     pub fn voie_count(&self) -> i32 {
-        self.voies
-            .keys()
-            .fold(0, |count, _| count.saturating_add(1))
+        self.voies.keys().fold(0, |count, _| count + 1)
     }
 
     /// Returns the sum of the advantages (positive).
