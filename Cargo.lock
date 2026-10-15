@@ -10,5 +10,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "co-fantasy"
+version = "0.1.0"
+dependencies = [
+ "co-kernel",
+]
+
+[[package]]
 name = "co-kernel"
 version = "0.1.0"

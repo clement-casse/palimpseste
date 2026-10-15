@@ -8,7 +8,7 @@ A companion application for the French tabletop RPG *Chroniques Oubliées* (COF2
 The long-term goal is a character editor, later a campaign tracker.
 Each ruleset and each variant will be a **WorldEngine**: rules written as Rust code, composed from mechanics, with game content kept as data.
 
-**Current phase: the kernel and the COC2 character creation engine.** Everything below is scoped to them.
+**Current phase: the kernel, and the COC2 and COF2 character creation engines.** Everything below is scoped to them.
 
 ## Current scope: `co-kernel`
 
@@ -39,11 +39,30 @@ In scope:
 
 Out of scope, do not implement or prepare for:
 
-- COF2, variants (COC2 3d6, ...) and universe rules (échelle d'évolution);
+- variants (COC2 3d6, ...) and universe rules (échelle d'évolution);
 - combat resolution and weapon data (dice, bonus critique, critical range, arme de prédilection), protections, inventory and starting equipment;
 - progression (XP, rank costs after creation, rank 5 characteristic increase);
 - data files and data formats, persistence, serialization, `serde`;
 - user interface, networking, users, campaigns, play state (health scale damage, resources), dice rolling.
+
+## Current scope: `co-fantasy`
+
+The COF2 engine, core rules only (no variant), **character creation at level 1** only (see `docs/adr/0003-co-fantasy-creation-engine.md`).
+
+In scope:
+
+- **Creation choices**: profil (and the family derived from it), peuple, value series and the value assigned to each characteristic, peuple bonus and malus, ranks acquired per voie, armour and shield.
+- **Content read by the creation rules**: the 4 families, the 14 profils with their voies, key and magic characteristics and armour limits, the 8 peuples with their modifiers and voie de peuple, the 3 value series, the 78 voies reachable at level 1, the armour and shield table, as enums and `match` tables.
+- **Creation limits**: series assignment and its advice, peuple modifiers, characteristic bounds, two profil voies and the voie de peuple, voie du mage, mage extra capacité, level required per rank, armour limits.
+- **Derived values**: PV, DR (count and die), PC, PM, Init, DEF with armour and shield, contact, ranged and magic attack values, with the documented effects of rank 1-2 capacités (D-22) and the documented spells (D-23).
+
+Out of scope, do not implement or prepare for:
+
+- variants, prestige voies, hybrid profils;
+- progression (levels above 1, capacity points, PV per level, orphan point, changement d'orientation);
+- weapon data and DM, critical ranges, competence bonuses, languages and talent secondaire, capacités calling other capacités, armour malus to tests, starting equipment, final touch;
+- data files and data formats, persistence, serialization, `serde`;
+- user interface, networking, users, campaigns, play state (current PV, PC, PM, DR), dice rolling.
 
 Other engines are added in later deliveries. Do not add extension points, traits, generics or modules "for later". If a task seems to require something out of scope, stop and ask.
 
@@ -78,13 +97,14 @@ mise.toml             # tool versions and tasks
 docs/adr/             # architecture decision records
 crates/co-kernel/     # co-kernel: concepts shared by every engine
 crates/co-contemporain/ # COC2 engine: character creation
+crates/co-fantasy/     # COF2 engine: character creation at level 1
 ```
 
 Do not create other crates. A new crate or a new top-level directory is a structural decision: propose it, do not make it.
 
 ## Vocabulary
 
-Code identifiers are in English. Game terms map as follows. Game content (names of domaines, voies, traits, sequels, social classes) keeps its French name without accents, as enum variants (`Voie::ArmesDeContact`, `Trait::ForceDeLaNature`).
+Code identifiers are in English. Game terms map as follows. Game content (names of domaines, voies, traits, sequels, social classes, profils, peuples, armours) keeps its French name without accents, as enum variants (`Voie::ArmesDeContact`, `Trait::ForceDeLaNature`).
 
 | Game term (FR) | Code |
 |---|---|
@@ -107,6 +127,16 @@ Code identifiers are in English. Game terms map as follows. Game content (names 
 | capacité de guérison (CG) | `HealingCapacity` |
 | Init, DEF | `Initiative`, `Defence` |
 | ATC, ATD | `Attack(AttackMode)` |
+| profil | `Profil` (kept) |
+| famille | `Family` |
+| peuple | `Peuple` (kept) |
+| série de valeurs | `Series` |
+| points de vigueur (PV) | `VigourPoints` |
+| dés de récupération (DR) | `RecoveryDice`, `RecoveryDie` |
+| points de chance (PC) | `LuckPoints` |
+| points de mana (PM) | `ManaPoints` |
+| armure, bouclier | `Armour`, `Shield` |
+| attaque au contact, à distance, magique | `Attack(AttackMode::Contact)`, `Ranged`, `Magic` |
 
 ## Working rules for agents
 

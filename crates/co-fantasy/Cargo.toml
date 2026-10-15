@@ -1,0 +1,10 @@
+[package]
+name = "co-fantasy"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+co-kernel = { path = "../co-kernel" }
+
+[lints]
+workspace = true
