@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["crates/co-contemporain", "crates/co-fantasy", "crates/co-kernel"]
+members = ["app/backend", "app/wasm", "crates/co-contemporain", "crates/co-fantasy", "crates/co-kernel"]
+# A bare `cargo run` at the root starts the server.
+default-members = ["app/backend"]
 
 [workspace.package]
 version = "0.1.0"

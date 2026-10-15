@@ -1,10 +1,14 @@
 [tools]
-rust = { version = "1.99.0", mr_boxington = true }
+rust = { version = "1.99.0", mr_boxington = true, targets = "wasm32-unknown-unknown" }
 mr-boxington = "latest"
 "cargo:cargo-sort" = "latest"
 "cargo:cargo-nextest" = "latest"
 "cargo:cargo-llvm-cov" = "latest"
 "cargo:cargo-tarpaulin" = "latest"
+# Must match the wasm-bindgen version locked in Cargo.lock.
+"cargo:wasm-bindgen-cli" = "0.2.129"
+node = "24"
+pnpm = "10.33.0"
 
 [tasks.fmt]
 run = "cargo fmt --all -- --config group_imports=StdExternalCrate,imports_granularity=Crate,format_code_in_doc_comments=true"
@@ -23,3 +27,38 @@ run = "cargo tarpaulin --workspace --engine llvm --out Stdout --out Xml --output
 
 [tasks.check]
 depends = ["fmt", "lint", "test", "doc-test"]
+
+[tasks."wasm:build"]
+description = "Compile the engines to WebAssembly and generate their JavaScript bindings into the front end"
+run = [
+  "cargo build -p palimpseste-wasm --target wasm32-unknown-unknown --release",
+  "wasm-bindgen --target web --out-dir app/frontend/src/wasm target/wasm32-unknown-unknown/release/palimpseste_wasm.wasm",
+]
+
+[tasks."frontend:install"]
+description = "Install the front end dependencies"
+dir = "app/frontend"
+run = "pnpm install"
+
+[tasks."frontend:check"]
+description = "Type-check the front end"
+depends = ["wasm:build", "frontend:install"]
+dir = "app/frontend"
+run = "pnpm run check"
+
+[tasks."frontend:build"]
+description = "Build the PWA into app/frontend/dist"
+depends = ["wasm:build", "frontend:install"]
+dir = "app/frontend"
+run = "pnpm run build"
+
+[tasks."frontend:dev"]
+description = "Vite dev server, proxying /api to the backend (run `mise run serve` alongside)"
+depends = ["wasm:build", "frontend:install"]
+dir = "app/frontend"
+run = "pnpm run dev"
+
+[tasks.serve]
+description = "Build the PWA and serve it with the API on http://127.0.0.1:3000"
+depends = ["frontend:build"]
+run = "cargo run -p palimpseste-backend"
