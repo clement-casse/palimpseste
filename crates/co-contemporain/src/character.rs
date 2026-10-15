@@ -229,26 +229,31 @@ impl Character {
 
     /// Returns the characteristic points allocated, lowered characteristics
     /// counting negatively.
+    ///
+    /// The sum is exact: seven `i32` values cannot overflow an `i64`.
     #[must_use]
-    pub fn carac_points_spent(&self) -> i32 {
-        crate::clamp(
-            self.allocated
-                .iter()
-                .map(|(_, points)| i64::from(points.get()))
-                .sum(),
-        )
+    pub fn carac_points_spent(&self) -> i64 {
+        self.allocated
+            .iter()
+            .map(|(_, points)| i64::from(points.get()))
+            .sum()
     }
 
-    /// Returns the capacity points spent: one per rank acquired.
+    /// Returns the capacity points spent: one per rank acquired, saturating.
     #[must_use]
     pub fn capacity_points_spent(&self) -> i32 {
-        crate::saturate(self.voies.values().map(BTreeSet::len).sum())
+        self.voies
+            .values()
+            .flatten()
+            .fold(0, |spent, _| spent.saturating_add(1))
     }
 
-    /// Returns the number of voies with at least one rank.
+    /// Returns the number of voies with at least one rank, saturating.
     #[must_use]
-    pub fn voie_count(&self) -> usize {
-        self.voies.len()
+    pub fn voie_count(&self) -> i32 {
+        self.voies
+            .keys()
+            .fold(0, |count, _| count.saturating_add(1))
     }
 
     /// Returns the sum of the advantages (positive).

@@ -76,7 +76,7 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     if let Some(budget) = character.value(Value::CaracPoints).map(|v| v.total()) {
         let spent = character.carac_points_spent();
         let subject = Subject::Value(Value::CaracPoints.id());
-        let violation = match spent.cmp(&budget) {
+        let violation = match spent.cmp(&i64::from(budget)) {
             std::cmp::Ordering::Less => {
                 Some(Violation::incomplete(CARAC_POINTS, CARAC_MECHANIC, subject))
             }
@@ -100,7 +100,7 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     let lowered = Characteristic::ALL
         .into_iter()
         .filter(|c| character.allocated_points(*c) < 0)
-        .count();
+        .fold(0_i32, |lowered, _| lowered.saturating_add(1));
     if lowered > 1 {
         violations.push(
             Violation::deviation(
@@ -109,7 +109,7 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
                 Subject::Character,
                 Severity::Recommended,
             )
-            .with_parameter("lowered", crate::saturate(lowered))
+            .with_parameter("lowered", lowered)
             .with_parameter("max", 1),
         );
     }

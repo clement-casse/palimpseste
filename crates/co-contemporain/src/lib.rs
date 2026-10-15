@@ -50,13 +50,3 @@ pub use characteristics::ALLOCATED_POINTS;
 pub use domaine::Domaine;
 pub use traits::{Sequel, SocialClass, Trait, TraitPoints};
 pub use voie::Voie;
-
-/// Converts a count to `i32`, saturating.
-fn saturate(count: usize) -> i32 {
-    i32::try_from(count).unwrap_or(i32::MAX)
-}
-
-/// Clamps an exact sum to the `i32` range.
-fn clamp(sum: i64) -> i32 {
-    i32::try_from(sum).unwrap_or(if sum < 0 { i32::MIN } else { i32::MAX })
-}

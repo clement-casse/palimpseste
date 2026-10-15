@@ -5,7 +5,6 @@ use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId};
 use crate::{
     Character, Value,
     rules::{CAPACITY_POINTS, MAX_VOIES, VOIE_MECHANIC, VOIE_ORDER, VOIE_STRUCTURE},
-    saturate,
 };
 
 /// One of the 18 voies of COC2.
@@ -104,12 +103,15 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
             );
         }
         let highest = ranks.last().map_or(0, |rank| rank.get());
-        let mut missing = (1..highest).filter(|r| !ranks.contains(&Rank::new(*r)));
-        if let Some(first) = missing.next() {
+        let mut missing = (1..highest)
+            .filter(|r| !ranks.contains(&Rank::new(*r)))
+            .peekable();
+        if let Some(&first) = missing.peek() {
+            let count = missing.fold(0_i32, |count, _| count.saturating_add(1));
             violations.push(
                 Violation::deviation(VOIE_ORDER, VOIE_MECHANIC, subject(), Severity::Standard)
                     .with_parameter("first_missing", i32::from(first))
-                    .with_parameter("missing", crate::saturate(missing.count() + 1)),
+                    .with_parameter("missing", count),
             );
         }
         if let Some(max) = max_rank
@@ -128,7 +130,7 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
         }
     }
 
-    let count = saturate(character.voie_count());
+    let count = character.voie_count();
     if let Some(max) = character.value(Value::MaxVoies).map(|v| v.total())
         && count > max
     {

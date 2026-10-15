@@ -58,7 +58,7 @@ impl Domaine {
     }
 
     /// Voies to retain from the domaine: 2 (professional) or 3 (extra-professional).
-    const fn minimum_retained(self) -> usize {
+    const fn minimum_retained(self) -> i32 {
         if self.is_extra_professional() { 3 } else { 2 }
     }
 
@@ -133,12 +133,12 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
         .slots()
         .iter()
         .filter(|slot| slot.iter().any(|voie| character.has_voie(*voie)))
-        .count();
+        .fold(0_i32, |retained, _| retained.saturating_add(1));
     if retained < domaine.minimum_retained() {
         violations.push(
             Violation::deviation(DOMAINE, DOMAINE_MECHANIC, subject(), Severity::Standard)
-                .with_parameter("retained", crate::saturate(retained))
-                .with_parameter("min", crate::saturate(domaine.minimum_retained())),
+                .with_parameter("retained", retained)
+                .with_parameter("min", domaine.minimum_retained()),
         );
     }
 
