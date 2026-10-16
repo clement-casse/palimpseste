@@ -23,12 +23,10 @@
 //! ```
 
 mod contemporain;
-mod error;
 mod fantasy;
 
 use co_kernel::{AbilityId, Adjustment, Author, RuleId, ValueId, VoieId, Waiver};
 pub use contemporain::{ContemporainDocument, TraitEntry};
-pub use error::DocumentError;
 pub use fantasy::FantasyDocument;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ts")]
@@ -36,6 +34,26 @@ use tsify::Tsify;
 
 /// The document version this crate reads and writes.
 pub const VERSION: u32 = 1;
+
+/// Why a document cannot be read. A rule broken is never one of them.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum Error {
+    /// The document's version is not [`VERSION`].
+    #[error("unsupported document version {0}")]
+    UnsupportedVersion(u32),
+    /// An identifier names no content of the engine.
+    #[error("unknown {kind} `{id}`")]
+    UnknownContent {
+        /// What the identifier should name: a profil, a voie, a value...
+        kind: &'static str,
+        /// The identifier.
+        id: String,
+    },
+    /// A field that must be filled is blank: an author, a reason, a rule,
+    /// a subject, an item name.
+    #[error("empty {0}")]
+    Empty(&'static str),
+}
 
 /// The engine a character is built with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -84,7 +102,7 @@ impl Document {
     /// # Errors
     ///
     /// Returns why the document cannot be read.
-    pub fn check(&self) -> Result<(), DocumentError> {
+    pub fn check(&self) -> Result<(), Error> {
         match self {
             Self::Contemporain(document) => document.to_character().map(|_| ()),
             Self::Fantasy(document) => document.to_character().map(|_| ()),
@@ -247,7 +265,7 @@ pub struct AdjustmentEntry {
 }
 
 impl AdjustmentEntry {
-    fn adjustment(&self) -> Result<Adjustment, DocumentError> {
+    fn adjustment(&self) -> Result<Adjustment, Error> {
         Ok(Adjustment::new(
             self.amount,
             author(&self.author)?,
@@ -286,7 +304,7 @@ impl From<&co_kernel::Subject> for Subject {
 }
 
 impl Subject {
-    fn to_kernel(&self) -> Result<co_kernel::Subject, DocumentError> {
+    fn to_kernel(&self) -> Result<co_kernel::Subject, Error> {
         Ok(match self {
             Self::Character => co_kernel::Subject::Character,
             Self::Characteristic(c) => co_kernel::Subject::Characteristic((*c).into()),
@@ -314,7 +332,7 @@ pub struct WaiverEntry {
 }
 
 impl WaiverEntry {
-    fn waiver(&self) -> Result<Waiver, DocumentError> {
+    fn waiver(&self) -> Result<Waiver, Error> {
         Ok(Waiver::new(
             RuleId::new(filled("rule", &self.rule)?),
             self.subject.to_kernel()?,
@@ -325,11 +343,11 @@ impl WaiverEntry {
 }
 
 /// Fails unless the document is of [`VERSION`].
-const fn check_version(version: u32) -> Result<(), DocumentError> {
+const fn check_version(version: u32) -> Result<(), Error> {
     if version == VERSION {
         Ok(())
     } else {
-        Err(DocumentError::UnsupportedVersion(version))
+        Err(Error::UnsupportedVersion(version))
     }
 }
 
@@ -338,26 +356,26 @@ fn content<T>(
     kind: &'static str,
     id: &str,
     from_id: impl Fn(&str) -> Option<T>,
-) -> Result<T, DocumentError> {
-    from_id(id).ok_or_else(|| DocumentError::UnknownContent {
+) -> Result<T, Error> {
+    from_id(id).ok_or_else(|| Error::UnknownContent {
         kind,
         id: id.to_owned(),
     })
 }
 
 /// Fails when `text` is blank.
-fn filled<'a>(field: &'static str, text: &'a str) -> Result<&'a str, DocumentError> {
+fn filled<'a>(field: &'static str, text: &'a str) -> Result<&'a str, Error> {
     if text.trim().is_empty() {
-        Err(DocumentError::Empty(field))
+        Err(Error::Empty(field))
     } else {
         Ok(text)
     }
 }
 
-fn author(author: &str) -> Result<Author, DocumentError> {
+fn author(author: &str) -> Result<Author, Error> {
     filled("author", author).map(Author::new)
 }
 
-fn reason(reason: &str) -> Result<&str, DocumentError> {
+fn reason(reason: &str) -> Result<&str, Error> {
     filled("reason", reason)
 }

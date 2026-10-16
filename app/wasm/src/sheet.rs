@@ -7,8 +7,8 @@ use std::collections::BTreeSet;
 
 use co_kernel::{Contribution, DerivedValue, ParameterValue, Source, ViolationReport};
 use palimpseste_document::{
-    Characteristic, ContemporainDocument, Document, DocumentError, FantasyDocument, ItemEntry,
-    Subject, WaiverEntry,
+    Characteristic, ContemporainDocument, Document, Error, FantasyDocument, ItemEntry, Subject,
+    WaiverEntry,
 };
 use serde::Serialize;
 use tsify::Tsify;
@@ -220,7 +220,7 @@ pub struct ContemporainDetails {
 /// # Errors
 ///
 /// Returns why the document cannot be read.
-pub fn evaluate(document: &Document) -> Result<Sheet, DocumentError> {
+pub fn evaluate(document: &Document) -> Result<Sheet, Error> {
     match document {
         Document::Contemporain(document) => contemporain(document),
         Document::Fantasy(document) => fantasy(document),
@@ -485,7 +485,7 @@ fn fantasy_label(id: &str) -> Option<String> {
         .or_else(|| ability_label(id, |voie| Voie::from_id(voie).map(Voie::name)))
 }
 
-fn fantasy(document: &FantasyDocument) -> Result<Sheet, DocumentError> {
+fn fantasy(document: &FantasyDocument) -> Result<Sheet, Error> {
     use co_fantasy::{AttackMode, Family, Money, RecoveryDie, Step, Value, Weapon, WeaponUse};
     let character = document.to_character()?;
     let report = character.report();
@@ -607,7 +607,7 @@ fn contemporain_label(id: &str) -> Option<String> {
         .or_else(|| ability_label(id, |voie| Voie::from_id(voie).map(Voie::name)))
 }
 
-fn contemporain(document: &ContemporainDocument) -> Result<Sheet, DocumentError> {
+fn contemporain(document: &ContemporainDocument) -> Result<Sheet, Error> {
     use co_contemporain::{AttackMode, Step, Value, Weapon};
     let character = document.to_character()?;
     let report = character.report();

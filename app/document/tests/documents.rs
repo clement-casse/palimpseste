@@ -5,7 +5,7 @@ use co_kernel::{
     Adjustment, Author, Characteristic as C, RuleId, Subject as KernelSubject, Waiver,
 };
 use palimpseste_document::{
-    AdjustmentEntry, Characteristic, ContemporainDocument, Document, DocumentError, Engine,
+    AdjustmentEntry, Characteristic, ContemporainDocument, Document, Engine, Error,
     FantasyDocument, ItemEntry, Subject, Target, WaiverEntry,
 };
 
@@ -167,16 +167,13 @@ fn adjustments_and_waivers_convert() {
 fn unreadable_documents_say_why() {
     let mut document = FantasyDocument::empty();
     document.version = 2;
-    assert_eq!(
-        document.to_character(),
-        Err(DocumentError::UnsupportedVersion(2))
-    );
+    assert_eq!(document.to_character(), Err(Error::UnsupportedVersion(2)));
 
     let mut document = FantasyDocument::empty();
     document.profil = Some("cof.profil.paladin".into());
     assert_eq!(
         document.to_character(),
-        Err(DocumentError::UnknownContent {
+        Err(Error::UnknownContent {
             kind: "profil",
             id: "cof.profil.paladin".into()
         })
@@ -187,10 +184,7 @@ fn unreadable_documents_say_why() {
         name: " ".into(),
         quantity: 1,
     }];
-    assert_eq!(
-        document.to_character(),
-        Err(DocumentError::Empty("item name"))
-    );
+    assert_eq!(document.to_character(), Err(Error::Empty("item name")));
 
     let mut document = ContemporainDocument::empty();
     document.adjustments = vec![AdjustmentEntry {
@@ -199,7 +193,7 @@ fn unreadable_documents_say_why() {
         author: "gm".into(),
         reason: String::new(),
     }];
-    assert_eq!(document.to_character(), Err(DocumentError::Empty("reason")));
+    assert_eq!(document.to_character(), Err(Error::Empty("reason")));
 
     let mut document = ContemporainDocument::empty();
     document.adjustments = vec![AdjustmentEntry {
@@ -210,7 +204,7 @@ fn unreadable_documents_say_why() {
     }];
     assert!(matches!(
         document.to_character(),
-        Err(DocumentError::UnknownContent { kind: "value", .. })
+        Err(Error::UnknownContent { kind: "value", .. })
     ));
 }
 

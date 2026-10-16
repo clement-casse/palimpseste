@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
 use crate::{
-    AdjustmentEntry, DocumentError, ItemEntry, PerCharacteristic, Target, VERSION, VoieEntry,
-    WaiverEntry, check_version, content, filled,
+    AdjustmentEntry, Error, ItemEntry, PerCharacteristic, Target, VERSION, VoieEntry, WaiverEntry,
+    check_version, content, filled,
 };
 
 /// The choices of a COC2 character, mirroring `co_contemporain::Character`.
@@ -82,7 +82,7 @@ impl ContemporainDocument {
     /// # Errors
     ///
     /// Returns why the document cannot be read.
-    pub fn to_character(&self) -> Result<Character, DocumentError> {
+    pub fn to_character(&self) -> Result<Character, Error> {
         check_version(self.version)?;
         let mut character = Character::new();
         if let Some(age) = self.age {

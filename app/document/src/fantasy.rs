@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
 use crate::{
-    AdjustmentEntry, Characteristic, DocumentError, ItemEntry, PerCharacteristic, Target, VERSION,
+    AdjustmentEntry, Characteristic, Error, ItemEntry, PerCharacteristic, Target, VERSION,
     VoieEntry, WaiverEntry, check_version, content, filled,
 };
 
@@ -90,7 +90,7 @@ impl FantasyDocument {
     /// # Errors
     ///
     /// Returns why the document cannot be read.
-    pub fn to_character(&self) -> Result<Character, DocumentError> {
+    pub fn to_character(&self) -> Result<Character, Error> {
         check_version(self.version)?;
         let mut character = Character::new();
         if let Some(id) = &self.profil {

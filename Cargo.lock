@@ -431,6 +431,7 @@ dependencies = [
  "co-kernel",
  "serde",
  "serde_json",
+ "thiserror",
  "tsify",
  "wasm-bindgen",
 ]
