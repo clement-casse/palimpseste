@@ -2,7 +2,8 @@
 //!
 //! The API serves, checks and stores (ADR 0007): it rejects a request it
 //! cannot read, never a character breaking a rule. Store calls block, so
-//! they run on `spawn_blocking`.
+//! they run on `spawn_blocking`. Each request is logged with its status and
+//! latency, each change to the store and each rejected request with why.
 
 use std::{path::Path, sync::Arc};
 
@@ -16,7 +17,11 @@ use axum::{
 };
 use palimpseste_document::{Document, Engine};
 use serde::Deserialize;
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::{
+    services::{ServeDir, ServeFile},
+    trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
+};
+use tracing::Level;
 
 use crate::store::{self, Character, CharacterId, Replaced, Store, User, UserId};
 
@@ -55,16 +60,21 @@ impl IntoResponse for ApiError {
         match self {
             Self::NotFound => StatusCode::NOT_FOUND.into_response(),
             Self::Unprocessable(reason) => {
+                tracing::warn!(%reason, "unprocessable request");
                 (StatusCode::UNPROCESSABLE_ENTITY, reason).into_response()
             }
             Self::PreconditionRequired => {
+                tracing::warn!("document replaced without If-Match");
                 (StatusCode::PRECONDITION_REQUIRED, "If-Match is required").into_response()
             }
-            Self::PreconditionFailed(version) => (
-                StatusCode::PRECONDITION_FAILED,
-                [(header::ETAG, etag(version))],
-            )
-                .into_response(),
+            Self::PreconditionFailed(version) => {
+                tracing::info!(current = version, "document replaced at a stale version");
+                (
+                    StatusCode::PRECONDITION_FAILED,
+                    [(header::ETAG, etag(version))],
+                )
+                    .into_response()
+            }
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         }
     }
@@ -75,7 +85,7 @@ type ApiResult<T> = Result<T, ApiError>;
 /// Builds the router. Paths outside `/api` are served from `frontend_dir`,
 /// falling back to its `index.html` so the front end can route itself.
 /// Unknown paths under `/api` and missing files under `/assets` are not
-/// found.
+/// found. Every request is traced.
 pub fn router(store: Arc<Store>, frontend_dir: &Path) -> Router {
     let not_found = || async { StatusCode::NOT_FOUND };
     let api = Router::new()
@@ -105,6 +115,11 @@ pub fn router(store: Arc<Store>, frontend_dir: &Path) -> Router {
         // `nest` leaves the bare trailing slash to the front end.
         .route("/api/", any(not_found))
         .fallback_service(frontend)
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(DefaultOnResponse::new().level(Level::INFO)),
+        )
 }
 
 /// Sets how long browsers may keep a front end file. The build names the
@@ -133,11 +148,11 @@ async fn blocking<T: Send + 'static>(
     match tokio::task::spawn_blocking(move || query(&store)).await {
         Ok(Ok(value)) => Ok(value),
         Ok(Err(error)) => {
-            eprintln!("store error: {error}");
+            tracing::error!(%error, "store error");
             Err(ApiError::Internal)
         }
         Err(error) => {
-            eprintln!("store task failed: {error}");
+            tracing::error!(%error, "store task failed");
             Err(ApiError::Internal)
         }
     }
@@ -180,6 +195,7 @@ async fn create_user(
 ) -> ApiResult<(StatusCode, Json<User>)> {
     let name = filled_name(&new.name)?;
     let user = blocking(store, move |store| store.create_user(&name)).await?;
+    tracing::info!(user_id = %user.id, "user created");
     Ok((StatusCode::CREATED, Json(user)))
 }
 
@@ -209,12 +225,13 @@ async fn create_character(
     Json(new): Json<NewCharacter>,
 ) -> ApiResult<(StatusCode, Json<Character>)> {
     let name = filled_name(&new.name)?;
-    blocking(store, move |store| {
+    let character = blocking(store, move |store| {
         store.create_character(user_id, &name, new.engine)
     })
     .await?
-    .map(|character| (StatusCode::CREATED, Json(character)))
-    .ok_or(ApiError::NotFound)
+    .ok_or(ApiError::NotFound)?;
+    tracing::info!(character_id = %character.id, %user_id, engine = ?character.engine, "character created");
+    Ok((StatusCode::CREATED, Json(character)))
 }
 
 async fn get_character(
@@ -233,12 +250,13 @@ async fn rename_character(
     Json(rename): Json<Rename>,
 ) -> ApiResult<Json<Character>> {
     let name = filled_name(&rename.name)?;
-    blocking(store, move |store| {
+    let character = blocking(store, move |store| {
         store.rename_character(character_id, &name)
     })
     .await?
-    .map(Json)
-    .ok_or(ApiError::NotFound)
+    .ok_or(ApiError::NotFound)?;
+    tracing::info!(%character_id, "character renamed");
+    Ok(Json(character))
 }
 
 async fn delete_character(
@@ -246,6 +264,7 @@ async fn delete_character(
     UrlPath(character_id): UrlPath<CharacterId>,
 ) -> ApiResult<StatusCode> {
     if blocking(store, move |store| store.delete_character(character_id)).await? {
+        tracing::info!(%character_id, "character deleted");
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(ApiError::NotFound)
@@ -271,7 +290,10 @@ async fn put_document(
     })
     .await?;
     match replaced {
-        Replaced::Stored(version) => Ok((StatusCode::NO_CONTENT, [(header::ETAG, etag(version))])),
+        Replaced::Stored(version) => {
+            tracing::info!(%character_id, version, "document stored");
+            Ok((StatusCode::NO_CONTENT, [(header::ETAG, etag(version))]))
+        }
         Replaced::NotFound => Err(ApiError::NotFound),
         Replaced::Stale(version) => Err(ApiError::PreconditionFailed(version)),
         Replaced::OtherEngine => Err(ApiError::Unprocessable(

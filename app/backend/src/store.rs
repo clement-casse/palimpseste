@@ -6,6 +6,7 @@
 //! `spawn_blocking`.
 
 use std::{
+    fmt,
     path::Path,
     sync::{Mutex, MutexGuard, PoisonError},
 };
@@ -23,6 +24,18 @@ pub struct UserId(i64);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct CharacterId(i64);
+
+impl fmt::Display for UserId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl fmt::Display for CharacterId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 /// A user, owner of a list of characters.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
