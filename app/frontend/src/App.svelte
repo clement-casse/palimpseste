@@ -1,37 +1,26 @@
 <script lang="ts">
-  import { type User, getUser } from "./api";
+  import { ApiError, getMe, signOut } from "./api";
   import CharacterPage from "./character/CharacterPage.svelte";
   import Characters from "./Characters.svelte";
-  import { characterId, route } from "./router.svelte";
+  import { LOGIN, characterId, navigate, route } from "./router.svelte";
+  import { session, signedIn, signedOut } from "./session.svelte";
   import SignIn from "./SignIn.svelte";
 
-  const USER_KEY = "palimpseste.user";
+  let error = $state<string | null>(null);
 
-  function rememberedUser(): number | null {
-    try {
-      const id = Number(localStorage.getItem(USER_KEY));
-      return Number.isInteger(id) && id > 0 ? id : null;
-    } catch {
-      return null;
-    }
+  // A 401 signs out by itself (see `api.ts`).
+  getMe().then(signedIn, (e: Error) => {
+    if (!(e instanceof ApiError && e.status === 401)) error = e.message;
+  });
+
+  function leave() {
+    signOut().then(signedOut, (e: Error) => (error = e.message));
   }
 
-  let userId = $state(rememberedUser());
-  let user = $state<User | null>(null);
-
-  function signIn(id: number | null) {
-    try {
-      if (id === null) localStorage.removeItem(USER_KEY);
-      else localStorage.setItem(USER_KEY, String(id));
-    } catch {
-      // Storage unavailable: the choice lasts for this page only.
-    }
-    userId = id;
-  }
-
+  // Signed out, only the sign-in page; signed in, never it.
   $effect(() => {
-    user = null;
-    if (userId !== null) getUser(userId).then((found) => (user = found), () => signIn(null));
+    if (session.user === null && route.path !== LOGIN) navigate(LOGIN, { replace: true });
+    else if (session.user && route.path === LOGIN) navigate("/", { replace: true });
   });
 
   const editing = $derived(characterId(route.path));
@@ -39,13 +28,14 @@
 
 <main class={{ wide: editing !== null }}>
   <h1>Palimpseste</h1>
-  {#if userId === null}
-    <SignIn onSignIn={signIn} />
-  {:else if user}
+  {#if error}<p class="error">{error}</p>{/if}
+  {#if session.user === null && route.path === LOGIN}
+    <SignIn />
+  {:else if session.user && route.path !== LOGIN}
     {#if editing !== null}
-      <CharacterPage id={editing} author={user.name} />
+      <CharacterPage id={editing} author={session.user.name} />
     {:else}
-      <Characters {user} onSignOut={() => signIn(null)} />
+      <Characters user={session.user} onSignOut={leave} />
     {/if}
   {/if}
 </main>

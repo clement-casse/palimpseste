@@ -1,10 +1,13 @@
 // Client of the backend REST API (docs/adr/0005-backend-poc.md,
-// docs/adr/0007-character-editing.md). The backend checks and stores; the
-// rules run in the browser.
+// docs/adr/0007-character-editing.md, docs/adr/0009-oidc-authentication.md).
+// The backend signs in, checks and stores; the rules run in the browser. The
+// session travels in an HttpOnly cookie, sent by every same-origin request.
 
+import { signedOut } from "./session.svelte";
 import type { Document, Engine } from "./wasm/palimpseste_wasm";
 
 export type User = { id: number; name: string };
+export type Provider = { id: string; name: string };
 export type Character = {
   id: number;
   name: string;
@@ -29,6 +32,7 @@ async function send(path: string, init?: RequestInit): Promise<Response> {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
+  if (response.status === 401) signedOut();
   if (!response.ok) {
     const reason = await response.text();
     throw new ApiError(
@@ -43,18 +47,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await send(path, init)).json() as Promise<T>;
 }
 
-export const listUsers = () => request<User[]>("/users");
+export const listProviders = () => request<Provider[]>("/auth/providers");
 
-export const getUser = (id: number) => request<User>(`/users/${id}`);
+/** Where the browser goes to sign in with provider `id`: a page, not a fetch. */
+export const signInUrl = (id: string) => `/api/auth/${encodeURIComponent(id)}/login`;
 
-export const createUser = (name: string) =>
-  request<User>("/users", { method: "POST", body: JSON.stringify({ name }) });
+/** The signed-in user; throws an `ApiError` with status 401 when signed out. */
+export const getMe = () => request<User>("/me");
 
-export const listCharacters = (userId: number) =>
-  request<Character[]>(`/users/${userId}/characters`);
+export const signOut = async () => {
+  await send("/auth/logout", { method: "POST" });
+};
 
-export const createCharacter = (userId: number, name: string, engine: Engine) =>
-  request<Character>(`/users/${userId}/characters`, {
+export const listCharacters = () => request<Character[]>("/me/characters");
+
+export const createCharacter = (name: string, engine: Engine) =>
+  request<Character>("/me/characters", {
     method: "POST",
     body: JSON.stringify({ name, engine }),
   });

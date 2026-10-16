@@ -13,12 +13,17 @@ export const route = {
   },
 };
 
-export function navigate(to: string) {
+/** Goes to `to`; with `replace`, the current page leaves the history. */
+export function navigate(to: string, { replace = false } = {}) {
   if (to !== path) {
-    history.pushState(null, "", to);
+    if (replace) history.replaceState(null, "", to);
+    else history.pushState(null, "", to);
     path = to;
   }
 }
+
+/** The sign-in page, where a signed-out user is sent. */
+export const LOGIN = "/login";
 
 /** Follows a link inside the app without reloading the page. */
 export function follow(event: MouseEvent) {

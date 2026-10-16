@@ -13,7 +13,7 @@
   let error = $state<string | null>(null);
 
   $effect(() => {
-    listCharacters(user.id).then(
+    listCharacters().then(
       (all) => (characters = all),
       (e: Error) => (error = e.message),
     );
@@ -21,7 +21,7 @@
 
   function submit(event: SubmitEvent) {
     event.preventDefault();
-    createCharacter(user.id, name.trim(), engine).then(
+    createCharacter(name.trim(), engine).then(
       (character) => navigate(`/characters/${character.id}`),
       (e: Error) => (error = e.message),
     );
@@ -31,7 +31,7 @@
 <section>
   <header class="user">
     <h2>Personnages de {user.name}</h2>
-    <button type="button" onclick={onSignOut}>Changer de joueur</button>
+    <button type="button" onclick={onSignOut}>Se déconnecter</button>
   </header>
   {#if error}<p class="error">{error}</p>{/if}
   <ul class="characters">

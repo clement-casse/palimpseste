@@ -1,36 +1,30 @@
 <script lang="ts">
-  import { type User, createUser, listUsers } from "./api";
+  import { type Provider, listProviders, signInUrl } from "./api";
 
-  let { onSignIn }: { onSignIn: (id: number) => void } = $props();
+  // A failed sign-in comes back as `/?signin=failed`: say so once.
+  const failed = new URLSearchParams(location.search).get("signin") === "failed";
+  if (failed) history.replaceState(null, "", location.pathname);
 
-  let users = $state<User[]>([]);
-  let name = $state("");
-  let error = $state<string | null>(null);
+  let providers = $state<Provider[] | null>(null);
+  let error = $state<string | null>(failed ? "La connexion a échoué." : null);
 
-  listUsers().then(
-    (all) => (users = all),
+  listProviders().then(
+    (all) => (providers = all),
     (e: Error) => (error = e.message),
   );
-
-  function submit(event: SubmitEvent) {
-    event.preventDefault();
-    createUser(name.trim()).then(
-      (user) => onSignIn(user.id),
-      (e: Error) => (error = e.message),
-    );
-  }
 </script>
 
 <section>
-  <h2>Qui joue ?</h2>
+  <h2>Connexion</h2>
   {#if error}<p class="error">{error}</p>{/if}
+  {#if providers?.length === 0}<p>Aucun fournisseur d’identité n’est configuré.</p>{/if}
   <ul class="choices">
-    {#each users as user (user.id)}
-      <li><button type="button" onclick={() => onSignIn(user.id)}>{user.name}</button></li>
+    {#each providers ?? [] as provider (provider.id)}
+      <li>
+        <button type="button" onclick={() => location.assign(signInUrl(provider.id))}>
+          Se connecter avec {provider.name}
+        </button>
+      </li>
     {/each}
   </ul>
-  <form onsubmit={submit}>
-    <input aria-label="Nom" placeholder="Nom" bind:value={name} />
-    <button type="submit" disabled={!name.trim()}>Créer</button>
-  </form>
 </section>

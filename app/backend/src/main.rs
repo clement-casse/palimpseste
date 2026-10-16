@@ -1,6 +1,7 @@
-//! Palimpseste backend: serves the front end, and checks and stores users
-//! and their characters with their choices documents in SQLite. The rules
-//! run in the browser (ADR 0007).
+//! Palimpseste backend: serves the front end, signs users in through OIDC
+//! providers (ADR 0009), and checks and stores their characters with
+//! their choices documents in SQLite. The rules run in the browser (ADR
+//! 0007).
 //!
 //! Configuration through the environment:
 //! - `PALIMPSESTE_ADDR`: address to listen on (default `127.0.0.1:3000`);
@@ -8,14 +9,25 @@
 //!   `app/frontend/dist`);
 //! - `PALIMPSESTE_DATABASE`: the SQLite database file, created if missing
 //!   (default `palimpseste.sqlite3`);
+//! - `PALIMPSESTE_PUBLIC_URL`: the URL users reach the server at, base of
+//!   the redirect URIs registered at the providers
+//!   (`{url}/api/auth/{id}/callback`); `https` makes cookies `Secure`
+//!   (default `http://127.0.0.1:3000`);
+//! - `PALIMPSESTE_OIDC_PROVIDERS`: comma-separated ids of the providers
+//!   (lower-case letters, digits and dashes), each set by
+//!   `PALIMPSESTE_OIDC_<ID>_NAME`, `_ISSUER`, `_CLIENT_ID`,
+//!   `_CLIENT_SECRET` and optionally `_SCOPES` (besides `openid`, default
+//!   `profile email`), `<ID>` upper-cased with dashes as underscores;
 //! - `RUST_LOG`: what to log, as a `tracing-subscriber` filter (default
 //!   `info`).
 
 mod api;
+mod auth;
 mod store;
 
 use std::{env, path::PathBuf, sync::Arc};
 
+use auth::Auth;
 use store::Store;
 use tracing_subscriber::EnvFilter;
 
@@ -29,6 +41,16 @@ async fn main() -> std::io::Result<()> {
         .map_or_else(|| "app/frontend/dist".into(), PathBuf::from);
     let database: PathBuf = env::var_os("PALIMPSESTE_DATABASE")
         .map_or_else(|| "palimpseste.sqlite3".into(), PathBuf::from);
+    let auth = Auth::from_env().map_err(|error| {
+        tracing::error!(%error, "invalid sign-in configuration");
+        std::io::Error::other(error)
+    })?;
+    let providers = auth.provider_ids();
+    if providers.is_empty() {
+        tracing::warn!("no OIDC provider: nobody can sign in, set PALIMPSESTE_OIDC_PROVIDERS");
+    } else {
+        tracing::info!(?providers, "sign-in providers");
+    }
     let store = Store::open(&database).map_err(|error| {
         tracing::error!(database = %database.display(), %error, "cannot open the database");
         std::io::Error::other(error)
@@ -47,5 +69,9 @@ async fn main() -> std::io::Result<()> {
             error
         })?;
     tracing::info!(addr = %listener.local_addr()?, frontend_dir = %frontend_dir.display(), "listening");
-    axum::serve(listener, api::router(Arc::new(store), &frontend_dir)).await
+    axum::serve(
+        listener,
+        api::router(Arc::new(store), Arc::new(auth), &frontend_dir),
+    )
+    .await
 }
