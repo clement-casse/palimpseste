@@ -63,6 +63,41 @@ pub enum Value {
 }
 
 impl Value {
+    /// Returns the value whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::all().find(|value| value.id().as_str() == id)
+    }
+
+    /// Every value, the weapon values for every weapon.
+    fn all() -> impl Iterator<Item = Self> {
+        let fixed = [
+            Self::Initiative,
+            Self::Defence,
+            Self::Attack(AttackMode::Unarmed),
+            Self::Attack(AttackMode::ContactWeapon),
+            Self::Attack(AttackMode::RangedWeapon),
+            Self::Attack(AttackMode::HeavyWeapon),
+            Self::ContactDamageBonus,
+            Self::HealingCapacity,
+            Self::HealthScale,
+            Self::CaracPoints,
+            Self::CapacityPoints,
+            Self::MaxVoies,
+            Self::MaxRank,
+            Self::DamageReduction,
+            Self::AgiTestModifier,
+        ];
+        let weapons = Weapon::ALL.into_iter().flat_map(|weapon| {
+            [
+                Self::Damage(weapon),
+                Self::CriticalBonus(weapon),
+                Self::CriticalRange(weapon),
+            ]
+        });
+        fixed.into_iter().chain(weapons)
+    }
+
     /// Returns the kernel identifier of the value.
     #[must_use]
     pub fn id(self) -> ValueId {

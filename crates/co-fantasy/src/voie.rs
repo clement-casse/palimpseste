@@ -176,6 +176,180 @@ pub enum Voie {
 }
 
 impl Voie {
+    /// Every voie, in declaration order: the profil voies by profil, the
+    /// voies de peuple, the voie du mage.
+    pub const ALL: [Self; 78] = [
+        Self::Artilleur,
+        Self::Explosifs,
+        Self::Mercenaire,
+        Self::Pistolero,
+        Self::Precision,
+        Self::Escrime,
+        Self::Musicien,
+        Self::Saltimbanque,
+        Self::Seduction,
+        Self::Vagabond,
+        Self::Archer,
+        Self::CompagnonAnimal,
+        Self::Survie,
+        Self::Traqueur,
+        Self::CombatADeuxArmes,
+        Self::Assassin,
+        Self::Aventurier,
+        Self::Deplacement,
+        Self::Roublard,
+        Self::Spadassin,
+        Self::Brute,
+        Self::Pagne,
+        Self::Pourfendeur,
+        Self::Primitif,
+        Self::Rage,
+        Self::Cavalier,
+        Self::Guerre,
+        Self::Preux,
+        Self::MeneurDHomme,
+        Self::Noblesse,
+        Self::Bouclier,
+        Self::Combat,
+        Self::MaitreDArmes,
+        Self::Resistance,
+        Self::Soldat,
+        Self::Air,
+        Self::Divination,
+        Self::Envouteur,
+        Self::Illusions,
+        Self::Invocation,
+        Self::Artefacts,
+        Self::Elixirs,
+        Self::Metal,
+        Self::Golem,
+        Self::Runes,
+        Self::MagieDesArcanes,
+        Self::MagieDestructrice,
+        Self::MagieElementaire,
+        Self::MagieProtectrice,
+        Self::MagieUniverselle,
+        Self::Demon,
+        Self::Mort,
+        Self::OutreTombe,
+        Self::Sang,
+        Self::SombreMagie,
+        Self::Animaux,
+        Self::Fauve,
+        Self::Nature,
+        Self::Protecteur,
+        Self::Vegetaux,
+        Self::EnergieVitale,
+        Self::Maitrise,
+        Self::Meditation,
+        Self::Poing,
+        Self::Vent,
+        Self::Foi,
+        Self::GuerreSainte,
+        Self::Priere,
+        Self::Soins,
+        Self::Spiritualite,
+        Self::DemiOrc,
+        Self::ElfeHaut,
+        Self::ElfeSylvain,
+        Self::Gnome,
+        Self::Halfelin,
+        Self::Humain,
+        Self::Nain,
+        Self::Mage,
+    ];
+
+    /// Returns the voie whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|voie| voie.slug() == id)
+    }
+
+    /// The French display name of the voie.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Artilleur => "Voie de l'artilleur",
+            Self::Explosifs => "Voie des explosifs",
+            Self::Mercenaire => "Voie du mercenaire",
+            Self::Pistolero => "Voie du pistolero",
+            Self::Precision => "Voie de la précision",
+            Self::Escrime => "Voie de l'escrime",
+            Self::Musicien => "Voie du musicien",
+            Self::Saltimbanque => "Voie du saltimbanque",
+            Self::Seduction => "Voie de la séduction",
+            Self::Vagabond => "Voie du vagabond",
+            Self::Archer => "Voie de l'archer",
+            Self::CompagnonAnimal => "Voie du compagnon animal",
+            Self::Survie => "Voie de la survie",
+            Self::Traqueur => "Voie du traqueur",
+            Self::CombatADeuxArmes => "Voie du combat à deux armes",
+            Self::Assassin => "Voie de l'assassin",
+            Self::Aventurier => "Voie de l'aventurier",
+            Self::Deplacement => "Voie du déplacement",
+            Self::Roublard => "Voie du roublard",
+            Self::Spadassin => "Voie du spadassin",
+            Self::Brute => "Voie de la brute",
+            Self::Pagne => "Voie du pagne",
+            Self::Pourfendeur => "Voie du pourfendeur",
+            Self::Primitif => "Voie du primitif",
+            Self::Rage => "Voie de la rage",
+            Self::Cavalier => "Voie du cavalier",
+            Self::Guerre => "Voie de la guerre",
+            Self::Preux => "Voie du preux",
+            Self::MeneurDHomme => "Voie du meneur d'homme",
+            Self::Noblesse => "Voie de la noblesse",
+            Self::Bouclier => "Voie du bouclier",
+            Self::Combat => "Voie du combat",
+            Self::MaitreDArmes => "Voie du maître d'armes",
+            Self::Resistance => "Voie de la résistance",
+            Self::Soldat => "Voie du soldat",
+            Self::Air => "Voie de l'air",
+            Self::Divination => "Voie de la divination",
+            Self::Envouteur => "Voie de l'envoûteur",
+            Self::Illusions => "Voie des illusions",
+            Self::Invocation => "Voie de l'invocation",
+            Self::Artefacts => "Voie des artefacts",
+            Self::Elixirs => "Voie des élixirs",
+            Self::Metal => "Voie du métal",
+            Self::Golem => "Voie du golem",
+            Self::Runes => "Voie des runes",
+            Self::MagieDesArcanes => "Voie de la magie des arcanes",
+            Self::MagieDestructrice => "Voie de la magie destructrice",
+            Self::MagieElementaire => "Voie de la magie élémentaire",
+            Self::MagieProtectrice => "Voie de la magie protectrice",
+            Self::MagieUniverselle => "Voie de la magie universelle",
+            Self::Demon => "Voie du démon",
+            Self::Mort => "Voie de la mort",
+            Self::OutreTombe => "Voie de l'outre-tombe",
+            Self::Sang => "Voie du sang",
+            Self::SombreMagie => "Voie de la sombre magie",
+            Self::Animaux => "Voie des animaux",
+            Self::Fauve => "Voie du fauve",
+            Self::Nature => "Voie de la nature",
+            Self::Protecteur => "Voie du protecteur",
+            Self::Vegetaux => "Voie des végétaux",
+            Self::EnergieVitale => "Voie de l'énergie vitale",
+            Self::Maitrise => "Voie de la maîtrise",
+            Self::Meditation => "Voie de la méditation",
+            Self::Poing => "Voie du poing",
+            Self::Vent => "Voie du vent",
+            Self::Foi => "Voie de la foi",
+            Self::GuerreSainte => "Voie de la guerre sainte",
+            Self::Priere => "Voie de la prière",
+            Self::Soins => "Voie des soins",
+            Self::Spiritualite => "Voie de la spiritualité",
+            Self::DemiOrc => "Voie du demi-orc",
+            Self::ElfeHaut => "Voie de l'elfe haut",
+            Self::ElfeSylvain => "Voie de l'elfe sylvain",
+            Self::Gnome => "Voie du gnome",
+            Self::Halfelin => "Voie du halfelin",
+            Self::Humain => "Voie de l'humain",
+            Self::Nain => "Voie du nain",
+            Self::Mage => "Voie du mage",
+        }
+    }
+
     /// Returns the kernel identifier of the voie.
     #[must_use]
     pub fn id(self) -> VoieId {
@@ -187,8 +361,10 @@ impl Voie {
         AbilityId::new(format!("{}.{}", self.slug(), rank.get()))
     }
 
-    /// The profil the voie belongs to, if any.
-    pub(crate) fn profil(self) -> Option<Profil> {
+    /// The profil the voie belongs to: `None` for a voie de peuple and the
+    /// voie du mage.
+    #[must_use]
+    pub fn profil(self) -> Option<Profil> {
         Profil::ALL
             .into_iter()
             .find(|profil| profil.voies().contains(&self))

@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId};
 
 use crate::{
-    Character, Value,
+    AttackMode, Character, Value,
     rules::{CAPACITY_POINTS, MAX_VOIES, VOIE_MECHANIC, VOIE_ORDER, VOIE_STRUCTURE},
 };
 
@@ -51,6 +51,71 @@ pub enum Voie {
 }
 
 impl Voie {
+    /// Every voie, in declaration order.
+    pub const ALL: [Self; 18] = [
+        Self::ArmesDeContact,
+        Self::ArmesADistance,
+        Self::ArmesLourdes,
+        Self::ArtsEtArtisanats,
+        Self::Athletisme,
+        Self::CombatAMainsNues,
+        Self::Corporations,
+        Self::Crime,
+        Self::Discours,
+        Self::Furtivite,
+        Self::Investigation,
+        Self::Langues,
+        Self::Medecine,
+        Self::Psychologie,
+        Self::Technologie,
+        Self::Sciences,
+        Self::Survie,
+        Self::Vehicules,
+    ];
+
+    /// Returns the voie whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|voie| voie.slug() == id)
+    }
+
+    /// The French display name of the voie.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::ArmesDeContact => "Voie des armes de contact",
+            Self::ArmesADistance => "Voie des armes à distance",
+            Self::ArmesLourdes => "Voie des armes lourdes",
+            Self::ArtsEtArtisanats => "Voie des arts et artisanats",
+            Self::Athletisme => "Voie de l'athlétisme",
+            Self::CombatAMainsNues => "Voie du combat à mains nues",
+            Self::Corporations => "Voie des corporations",
+            Self::Crime => "Voie du crime",
+            Self::Discours => "Voie du discours",
+            Self::Furtivite => "Voie de la furtivité",
+            Self::Investigation => "Voie de l'investigation",
+            Self::Langues => "Voie des langues",
+            Self::Medecine => "Voie de la médecine",
+            Self::Psychologie => "Voie de la psychologie",
+            Self::Technologie => "Voie de la technologie",
+            Self::Sciences => "Voie des sciences",
+            Self::Survie => "Voie de la survie",
+            Self::Vehicules => "Voie des véhicules",
+        }
+    }
+
+    /// The weapon category the voie's starting equipment gives one weapon of;
+    /// the other voies give free text items only (COC.CNT.VOIES).
+    #[must_use]
+    pub const fn starting_weapon(self) -> Option<AttackMode> {
+        match self {
+            Self::ArmesDeContact => Some(AttackMode::ContactWeapon),
+            Self::ArmesADistance => Some(AttackMode::RangedWeapon),
+            Self::ArmesLourdes => Some(AttackMode::HeavyWeapon),
+            _ => None,
+        }
+    }
+
     /// Returns the kernel identifier of the voie.
     #[must_use]
     pub fn id(self) -> VoieId {

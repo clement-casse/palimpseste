@@ -58,15 +58,17 @@ mod money;
 mod peuple;
 mod profil;
 mod rules;
+mod step;
 mod voie;
 mod weapon;
 
 pub use armour::{Armour, Shield};
 pub use character::{AttackMode, Character, Target, Value};
 pub use characteristics::{SERIES_VALUE, Series};
-pub use equipment::{Item, ItemName, Quantity};
+pub use equipment::{Gear, Item, ItemName, Quantity, StartingItem, StartingLine};
 pub use money::{Money, purse_dice};
 pub use peuple::Peuple;
 pub use profil::{Family, Profil, RecoveryDie};
+pub use step::Step;
 pub use voie::Voie;
 pub use weapon::{Weapon, WeaponUse};

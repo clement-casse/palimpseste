@@ -60,6 +60,18 @@ impl AgeBracket {
         }
     }
 
+    /// The French display name of the bracket.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Adolescent => "10-15 ans (adolescent)",
+            Self::From16To30 => "16-30 ans",
+            Self::From31To50 => "31-50 ans",
+            Self::From51To65 => "51-65 ans",
+            Self::Elderly => "66 ans et plus (âgé)",
+        }
+    }
+
     /// Whether the bracket lies outside 16-65 and calls for D'un autre âge.
     const fn is_out_of_age(self) -> bool {
         matches!(self, Self::Adolescent | Self::Elderly)

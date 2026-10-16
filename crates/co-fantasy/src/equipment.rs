@@ -97,14 +97,17 @@ impl From<u32> for Quantity {
 
 /// An item the starting equipment covers: a weapon carried, the armour worn
 /// or the shield held.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Unit {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Gear {
+    /// A weapon carried.
     Weapon(Weapon),
+    /// The armour worn.
     Armour(Armour),
+    /// The shield held.
     Shield(Shield),
 }
 
-impl Unit {
+impl Gear {
     fn id(self) -> ValueId {
         match self {
             Self::Weapon(weapon) => weapon.id(),
@@ -130,13 +133,28 @@ enum Pattern {
 }
 
 impl Pattern {
-    fn matches(self, unit: Unit) -> bool {
+    /// The gear the pattern accepts, in gear order.
+    fn options(self) -> Vec<Gear> {
+        match self {
+            Self::Is(weapon) => vec![Gear::Weapon(weapon)],
+            Self::OneOf(weapons) => weapons.iter().copied().map(Gear::Weapon).collect(),
+            Self::Matching(predicate) => Weapon::ALL
+                .into_iter()
+                .filter(|weapon| predicate(*weapon))
+                .map(Gear::Weapon)
+                .collect(),
+            Self::Wearing(armour) => vec![Gear::Armour(armour)],
+            Self::Holding(shield) => vec![Gear::Shield(shield)],
+        }
+    }
+
+    fn matches(self, unit: Gear) -> bool {
         match (self, unit) {
-            (Self::Is(expected), Unit::Weapon(weapon)) => weapon == expected,
-            (Self::OneOf(weapons), Unit::Weapon(weapon)) => weapons.contains(&weapon),
-            (Self::Matching(predicate), Unit::Weapon(weapon)) => predicate(weapon),
-            (Self::Wearing(expected), Unit::Armour(armour)) => armour == expected,
-            (Self::Holding(expected), Unit::Shield(shield)) => shield == expected,
+            (Self::Is(expected), Gear::Weapon(weapon)) => weapon == expected,
+            (Self::OneOf(weapons), Gear::Weapon(weapon)) => weapons.contains(&weapon),
+            (Self::Matching(predicate), Gear::Weapon(weapon)) => predicate(weapon),
+            (Self::Wearing(expected), Gear::Armour(armour)) => armour == expected,
+            (Self::Holding(expected), Gear::Shield(shield)) => shield == expected,
             _ => false,
         }
     }
@@ -246,10 +264,73 @@ fn ensorceleur_weapon(weapon: Weapon) -> bool {
     Profil::Ensorceleur.masters(weapon)
 }
 
+/// An item of the starting equipment: one gear among its options, given
+/// `quantity` times.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StartingItem {
+    options: Vec<Gear>,
+    quantity: u32,
+}
+
+impl StartingItem {
+    /// The gear the item may be: a single one, or a choice.
+    #[must_use]
+    pub fn options(&self) -> &[Gear] {
+        &self.options
+    }
+
+    /// How many of the item are given.
+    #[must_use]
+    pub const fn quantity(&self) -> u32 {
+        self.quantity
+    }
+}
+
+/// A line of the starting equipment: one of its bundles, each bundle giving
+/// its items together.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StartingLine {
+    bundles: Vec<Vec<StartingItem>>,
+}
+
+impl StartingLine {
+    /// The bundles to choose from; most lines have a single one.
+    #[must_use]
+    pub fn bundles(&self) -> &[Vec<StartingItem>] {
+        &self.bundles
+    }
+}
+
+impl Profil {
+    /// The profil's starting equipment, line by line (COF.CNT.PROFILS),
+    /// besides the adventurer's bag and the purse. Free text items are not
+    /// listed: they are never checked (D-26).
+    #[must_use]
+    pub fn starting_equipment(self) -> Vec<StartingLine> {
+        slots(self)
+            .iter()
+            .map(|slot| StartingLine {
+                bundles: slot
+                    .iter()
+                    .map(|bundle| {
+                        bundle
+                            .iter()
+                            .map(|&(pattern, quantity)| StartingItem {
+                                options: pattern.options(),
+                                quantity,
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            })
+            .collect()
+    }
+}
+
 /// The profil's starting equipment, besides the adventurer's bag and the
 /// purse. Free text items (instrument, crochets, grimoire...) are not
 /// listed: they are never checked (D-26).
-const fn starting_equipment(profil: Profil) -> &'static [Slot] {
+const fn slots(profil: Profil) -> &'static [Slot] {
     match profil {
         Profil::Arquebusier => ARQUEBUSIER,
         Profil::Barde => BARDE,
@@ -269,8 +350,8 @@ const fn starting_equipment(profil: Profil) -> &'static [Slot] {
 
 /// The units `bundle` takes from `remaining`: each line takes the first
 /// matching units, in unit order.
-fn take(bundle: Bundle, remaining: &BTreeMap<Unit, u32>) -> BTreeMap<Unit, u32> {
-    let mut taken: BTreeMap<Unit, u32> = BTreeMap::new();
+fn take(bundle: Bundle, remaining: &BTreeMap<Gear, u32>) -> BTreeMap<Gear, u32> {
+    let mut taken: BTreeMap<Gear, u32> = BTreeMap::new();
     for &(pattern, quantity) in bundle {
         let mut left = quantity;
         for (&unit, &count) in remaining {
@@ -291,7 +372,7 @@ fn take(bundle: Bundle, remaining: &BTreeMap<Unit, u32>) -> BTreeMap<Unit, u32> 
     taken
 }
 
-fn units(taken: &BTreeMap<Unit, u32>) -> u64 {
+fn units(taken: &BTreeMap<Gear, u32>) -> u64 {
     taken.values().map(|count| u64::from(*count)).sum()
 }
 
@@ -305,15 +386,15 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     let Some(profil) = character.profil() else {
         return;
     };
-    let mut remaining: BTreeMap<Unit, u32> = character
+    let mut remaining: BTreeMap<Gear, u32> = character
         .weapons_carried()
-        .map(|(weapon, quantity)| (Unit::Weapon(weapon), quantity.get()))
+        .map(|(weapon, quantity)| (Gear::Weapon(weapon), quantity.get()))
         .collect();
-    remaining.extend(character.armour().map(|armour| (Unit::Armour(armour), 1)));
-    remaining.extend(character.shield().map(|shield| (Unit::Shield(shield), 1)));
+    remaining.extend(character.armour().map(|armour| (Gear::Armour(armour), 1)));
+    remaining.extend(character.shield().map(|shield| (Gear::Shield(shield), 1)));
 
-    for slot in starting_equipment(profil) {
-        let mut best: Option<BTreeMap<Unit, u32>> = None;
+    for slot in slots(profil) {
+        let mut best: Option<BTreeMap<Gear, u32>> = None;
         for bundle in *slot {
             let taken = take(bundle, &remaining);
             if best.as_ref().is_none_or(|best| units(&taken) > units(best)) {
@@ -382,6 +463,25 @@ mod tests {
             .with_item(Weapon::Dague, 5)
             .with_armour(Armour::CuirSimple);
         assert_eq!(leftovers(&voleur), []);
+    }
+
+    #[test]
+    fn starting_equipment_lists_each_line() {
+        let barbare = Profil::Barbare.starting_equipment();
+        assert_eq!(barbare.len(), 2);
+        let first = &barbare[0].bundles()[0];
+        assert_eq!(first[0].options(), [Gear::Weapon(Weapon::Javelot)]);
+        assert_eq!(first[0].quantity(), 2);
+        let choice = &barbare[1].bundles()[1];
+        assert_eq!(
+            choice[0].options(),
+            [
+                Gear::Weapon(Weapon::EpeeBatarde),
+                Gear::Weapon(Weapon::EpeeLongue),
+                Gear::Weapon(Weapon::Hache),
+            ]
+        );
+        assert_eq!(choice[1].options(), [Gear::Shield(Shield::GrandBouclier)]);
     }
 
     #[test]
@@ -464,7 +564,7 @@ mod tests {
     #[test]
     fn every_profil_has_a_starting_equipment() {
         for profil in Profil::ALL {
-            assert!(!starting_equipment(profil).is_empty());
+            assert!(!slots(profil).is_empty());
         }
     }
 

@@ -52,6 +52,35 @@ pub enum Value {
 }
 
 impl Value {
+    /// Returns the value whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::all().find(|value| value.id().as_str() == id)
+    }
+
+    /// Every value, the weapon values for every weapon and use.
+    fn all() -> impl Iterator<Item = Self> {
+        let fixed = [
+            Self::VigourPoints,
+            Self::RecoveryDice,
+            Self::LuckPoints,
+            Self::ManaPoints,
+            Self::Initiative,
+            Self::Defence,
+            Self::Attack(AttackMode::Contact),
+            Self::Attack(AttackMode::Ranged),
+            Self::Attack(AttackMode::Magic),
+            Self::Money,
+        ];
+        let weapons = Weapon::ALL.into_iter().flat_map(|weapon| {
+            WeaponUse::ALL
+                .into_iter()
+                .map(move |weapon_use| Self::Damage(weapon, weapon_use))
+                .chain([Self::CriticalRange(weapon)])
+        });
+        fixed.into_iter().chain(weapons)
+    }
+
     /// Returns the kernel identifier of the value.
     #[must_use]
     pub fn id(self) -> ValueId {
@@ -307,6 +336,26 @@ impl Character {
     #[must_use]
     pub fn family(&self) -> Option<Family> {
         self.profil.map(Profil::family)
+    }
+
+    /// Returns the voies the voie de peuple slot accepts (COF.CRE.VOIES,
+    /// COF.CRE.VOIE-DU-MAGE): the peuple's own, a demi-elfe's by upbringing,
+    /// and the voie du mage for the mage family.
+    #[must_use]
+    pub fn peuple_slot_options(&self) -> Vec<Voie> {
+        let mut options: Vec<Voie> = self
+            .peuple
+            .map(|peuple| {
+                Voie::ALL
+                    .into_iter()
+                    .filter(|voie| peuple.allows_voie(*voie))
+                    .collect()
+            })
+            .unwrap_or_default();
+        if self.family() == Some(Family::Mages) {
+            options.push(Voie::Mage);
+        }
+        options
     }
 
     /// Returns the die of the dés de récupération, if the profil is set.

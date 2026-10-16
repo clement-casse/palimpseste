@@ -122,6 +122,93 @@ const MASTERY_RANK: u8 = 4;
 const CRITICAL_WIDENING: i32 = -2;
 
 impl Weapon {
+    /// Every row of the weapon tables, in table order.
+    pub const ALL: [Self; 34] = [
+        Self::MainsNues,
+        Self::Fouet,
+        Self::Couteau,
+        Self::Batte,
+        Self::Marteau,
+        Self::Hachette,
+        Self::Machette,
+        Self::Fleuret,
+        Self::Epee,
+        Self::HacheADeuxMains,
+        Self::Hallebarde,
+        Self::Taser,
+        Self::Shuriken,
+        Self::Javelot,
+        Self::Arbalete,
+        Self::ArcCourt,
+        Self::ArcLong,
+        Self::PistoletLeger,
+        Self::PistoletMoyen,
+        Self::PistoletLourd,
+        Self::FusilDeChasse,
+        Self::CarabineARepetition,
+        Self::FusilAPompe,
+        Self::FusilDePrecision,
+        Self::FusilDAssaut,
+        Self::PistoletMitrailleur,
+        Self::Mitrailleuse,
+        Self::MitrailleuseLourde,
+        Self::LanceFlammes,
+        Self::LanceGrenade,
+        Self::LanceRoquette,
+        Self::CanonLeger,
+        Self::GrenadeFragmentation,
+        Self::GrenadeIncendiaire,
+    ];
+
+    /// Returns the weapon whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|weapon| weapon.id().as_str() == id)
+    }
+
+    /// The French display name of the weapon row.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::MainsNues => "Mains nues",
+            Self::Fouet => "Fouet",
+            Self::Couteau => "Couteau, poignard, baïonnette",
+            Self::Batte => "Batte de base-ball, matraque, tonfa",
+            Self::Marteau => "Marteau, maillet, nunchaku",
+            Self::Hachette => "Hachette, hache de jet",
+            Self::Machette => "Machette",
+            Self::Fleuret => "Fleuret, rapière, canne-épée",
+            Self::Epee => "Épée, sabre, katana, hache",
+            Self::HacheADeuxMains => "Hache, grand maillet, épée à deux mains",
+            Self::Hallebarde => "Hallebarde, pique",
+            Self::Taser => "Taser",
+            Self::Shuriken => "Shuriken, couteau de lancer",
+            Self::Javelot => "Sagaie, javelot",
+            Self::Arbalete => "Arbalète",
+            Self::ArcCourt => "Arc court",
+            Self::ArcLong => "Arc long",
+            Self::PistoletLeger => "Pistolet léger",
+            Self::PistoletMoyen => "Pistolet moyen (cal. 38)",
+            Self::PistoletLourd => "Pistolet lourd (cal. 45)",
+            Self::FusilDeChasse => "Fusil de chasse",
+            Self::CarabineARepetition => "Carabine à répétition",
+            Self::FusilAPompe => "Fusil à pompe",
+            Self::FusilDePrecision => "Fusil de précision",
+            Self::FusilDAssaut => "Fusil d'assaut",
+            Self::PistoletMitrailleur => "Pistolet mitrailleur",
+            Self::Mitrailleuse => "Mitrailleuse",
+            Self::MitrailleuseLourde => "Mitrailleuse lourde",
+            Self::LanceFlammes => "Lance-flammes",
+            Self::LanceGrenade => "Lance-grenade",
+            Self::LanceRoquette => "Lance-roquette, bazooka, mortier",
+            Self::CanonLeger => "Canon léger (75 mm)",
+            Self::GrenadeFragmentation => "Grenade à fragmentation",
+            Self::GrenadeIncendiaire => "Grenade incendiaire",
+        }
+    }
+
     /// Returns the kernel identifier of the weapon.
     #[must_use]
     pub fn id(self) -> ValueId {

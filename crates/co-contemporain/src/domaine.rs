@@ -1,6 +1,6 @@
 //! Domaines and the voies they suggest (COC.CRE.DOMAINE, COC.CNT.DOMAINES).
 
-use co_kernel::{Severity, Subject, Violation};
+use co_kernel::{Severity, Subject, ValueId, Violation};
 
 use crate::{
     Character, Trait, Voie,
@@ -49,8 +49,89 @@ pub enum Domaine {
 }
 
 impl Domaine {
+    /// Every domaine: the professional ones, then the extra-professional ones.
+    pub const ALL: [Self; 18] = [
+        Self::Art,
+        Self::Artisanat,
+        Self::Aventure,
+        Self::Communication,
+        Self::CultureEtEnseignement,
+        Self::FinanceEtDroit,
+        Self::Journalisme,
+        Self::Marine,
+        Self::Mysticisme,
+        Self::Pilotage,
+        Self::Sante,
+        Self::Sciences,
+        Self::Securite,
+        Self::Service,
+        Self::Sport,
+        Self::Criminalite,
+        Self::Dilettantisme,
+        Self::Marginalite,
+    ];
+
+    /// Returns the identifier of the domaine, used by the choices document.
+    #[must_use]
+    pub const fn id(self) -> ValueId {
+        ValueId::from_static(match self {
+            Self::Art => "coc.domaine.art",
+            Self::Artisanat => "coc.domaine.artisanat",
+            Self::Aventure => "coc.domaine.aventure",
+            Self::Communication => "coc.domaine.communication",
+            Self::CultureEtEnseignement => "coc.domaine.culture-et-enseignement",
+            Self::FinanceEtDroit => "coc.domaine.finance-et-droit",
+            Self::Journalisme => "coc.domaine.journalisme",
+            Self::Marine => "coc.domaine.marine",
+            Self::Mysticisme => "coc.domaine.mysticisme",
+            Self::Pilotage => "coc.domaine.pilotage",
+            Self::Sante => "coc.domaine.sante",
+            Self::Sciences => "coc.domaine.sciences",
+            Self::Securite => "coc.domaine.securite",
+            Self::Service => "coc.domaine.service",
+            Self::Sport => "coc.domaine.sport",
+            Self::Criminalite => "coc.domaine.criminalite",
+            Self::Dilettantisme => "coc.domaine.dilettantisme",
+            Self::Marginalite => "coc.domaine.marginalite",
+        })
+    }
+
+    /// Returns the domaine whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|domaine| domaine.id().as_str() == id)
+    }
+
+    /// The French display name of the domaine.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Art => "Art",
+            Self::Artisanat => "Artisanat",
+            Self::Aventure => "Aventure",
+            Self::Communication => "Communication",
+            Self::CultureEtEnseignement => "Culture et enseignement",
+            Self::FinanceEtDroit => "Finance et droit",
+            Self::Journalisme => "Journalisme",
+            Self::Marine => "Marine",
+            Self::Mysticisme => "Mysticisme",
+            Self::Pilotage => "Pilotage",
+            Self::Sante => "Santé",
+            Self::Sciences => "Sciences",
+            Self::Securite => "Sécurité",
+            Self::Service => "Service",
+            Self::Sport => "Sport",
+            Self::Criminalite => "Criminalité",
+            Self::Dilettantisme => "Dilettantisme",
+            Self::Marginalite => "Marginalité",
+        }
+    }
+
     /// Whether the domaine is extra-professional.
-    const fn is_extra_professional(self) -> bool {
+    #[must_use]
+    pub const fn is_extra_professional(self) -> bool {
         matches!(
             self,
             Self::Criminalite | Self::Dilettantisme | Self::Marginalite
@@ -58,12 +139,14 @@ impl Domaine {
     }
 
     /// Voies to retain from the domaine: 2 (professional) or 3 (extra-professional).
-    const fn minimum_retained(self) -> i32 {
+    #[must_use]
+    pub const fn minimum_retained(self) -> i32 {
         if self.is_extra_professional() { 3 } else { 2 }
     }
 
     /// The four voie slots of the domaine; a slot may offer alternatives.
-    const fn slots(self) -> [&'static [Voie]; 4] {
+    #[must_use]
+    pub const fn slots(self) -> [&'static [Voie]; 4] {
         use Voie::{
             ArmesADistance, ArmesDeContact, ArmesLourdes, ArtsEtArtisanats, Athletisme,
             CombatAMainsNues, Corporations, Crime, Discours, Furtivite, Investigation, Langues,

@@ -27,8 +27,40 @@ pub enum Series {
 }
 
 impl Series {
-    /// The seven values of the series.
-    const fn values(self) -> [i32; 7] {
+    /// Every series, in declaration order.
+    pub const ALL: [Self; 3] = [Self::Polyvalent, Self::Expert, Self::Specialiste];
+
+    /// Returns the identifier of the series, used by the choices document.
+    #[must_use]
+    pub const fn id(self) -> ValueId {
+        ValueId::from_static(match self {
+            Self::Polyvalent => "cof.series.polyvalent",
+            Self::Expert => "cof.series.expert",
+            Self::Specialiste => "cof.series.specialiste",
+        })
+    }
+
+    /// Returns the series whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|series| series.id().as_str() == id)
+    }
+
+    /// The French display name of the series.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Polyvalent => "Polyvalent",
+            Self::Expert => "Expert",
+            Self::Specialiste => "Spécialiste",
+        }
+    }
+
+    /// The seven values of the series, from the highest.
+    #[must_use]
+    pub const fn values(self) -> [i32; 7] {
         match self {
             Self::Polyvalent => [2, 2, 2, 1, 1, 0, -1],
             Self::Expert => [3, 2, 1, 1, 0, 0, -1],

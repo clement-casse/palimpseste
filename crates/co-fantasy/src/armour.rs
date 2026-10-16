@@ -28,6 +28,39 @@ pub enum Armour {
 }
 
 impl Armour {
+    /// Every armour, from the lightest to the heaviest.
+    pub const ALL: [Self; 7] = [
+        Self::TissusMatelasses,
+        Self::CuirSimple,
+        Self::CuirRenforce,
+        Self::ChemiseDeMailles,
+        Self::CotteDeMailles,
+        Self::ArmureDePlaques,
+        Self::PlaqueComplete,
+    ];
+
+    /// Returns the armour whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|armour| armour.id().as_str() == id)
+    }
+
+    /// The French display name of the armour.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::TissusMatelasses => "Tissus matelassés, fourrures",
+            Self::CuirSimple => "Cuir simple",
+            Self::CuirRenforce => "Cuir renforcé, broigne",
+            Self::ChemiseDeMailles => "Chemise de mailles",
+            Self::CotteDeMailles => "Cotte de mailles",
+            Self::ArmureDePlaques => "Armure de plaques",
+            Self::PlaqueComplete => "Plaque complète",
+        }
+    }
+
     /// Returns the kernel identifier of the armour.
     #[must_use]
     pub const fn id(self) -> ValueId {
@@ -43,7 +76,8 @@ impl Armour {
     }
 
     /// The DEF bonus of the armour.
-    pub(crate) const fn defence(self) -> i32 {
+    #[must_use]
+    pub const fn defence(self) -> i32 {
         match self {
             Self::TissusMatelasses => 1,
             Self::CuirSimple => 2,
@@ -72,6 +106,26 @@ pub enum Shield {
 }
 
 impl Shield {
+    /// Every shield, from the smallest to the largest.
+    pub const ALL: [Self; 2] = [Self::PetitBouclier, Self::GrandBouclier];
+
+    /// Returns the shield whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|shield| shield.id().as_str() == id)
+    }
+
+    /// The French display name of the shield.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::PetitBouclier => "Petit bouclier",
+            Self::GrandBouclier => "Grand bouclier",
+        }
+    }
+
     /// Returns the kernel identifier of the shield.
     #[must_use]
     pub const fn id(self) -> ValueId {
@@ -82,7 +136,8 @@ impl Shield {
     }
 
     /// The DEF bonus of the shield.
-    pub(crate) const fn defence(self) -> i32 {
+    #[must_use]
+    pub const fn defence(self) -> i32 {
         match self {
             Self::PetitBouclier => 1,
             Self::GrandBouclier => 2,

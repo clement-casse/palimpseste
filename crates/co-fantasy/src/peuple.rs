@@ -29,6 +29,41 @@ pub enum Peuple {
 }
 
 impl Peuple {
+    /// Every peuple, in declaration order.
+    pub const ALL: [Self; 8] = [
+        Self::DemiElfe,
+        Self::DemiOrc,
+        Self::ElfeHaut,
+        Self::ElfeSylvain,
+        Self::Gnome,
+        Self::Halfelin,
+        Self::Humain,
+        Self::Nain,
+    ];
+
+    /// Returns the peuple whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|peuple| peuple.id().as_str() == id)
+    }
+
+    /// The French display name of the peuple.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::DemiElfe => "Demi-elfe",
+            Self::DemiOrc => "Demi-orc",
+            Self::ElfeHaut => "Elfe haut",
+            Self::ElfeSylvain => "Elfe sylvain",
+            Self::Gnome => "Gnome",
+            Self::Halfelin => "Halfelin",
+            Self::Humain => "Humain",
+            Self::Nain => "Nain",
+        }
+    }
+
     /// Returns the kernel identifier of the peuple.
     #[must_use]
     pub const fn id(self) -> ValueId {
@@ -51,7 +86,8 @@ impl Peuple {
 
     /// The characteristics the peuple may raise by 1. A humain may raise any
     /// of its two lowest (D-15), checked on the assigned values.
-    pub(crate) const fn bonus_options(self) -> &'static [Characteristic] {
+    #[must_use]
+    pub const fn bonus_options(self) -> &'static [Characteristic] {
         use Characteristic::{Agi, Cha, Con, For, Int, Per, Vol};
         match self {
             Self::DemiElfe => &[Per, Cha],
@@ -67,7 +103,8 @@ impl Peuple {
 
     /// The characteristics the peuple may lower by 1: none, one (applied
     /// without a choice), or a choice of two.
-    pub(crate) const fn malus_options(self) -> &'static [Characteristic] {
+    #[must_use]
+    pub const fn malus_options(self) -> &'static [Characteristic] {
         use Characteristic::{Agi, Cha, Con, For, Int};
         match self {
             Self::DemiElfe => &[For, Con],
@@ -79,7 +116,8 @@ impl Peuple {
     }
 
     /// The voie de peuple; a demi-elfe has none of its own.
-    pub(crate) const fn voie(self) -> Option<Voie> {
+    #[must_use]
+    pub const fn voie(self) -> Option<Voie> {
         match self {
             Self::DemiElfe => None,
             Self::DemiOrc => Some(Voie::DemiOrc),

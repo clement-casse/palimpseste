@@ -28,6 +28,41 @@ pub enum Protection {
 }
 
 impl Protection {
+    /// Every protection, in table order.
+    pub const ALL: [Self; 8] = [
+        Self::GiletRembourre,
+        Self::GiletSouple,
+        Self::GiletRigide,
+        Self::GiletTactique,
+        Self::GiletTactiqueAvecPlaques,
+        Self::CotteDeMailles,
+        Self::ArmureDePlaques,
+        Self::Casque,
+    ];
+
+    /// Returns the protection whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|protection| protection.id().as_str() == id)
+    }
+
+    /// The French display name of the protection.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::GiletRembourre => "Gilet rembourré",
+            Self::GiletSouple => "Gilet souple",
+            Self::GiletRigide => "Gilet rigide",
+            Self::GiletTactique => "Gilet tactique multi-menaces",
+            Self::GiletTactiqueAvecPlaques => "Gilet tactique multi-menaces avec plaques",
+            Self::CotteDeMailles => "Cotte de mailles",
+            Self::ArmureDePlaques => "Armure de plaques",
+            Self::Casque => "Casque",
+        }
+    }
+
     /// Returns the kernel identifier of the protection.
     #[must_use]
     pub const fn id(self) -> ValueId {

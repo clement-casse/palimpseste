@@ -130,10 +130,106 @@ pub enum SocialClass {
     GrandeFortune,
 }
 
+impl SocialClass {
+    /// The French display name of the social class.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Marginal => "Marginal",
+            Self::Populaire => "Classe populaire",
+            Self::Moyenne => "Classe moyenne",
+            Self::MoyenneSuperieure => "Classe moyenne supérieure",
+            Self::GrandeBourgeoisie => "Grande bourgeoisie",
+            Self::GrandeFortune => "Grande fortune",
+        }
+    }
+}
+
 /// Points allowed on each side (COC.CRE.TRAITS).
 const MAX_SIDE: i32 = 5;
 
 impl Trait {
+    /// Every trait, the sequels apart: the advantages, then the disadvantages.
+    pub const ALL: [Self; 32] = [
+        Self::AngeGardien,
+        Self::ChanceInsolente,
+        Self::CharismeNaturel,
+        Self::ClasseSuperieure,
+        Self::Croyant,
+        Self::Endurant,
+        Self::ForceDeLaNature,
+        Self::Hypercartesien,
+        Self::Inebranlable,
+        Self::InstinctDePreservation,
+        Self::LogiqueElementaire,
+        Self::MemoireEidetique,
+        Self::Nyctalope,
+        Self::Rapide,
+        Self::Remarquable,
+        Self::CodeDeConduite,
+        Self::ClasseInferieure,
+        Self::Innocent,
+        Self::DUnAutreAge,
+        Self::DoubleVie,
+        Self::HaineViscerale,
+        Self::Ignorant,
+        Self::InapteAuCombat,
+        Self::Nemesis,
+        Self::Ostracise,
+        Self::Sequelle(Sequel::DiminueCorps),
+        Self::Sequelle(Sequel::DiminueEsprit),
+        Self::Sequelle(Sequel::Autre),
+        Self::Superstitieux,
+        Self::SyndromeDeLImposteur,
+        Self::Toxicomane,
+        Self::VilainDefaut,
+    ];
+
+    /// Returns the t whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|t| t.id().as_str() == id)
+    }
+
+    /// The French display name of the trait.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::AngeGardien => "Ange gardien",
+            Self::ChanceInsolente => "Chance insolente",
+            Self::CharismeNaturel => "Charisme naturel",
+            Self::ClasseSuperieure => "Classe supérieure",
+            Self::Croyant => "Croyant",
+            Self::Endurant => "Endurant",
+            Self::ForceDeLaNature => "Force de la nature",
+            Self::Hypercartesien => "Hypercartésien",
+            Self::Inebranlable => "Inébranlable",
+            Self::InstinctDePreservation => "Instinct de préservation",
+            Self::LogiqueElementaire => "Logique élémentaire",
+            Self::MemoireEidetique => "Mémoire eidétique",
+            Self::Nyctalope => "Nyctalope",
+            Self::Rapide => "Rapide",
+            Self::Remarquable => "Remarquable",
+            Self::CodeDeConduite => "Code de conduite",
+            Self::ClasseInferieure => "Classe inférieure",
+            Self::Innocent => "Innocent",
+            Self::DUnAutreAge => "D'un autre âge",
+            Self::DoubleVie => "Double vie",
+            Self::HaineViscerale => "Haine viscérale",
+            Self::Ignorant => "Ignorant",
+            Self::InapteAuCombat => "Inapte au combat",
+            Self::Nemesis => "Nemesis",
+            Self::Ostracise => "Ostracisé",
+            Self::Sequelle(Sequel::DiminueCorps) => "Séquelle : diminué (corps)",
+            Self::Sequelle(Sequel::DiminueEsprit) => "Séquelle : diminué (esprit)",
+            Self::Sequelle(Sequel::Autre) => "Séquelle (autre)",
+            Self::Superstitieux => "Superstitieux",
+            Self::SyndromeDeLImposteur => "Syndrome de l'imposteur",
+            Self::Toxicomane => "Toxicomane",
+            Self::VilainDefaut => "Vilain défaut",
+        }
+    }
+
     /// Returns the identifier of the trait, used as a violation subject and
     /// a breakdown source.
     #[must_use]
@@ -175,7 +271,8 @@ impl Trait {
     }
 
     /// Whether the trait is an advantage rather than a disadvantage.
-    const fn is_advantage(self) -> bool {
+    #[must_use]
+    pub const fn is_advantage(self) -> bool {
         matches!(
             self,
             Self::AngeGardien
@@ -197,7 +294,8 @@ impl Trait {
     }
 
     /// The points the catalogue allows for the trait (data, COC.CNT.TRAITS).
-    const fn allowed_points(self) -> &'static [u8] {
+    #[must_use]
+    pub const fn allowed_points(self) -> &'static [u8] {
         match self {
             Self::AngeGardien | Self::ClasseSuperieure | Self::Nemesis => &[1, 2, 3],
             Self::CharismeNaturel

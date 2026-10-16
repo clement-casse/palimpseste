@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use co_kernel::{Severity, Subject, ValueId, Violation};
 
 use crate::{
-    AttackMode, Character, Protection, Voie, Weapon,
+    Character, Protection, Weapon,
     rules::{EQUIPMENT, EQUIPMENT_MECHANIC},
 };
 
@@ -111,17 +111,6 @@ impl Unit {
     }
 }
 
-/// The weapon category each weapon voie gives one weapon of. The other
-/// voies give free text items only (COC.CNT.VOIES).
-const fn starting_weapon(voie: Voie) -> Option<AttackMode> {
-    match voie {
-        Voie::ArmesDeContact => Some(AttackMode::ContactWeapon),
-        Voie::ArmesADistance => Some(AttackMode::RangedWeapon),
-        Voie::ArmesLourdes => Some(AttackMode::HeavyWeapon),
-        _ => None,
-    }
-}
-
 /// Checks the weapons and protections against the starting equipment of the
 /// voies acquired (COC.CRE.EQUIPMENT, D-26). Each weapon voie, in voie order,
 /// takes the first weapon of its category; units left over were not given,
@@ -141,7 +130,7 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
 
     for category in character
         .voies()
-        .filter_map(|(voie, _)| starting_weapon(voie))
+        .filter_map(|(voie, _)| voie.starting_weapon())
     {
         let given = remaining.iter_mut().find(|(unit, count)| {
             **count > 0 && matches!(unit, Unit::Weapon(weapon) if weapon.attack_mode() == category)
@@ -169,6 +158,7 @@ mod tests {
     use co_kernel::{Category, Parameter, ParameterValue};
 
     use super::*;
+    use crate::Voie;
 
     fn leftovers(character: &Character) -> Vec<(Subject, i64)> {
         let mut violations = Vec::new();

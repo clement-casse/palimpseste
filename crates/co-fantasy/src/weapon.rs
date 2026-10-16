@@ -97,6 +97,19 @@ pub enum WeaponUse {
 }
 
 impl WeaponUse {
+    /// Every use, in declaration order.
+    pub const ALL: [Self; 3] = [Self::OneHanded, Self::TwoHanded, Self::Ranged];
+
+    /// The French display name of the use.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::OneHanded => "À une main",
+            Self::TwoHanded => "À deux mains",
+            Self::Ranged => "À distance",
+        }
+    }
+
     /// The attack value this use rolls against (COF.DER.ATTACK).
     #[must_use]
     pub const fn attack_mode(self) -> AttackMode {
@@ -184,6 +197,91 @@ impl Profile {
 }
 
 impl Weapon {
+    /// Every weapon, in table order: contact weapons, then ranged weapons.
+    pub const ALL: [Self; 33] = [
+        Self::Baton,
+        Self::BatonFerre,
+        Self::Dague,
+        Self::EpeeADeuxMains,
+        Self::EpeeBatarde,
+        Self::EpeeCourte,
+        Self::EpeeLongue,
+        Self::Epieu,
+        Self::Fleau,
+        Self::FleauADeuxMains,
+        Self::Gourdin,
+        Self::Hache,
+        Self::HacheADeuxMains,
+        Self::Lance,
+        Self::LanceDeCavalerie,
+        Self::Marteau,
+        Self::Masse,
+        Self::Pique,
+        Self::Rapiere,
+        Self::Stylet,
+        Self::Vivelame,
+        Self::ArbaleteDePoing,
+        Self::ArbaleteLegere,
+        Self::ArbaleteLourde,
+        Self::ArcCourt,
+        Self::ArcLong,
+        Self::CouteauxDeLancer,
+        Self::Fronde,
+        Self::Hachette,
+        Self::Javelot,
+        Self::LancePierre,
+        Self::Petoire,
+        Self::Mousquet,
+    ];
+
+    /// Returns the weapon whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|weapon| weapon.id().as_str() == id)
+    }
+
+    /// The French display name of the weapon.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Baton => "Bâton",
+            Self::BatonFerre => "Bâton ferré",
+            Self::Dague => "Dague",
+            Self::EpeeADeuxMains => "Épée à deux mains",
+            Self::EpeeBatarde => "Épée bâtarde",
+            Self::EpeeCourte => "Épée courte",
+            Self::EpeeLongue => "Épée longue",
+            Self::Epieu => "Épieu",
+            Self::Fleau => "Fléau",
+            Self::FleauADeuxMains => "Fléau à deux mains",
+            Self::Gourdin => "Gourdin",
+            Self::Hache => "Hache",
+            Self::HacheADeuxMains => "Hache à deux mains",
+            Self::Lance => "Lance",
+            Self::LanceDeCavalerie => "Lance de cavalerie",
+            Self::Marteau => "Marteau",
+            Self::Masse => "Masse",
+            Self::Pique => "Pique",
+            Self::Rapiere => "Rapière",
+            Self::Stylet => "Stylet",
+            Self::Vivelame => "Vivelame",
+            Self::ArbaleteDePoing => "Arbalète de poing",
+            Self::ArbaleteLegere => "Arbalète légère",
+            Self::ArbaleteLourde => "Arbalète lourde",
+            Self::ArcCourt => "Arc court",
+            Self::ArcLong => "Arc long",
+            Self::CouteauxDeLancer => "Couteaux de lancer",
+            Self::Fronde => "Fronde",
+            Self::Hachette => "Hachette",
+            Self::Javelot => "Javelot",
+            Self::LancePierre => "Lance-pierre",
+            Self::Petoire => "Pétoire",
+            Self::Mousquet => "Mousquet",
+        }
+    }
+
     /// Returns the kernel identifier of the weapon.
     #[must_use]
     pub fn id(self) -> ValueId {
@@ -245,30 +343,22 @@ impl Weapon {
 
     /// The highest damage of the weapon, whatever its use.
     pub(crate) fn highest_damage(self) -> i32 {
-        [
-            WeaponUse::OneHanded,
-            WeaponUse::TwoHanded,
-            WeaponUse::Ranged,
-        ]
-        .into_iter()
-        .filter_map(|weapon_use| self.dice(weapon_use))
-        .map(|dice| dice.highest())
-        .max()
-        .unwrap_or(0)
+        WeaponUse::ALL
+            .into_iter()
+            .filter_map(|weapon_use| self.dice(weapon_use))
+            .map(|dice| dice.highest())
+            .max()
+            .unwrap_or(0)
     }
 
     /// The highest damage of the weapon's lightest use.
     fn lightest_use_damage(self) -> i32 {
-        [
-            WeaponUse::OneHanded,
-            WeaponUse::TwoHanded,
-            WeaponUse::Ranged,
-        ]
-        .into_iter()
-        .filter_map(|weapon_use| self.dice(weapon_use))
-        .map(|dice| dice.highest())
-        .min()
-        .unwrap_or(0)
+        WeaponUse::ALL
+            .into_iter()
+            .filter_map(|weapon_use| self.dice(weapon_use))
+            .map(|dice| dice.highest())
+            .min()
+            .unwrap_or(0)
     }
 
     const fn slug(self) -> &'static str {

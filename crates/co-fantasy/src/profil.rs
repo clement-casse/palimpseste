@@ -21,6 +21,25 @@ pub enum Family {
 }
 
 impl Family {
+    /// Every family, in declaration order.
+    pub const ALL: [Self; 4] = [
+        Self::Aventuriers,
+        Self::Combattants,
+        Self::Mages,
+        Self::Mystiques,
+    ];
+
+    /// The French display name of the family.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Aventuriers => "Aventuriers",
+            Self::Combattants => "Combattants",
+            Self::Mages => "Mages",
+            Self::Mystiques => "Mystiques",
+        }
+    }
+
     /// Returns the kernel identifier of the family.
     #[must_use]
     pub const fn id(self) -> ValueId {
@@ -98,7 +117,7 @@ pub enum Profil {
 
 impl Profil {
     /// Every profil, in declaration order.
-    pub(crate) const ALL: [Self; 14] = [
+    pub const ALL: [Self; 14] = [
         Self::Arquebusier,
         Self::Barde,
         Self::Rodeur,
@@ -115,6 +134,56 @@ impl Profil {
         Self::Pretre,
     ];
 
+    /// Returns the identifier of the profil, used by the choices document.
+    #[must_use]
+    pub const fn id(self) -> ValueId {
+        ValueId::from_static(match self {
+            Self::Arquebusier => "cof.profil.arquebusier",
+            Self::Barde => "cof.profil.barde",
+            Self::Rodeur => "cof.profil.rodeur",
+            Self::Voleur => "cof.profil.voleur",
+            Self::Barbare => "cof.profil.barbare",
+            Self::Chevalier => "cof.profil.chevalier",
+            Self::Guerrier => "cof.profil.guerrier",
+            Self::Ensorceleur => "cof.profil.ensorceleur",
+            Self::Forgesort => "cof.profil.forgesort",
+            Self::Magicien => "cof.profil.magicien",
+            Self::Sorcier => "cof.profil.sorcier",
+            Self::Druide => "cof.profil.druide",
+            Self::Moine => "cof.profil.moine",
+            Self::Pretre => "cof.profil.pretre",
+        })
+    }
+
+    /// Returns the profil whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|profil| profil.id().as_str() == id)
+    }
+
+    /// The French display name of the profil.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Arquebusier => "Arquebusier",
+            Self::Barde => "Barde",
+            Self::Rodeur => "Rôdeur",
+            Self::Voleur => "Voleur",
+            Self::Barbare => "Barbare",
+            Self::Chevalier => "Chevalier",
+            Self::Guerrier => "Guerrier",
+            Self::Ensorceleur => "Ensorceleur",
+            Self::Forgesort => "Forgesort",
+            Self::Magicien => "Magicien",
+            Self::Sorcier => "Sorcier",
+            Self::Druide => "Druide",
+            Self::Moine => "Moine",
+            Self::Pretre => "Prêtre",
+        }
+    }
+
     /// The family of the profil.
     #[must_use]
     pub const fn family(self) -> Family {
@@ -127,7 +196,8 @@ impl Profil {
     }
 
     /// The five voies of the profil.
-    pub(crate) const fn voies(self) -> [Voie; 5] {
+    #[must_use]
+    pub const fn voies(self) -> [Voie; 5] {
         use Voie::{
             Air, Animaux, Archer, Artefacts, Artilleur, Assassin, Aventurier, Bouclier, Brute,
             Cavalier, Combat, CombatADeuxArmes, CompagnonAnimal, Demon, Deplacement, Divination,
@@ -166,7 +236,8 @@ impl Profil {
 
     /// The three key characteristics; a slot may offer alternatives (the
     /// druide's third key is CON or AGI).
-    pub(crate) const fn key_characteristics(self) -> [&'static [Characteristic]; 3] {
+    #[must_use]
+    pub const fn key_characteristics(self) -> [&'static [Characteristic]; 3] {
         use Characteristic::{Agi, Cha, Con, For, Int, Per, Vol};
         match self {
             Self::Arquebusier => [&[Agi], &[Int], &[Con]],
@@ -185,7 +256,8 @@ impl Profil {
     }
 
     /// The characteristic of the profil's spells, for spellcasters.
-    pub(crate) const fn magic_characteristic(self) -> Option<Characteristic> {
+    #[must_use]
+    pub const fn magic_characteristic(self) -> Option<Characteristic> {
         match self {
             Self::Barde | Self::Ensorceleur | Self::Pretre => Some(Characteristic::Cha),
             Self::Forgesort | Self::Magicien | Self::Sorcier => Some(Characteristic::Int),
@@ -201,7 +273,8 @@ impl Profil {
     }
 
     /// The heaviest armour the profil's capacités allow, `None` for no armour.
-    pub(crate) const fn armour_limit(self) -> Option<Armour> {
+    #[must_use]
+    pub const fn armour_limit(self) -> Option<Armour> {
         match self {
             Self::Arquebusier | Self::Pretre => Some(Armour::ChemiseDeMailles),
             Self::Barde | Self::Rodeur | Self::Barbare => Some(Armour::CuirRenforce),
@@ -254,7 +327,8 @@ impl Profil {
     }
 
     /// The largest shield the profil's capacités allow, `None` for no shield.
-    pub(crate) const fn shield_limit(self) -> Option<Shield> {
+    #[must_use]
+    pub const fn shield_limit(self) -> Option<Shield> {
         match self {
             Self::Barbare | Self::Chevalier | Self::Guerrier => Some(Shield::GrandBouclier),
             Self::Druide | Self::Pretre => Some(Shield::PetitBouclier),
