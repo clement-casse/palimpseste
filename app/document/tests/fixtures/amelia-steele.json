@@ -1,0 +1,30 @@
+{
+  "engine": "contemporain",
+  "version": 1,
+  "age": 32,
+  "domaine": "coc.domaine.aventure",
+  "voies": [
+    { "id": "coc.corporations", "ranks": [1] },
+    { "id": "coc.armes-de-contact", "ranks": [1] },
+    { "id": "coc.sciences", "ranks": [1] },
+    { "id": "coc.survie", "ranks": [1, 2] },
+    { "id": "coc.vehicules", "ranks": [1, 2] }
+  ],
+  "traits": [
+    { "id": "coc.trait.endurant", "points": 1 },
+    { "id": "coc.trait.force-de-la-nature", "points": 2 },
+    { "id": "coc.trait.inebranlable", "points": 1 },
+    { "id": "coc.trait.remarquable", "points": 1 },
+    { "id": "coc.trait.code-de-conduite", "points": 2 },
+    { "id": "coc.trait.nemesis", "points": 2 },
+    { "id": "coc.trait.toxicomane", "points": 1 }
+  ],
+  "caracPoints": { "AGI": 2, "CON": 0, "FOR": 1, "PER": 2, "CHA": 2, "INT": 0, "VOL": 1 },
+  "items": [
+    { "kind": "weapon", "id": "coc.weapon.couteau", "quantity": 1 },
+    { "kind": "other", "name": "motorbike", "quantity": 1 },
+    { "kind": "other", "name": "hiking gear", "quantity": 1 },
+    { "kind": "other", "name": "cigar case", "quantity": 1 },
+    { "kind": "other", "name": "metal whisky flask", "quantity": 1 }
+  ]
+}

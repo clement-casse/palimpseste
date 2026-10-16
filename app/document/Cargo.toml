@@ -1,0 +1,22 @@
+[package]
+name = "palimpseste-document"
+version.workspace = true
+edition.workspace = true
+
+[features]
+# TypeScript declarations for the front end, enabled by `palimpseste-wasm`.
+ts = ["dep:tsify", "dep:wasm-bindgen"]
+
+[dependencies]
+co-contemporain = { path = "../../crates/co-contemporain" }
+co-fantasy = { path = "../../crates/co-fantasy" }
+co-kernel = { path = "../../crates/co-kernel" }
+serde = { version = "1.0.229", features = ["derive"] }
+tsify = { version = "0.5.8", default-features = false, features = ["js"], optional = true }
+wasm-bindgen = { version = "0.2.129", optional = true }
+
+[dev-dependencies]
+serde_json = "1.0.154"
+
+[lints]
+workspace = true

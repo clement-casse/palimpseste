@@ -1,0 +1,23 @@
+{
+  "engine": "fantasy",
+  "version": 1,
+  "profil": "cof.profil.barbare",
+  "peuple": "cof.peuple.humain",
+  "series": "cof.series.expert",
+  "seriesValues": { "AGI": 1, "CON": 2, "FOR": 3, "PER": 0, "CHA": -1, "INT": 0, "VOL": 1 },
+  "peupleBonus": "PER",
+  "voies": [
+    { "id": "cof.pourfendeur", "ranks": [1] },
+    { "id": "cof.rage", "ranks": [1] },
+    { "id": "cof.humain", "ranks": [1] }
+  ],
+  "armour": "cof.armour.cuir-simple",
+  "shield": "cof.shield.grand-bouclier",
+  "items": [
+    { "kind": "weapon", "id": "cof.weapon.epee-longue", "quantity": 1 },
+    { "kind": "weapon", "id": "cof.weapon.javelot", "quantity": 2 },
+    { "kind": "weapon", "id": "cof.weapon.dague", "quantity": 1 },
+    { "kind": "other", "name": "adventurer's bag", "quantity": 1 }
+  ],
+  "purse": 70
+}
