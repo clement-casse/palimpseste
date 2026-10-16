@@ -10,6 +10,7 @@ crate-type = ["cdylib", "rlib"]
 co-contemporain = { path = "../../crates/co-contemporain" }
 co-fantasy = { path = "../../crates/co-fantasy" }
 co-kernel = { path = "../../crates/co-kernel" }
+palimpseste-document = { path = "../document", features = ["ts"] }
 serde = { version = "1.0.229", features = ["derive"] }
 tsify = { version = "0.5.8", default-features = false, features = ["js"] }
 wasm-bindgen = "0.2.129"
