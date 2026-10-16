@@ -1,19 +1,24 @@
 //! HTTP routes: the JSON API under `/api`, the front end everywhere else.
+//!
+//! The API serves, checks and stores (ADR 0007): it rejects a request it
+//! cannot read, never a character breaking a rule. Store calls block, so
+//! they run on `spawn_blocking`.
 
 use std::{path::Path, sync::Arc};
 
 use axum::{
     Json, Router,
     extract::{Path as UrlPath, Request, State},
-    http::{HeaderValue, StatusCode, header},
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     middleware::{self, Next},
-    response::Response,
-    routing::{any, get},
+    response::{IntoResponse, Response},
+    routing::{any, get, put},
 };
+use palimpseste_document::{Document, Engine};
 use serde::Deserialize;
 use tower_http::services::{ServeDir, ServeFile};
 
-use crate::store::{Character, Engine, Store, User, UserId};
+use crate::store::{self, Character, CharacterId, Replaced, Store, User, UserId};
 
 #[derive(Debug, Deserialize)]
 struct NewUser {
@@ -25,6 +30,47 @@ struct NewCharacter {
     name: String,
     engine: Engine,
 }
+
+#[derive(Debug, Deserialize)]
+struct Rename {
+    name: String,
+}
+
+/// Why a request failed, besides the JSON the extractors reject (`400` for
+/// malformed JSON, `422` for an unknown shape).
+#[derive(Debug)]
+enum ApiError {
+    NotFound,
+    /// Readable JSON whose content cannot be stored (ADR 0007, D6).
+    Unprocessable(String),
+    /// A document replaced without `If-Match`.
+    PreconditionRequired,
+    /// A document replaced at a stale version: the current one is given.
+    PreconditionFailed(i64),
+    Internal,
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        match self {
+            Self::NotFound => StatusCode::NOT_FOUND.into_response(),
+            Self::Unprocessable(reason) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, reason).into_response()
+            }
+            Self::PreconditionRequired => {
+                (StatusCode::PRECONDITION_REQUIRED, "If-Match is required").into_response()
+            }
+            Self::PreconditionFailed(version) => (
+                StatusCode::PRECONDITION_FAILED,
+                [(header::ETAG, etag(version))],
+            )
+                .into_response(),
+            Self::Internal => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
+    }
+}
+
+type ApiResult<T> = Result<T, ApiError>;
 
 /// Builds the router. Paths outside `/api` are served from `frontend_dir`,
 /// falling back to its `index.html` so the front end can route itself.
@@ -39,6 +85,13 @@ pub fn router(store: Arc<Store>, frontend_dir: &Path) -> Router {
             "/users/{user_id}/characters",
             get(list_characters).post(create_character),
         )
+        .route(
+            "/characters/{character_id}",
+            get(get_character)
+                .patch(rename_character)
+                .delete(delete_character),
+        )
+        .route("/characters/{character_id}/document", put(put_document))
         .fallback(not_found)
         .with_state(store);
     let frontend = Router::new()
@@ -72,43 +125,159 @@ async fn cache_control(request: Request, next: Next) -> Response {
     response
 }
 
-async fn list_users(State(store): State<Arc<Store>>) -> Json<Vec<User>> {
-    Json(store.users())
+/// Runs `query` on the store, off the async runtime.
+async fn blocking<T: Send + 'static>(
+    store: Arc<Store>,
+    query: impl FnOnce(&Store) -> store::Result<T> + Send + 'static,
+) -> ApiResult<T> {
+    match tokio::task::spawn_blocking(move || query(&store)).await {
+        Ok(Ok(value)) => Ok(value),
+        Ok(Err(error)) => {
+            eprintln!("store error: {error}");
+            Err(ApiError::Internal)
+        }
+        Err(error) => {
+            eprintln!("store task failed: {error}");
+            Err(ApiError::Internal)
+        }
+    }
+}
+
+/// A name, unless blank.
+fn filled_name(name: &str) -> ApiResult<String> {
+    let name = name.trim();
+    if name.is_empty() {
+        Err(ApiError::Unprocessable("empty name".into()))
+    } else {
+        Ok(name.to_owned())
+    }
+}
+
+/// The `ETag` of a document version.
+fn etag(version: i64) -> String {
+    format!("\"{version}\"")
+}
+
+/// The version `If-Match` expects; `None` when it names no version.
+fn if_match(headers: &HeaderMap) -> ApiResult<Option<i64>> {
+    let value = headers
+        .get(header::IF_MATCH)
+        .ok_or(ApiError::PreconditionRequired)?;
+    Ok(value
+        .to_str()
+        .ok()
+        .and_then(|value| value.trim().strip_prefix('"')?.strip_suffix('"'))
+        .and_then(|version| version.parse().ok()))
+}
+
+async fn list_users(State(store): State<Arc<Store>>) -> ApiResult<Json<Vec<User>>> {
+    blocking(store, Store::users).await.map(Json)
 }
 
 async fn create_user(
     State(store): State<Arc<Store>>,
     Json(new): Json<NewUser>,
-) -> (StatusCode, Json<User>) {
-    (StatusCode::CREATED, Json(store.create_user(new.name)))
+) -> ApiResult<(StatusCode, Json<User>)> {
+    let name = filled_name(&new.name)?;
+    let user = blocking(store, move |store| store.create_user(&name)).await?;
+    Ok((StatusCode::CREATED, Json(user)))
 }
 
 async fn get_user(
     State(store): State<Arc<Store>>,
     UrlPath(user_id): UrlPath<UserId>,
-) -> Result<Json<User>, StatusCode> {
-    store.user(user_id).map(Json).ok_or(StatusCode::NOT_FOUND)
+) -> ApiResult<Json<User>> {
+    blocking(store, move |store| store.user(user_id))
+        .await?
+        .map(Json)
+        .ok_or(ApiError::NotFound)
 }
 
 async fn list_characters(
     State(store): State<Arc<Store>>,
     UrlPath(user_id): UrlPath<UserId>,
-) -> Result<Json<Vec<Character>>, StatusCode> {
-    store
-        .characters(user_id)
+) -> ApiResult<Json<Vec<Character>>> {
+    blocking(store, move |store| store.characters(user_id))
+        .await?
         .map(Json)
-        .ok_or(StatusCode::NOT_FOUND)
+        .ok_or(ApiError::NotFound)
 }
 
 async fn create_character(
     State(store): State<Arc<Store>>,
     UrlPath(user_id): UrlPath<UserId>,
     Json(new): Json<NewCharacter>,
-) -> Result<(StatusCode, Json<Character>), StatusCode> {
-    store
-        .create_character(user_id, new.name, new.engine)
-        .map(|character| (StatusCode::CREATED, Json(character)))
-        .ok_or(StatusCode::NOT_FOUND)
+) -> ApiResult<(StatusCode, Json<Character>)> {
+    let name = filled_name(&new.name)?;
+    blocking(store, move |store| {
+        store.create_character(user_id, &name, new.engine)
+    })
+    .await?
+    .map(|character| (StatusCode::CREATED, Json(character)))
+    .ok_or(ApiError::NotFound)
+}
+
+async fn get_character(
+    State(store): State<Arc<Store>>,
+    UrlPath(character_id): UrlPath<CharacterId>,
+) -> ApiResult<impl IntoResponse> {
+    let character = blocking(store, move |store| store.character(character_id))
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    Ok(([(header::ETAG, etag(character.version))], Json(character)))
+}
+
+async fn rename_character(
+    State(store): State<Arc<Store>>,
+    UrlPath(character_id): UrlPath<CharacterId>,
+    Json(rename): Json<Rename>,
+) -> ApiResult<Json<Character>> {
+    let name = filled_name(&rename.name)?;
+    blocking(store, move |store| {
+        store.rename_character(character_id, &name)
+    })
+    .await?
+    .map(Json)
+    .ok_or(ApiError::NotFound)
+}
+
+async fn delete_character(
+    State(store): State<Arc<Store>>,
+    UrlPath(character_id): UrlPath<CharacterId>,
+) -> ApiResult<StatusCode> {
+    if blocking(store, move |store| store.delete_character(character_id)).await? {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(ApiError::NotFound)
+    }
+}
+
+/// Replaces a character's whole document, at the version `If-Match` names.
+/// The document must be readable (ADR 0007, D6); its rules are not checked.
+async fn put_document(
+    State(store): State<Arc<Store>>,
+    UrlPath(character_id): UrlPath<CharacterId>,
+    headers: HeaderMap,
+    Json(document): Json<Document>,
+) -> ApiResult<impl IntoResponse> {
+    let expected = if_match(&headers)?;
+    document
+        .check()
+        .map_err(|error| ApiError::Unprocessable(error.to_string()))?;
+    let replaced = blocking(store, move |store| {
+        // A version `If-Match` cannot name never matches: version 0 is
+        // never stored.
+        store.replace_document(character_id, expected.unwrap_or(0), &document)
+    })
+    .await?;
+    match replaced {
+        Replaced::Stored(version) => Ok((StatusCode::NO_CONTENT, [(header::ETAG, etag(version))])),
+        Replaced::NotFound => Err(ApiError::NotFound),
+        Replaced::Stale(version) => Err(ApiError::PreconditionFailed(version)),
+        Replaced::OtherEngine => Err(ApiError::Unprocessable(
+            "the document is of another engine than the character".into(),
+        )),
+    }
 }
 
 #[cfg(test)]
@@ -139,7 +308,7 @@ mod tests {
     }
 
     fn app(test: &str) -> Router {
-        router(Arc::new(Store::default()), &frontend_dir(test))
+        router(Arc::new(Store::in_memory().unwrap()), &frontend_dir(test))
     }
 
     async fn send(
@@ -158,7 +327,20 @@ mod tests {
         uri: &str,
         body: Option<Value>,
     ) -> (StatusCode, HeaderMap, Vec<u8>) {
-        let request = Request::builder().method(method).uri(uri);
+        send_with(app, method, uri, &[], body).await
+    }
+
+    async fn send_with(
+        app: &Router,
+        method: Method,
+        uri: &str,
+        headers: &[(header::HeaderName, &str)],
+        body: Option<Value>,
+    ) -> (StatusCode, HeaderMap, Vec<u8>) {
+        let request = headers.iter().fold(
+            Request::builder().method(method).uri(uri),
+            |request, (name, value)| request.header(name, *value),
+        );
         let request = match body {
             Some(body) => request
                 .header(header::CONTENT_TYPE, "application/json")
@@ -225,10 +407,12 @@ mod tests {
         )
         .await;
         assert_eq!(status, StatusCode::CREATED);
-        assert_eq!(
-            brune,
-            json!({"id": 1, "name": "Brune", "engine": "fantasy"})
-        );
+        assert_eq!(brune["id"], 1);
+        assert_eq!(brune["name"], "Brune");
+        assert_eq!(brune["engine"], "fantasy");
+        assert_eq!(brune["version"], 1);
+        assert_eq!(brune["document"]["engine"], "fantasy");
+        assert_eq!(brune["document"]["version"], 1);
 
         let (status, max) = send_json(
             &app,
@@ -238,14 +422,197 @@ mod tests {
         )
         .await;
         assert_eq!(status, StatusCode::CREATED);
-        assert_eq!(
-            max,
-            json!({"id": 2, "name": "Max", "engine": "contemporain"})
-        );
+        assert_eq!(max["id"], 2);
+        assert_eq!(max["engine"], "contemporain");
+        assert_eq!(max["document"]["engine"], "contemporain");
 
         let (status, characters) = send_json(&app, Method::GET, uri, None).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(characters, json!([brune, max]));
+    }
+
+    /// Creates user 1 and their fantasy character 1.
+    async fn with_character(test: &str) -> Router {
+        let app = app(test);
+        send(
+            &app,
+            Method::POST,
+            "/api/users",
+            Some(json!({"name": "Ana"})),
+        )
+        .await;
+        send(
+            &app,
+            Method::POST,
+            "/api/users/1/characters",
+            Some(json!({"name": "Brune", "engine": "fantasy"})),
+        )
+        .await;
+        app
+    }
+
+    fn lhagva() -> Value {
+        serde_json::from_str(include_str!("../../document/tests/fixtures/lhagva.json")).unwrap()
+    }
+
+    async fn put_document(
+        app: &Router,
+        version: Option<&str>,
+        document: Value,
+    ) -> (StatusCode, HeaderMap, Vec<u8>) {
+        let headers: Vec<(header::HeaderName, &str)> =
+            version.map(|v| (header::IF_MATCH, v)).into_iter().collect();
+        send_with(
+            app,
+            Method::PUT,
+            "/api/characters/1/document",
+            &headers,
+            Some(document),
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn replaces_a_document_at_its_version() {
+        let app = with_character("replace").await;
+        let (status, headers, _) = send_full(&app, Method::GET, "/api/characters/1", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(headers[header::ETAG], "\"1\"");
+
+        let (status, headers, _) = put_document(&app, Some("\"1\""), lhagva()).await;
+        assert_eq!(status, StatusCode::NO_CONTENT);
+        assert_eq!(headers[header::ETAG], "\"2\"");
+
+        let (status, character) = send_json(&app, Method::GET, "/api/characters/1", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(character["version"], 2);
+        assert_eq!(character["document"]["profil"], "cof.profil.barbare");
+        assert_eq!(character["document"]["purse"], 70);
+
+        let (status, headers, _) = put_document(&app, Some("\"1\""), lhagva()).await;
+        assert_eq!(status, StatusCode::PRECONDITION_FAILED);
+        assert_eq!(headers[header::ETAG], "\"2\"");
+        let (status, _, _) = put_document(&app, None, lhagva()).await;
+        assert_eq!(status, StatusCode::PRECONDITION_REQUIRED);
+        let (status, _, _) = put_document(&app, Some("*"), lhagva()).await;
+        assert_eq!(status, StatusCode::PRECONDITION_FAILED);
+    }
+
+    #[tokio::test]
+    async fn stores_a_rule_breaking_document() {
+        let app = with_character("rule-breaking").await;
+        let mut document = lhagva();
+        document["seriesValues"]["FOR"] = json!(12);
+        document["voies"] = json!([{"id": "cof.combat", "ranks": [3, 9]}]);
+        document["purse"] = json!(-500);
+        let (status, _, _) = put_document(&app, Some("\"1\""), document).await;
+        assert_eq!(status, StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn rejects_documents_it_cannot_read() {
+        let app = with_character("unreadable").await;
+        let with = |pointer: &str, value: Value| {
+            let mut document = lhagva();
+            match document.pointer_mut(pointer) {
+                Some(field) => *field = value,
+                None => document[&pointer[1..]] = value,
+            }
+            document
+        };
+        for (case, document) in [
+            (
+                "unknown profil",
+                with("/profil", json!("cof.profil.paladin")),
+            ),
+            (
+                "unknown weapon",
+                with("/items/0/id", json!("cof.weapon.laser")),
+            ),
+            ("unsupported version", with("/version", json!(2))),
+            (
+                "other engine",
+                json!({"engine": "contemporain", "version": 1}),
+            ),
+            ("unknown engine", with("/engine", json!("pathfinder"))),
+            ("negative rank", with("/voies/0/ranks", json!([-1]))),
+            ("empty item name", with("/items/3/name", json!(""))),
+            (
+                "blank waiver reason",
+                with(
+                    "/waivers",
+                    json!([{
+                        "rule": "COF.CRE.EQUIPMENT",
+                        "subject": {"kind": "character"},
+                        "author": "gm",
+                        "reason": " "
+                    }]),
+                ),
+            ),
+        ] {
+            let (status, _, _) = put_document(&app, Some("\"1\""), document).await;
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{case}");
+        }
+        let (status, character) = send_json(&app, Method::GET, "/api/characters/1", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(character["version"], 1);
+    }
+
+    #[tokio::test]
+    async fn rejects_malformed_json() {
+        let app = with_character("malformed").await;
+        let request = Request::builder()
+            .method(Method::PUT)
+            .uri("/api/characters/1/document")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::IF_MATCH, "\"1\"")
+            .body(Body::from("{\"engine\":"))
+            .unwrap();
+        let response = app.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn renames_and_deletes_characters() {
+        let app = with_character("rename").await;
+        let (status, character) = send_json(
+            &app,
+            Method::PATCH,
+            "/api/characters/1",
+            Some(json!({"name": "Bruna"})),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(character["name"], "Bruna");
+        let (status, _) = send(&app, Method::DELETE, "/api/characters/1", None).await;
+        assert_eq!(status, StatusCode::NO_CONTENT);
+        for (method, body) in [
+            (Method::GET, None),
+            (Method::DELETE, None),
+            (Method::PATCH, Some(json!({"name": "X"}))),
+        ] {
+            let (status, _) = send(&app, method, "/api/characters/1", body).await;
+            assert_eq!(status, StatusCode::NOT_FOUND);
+        }
+        let (status, _, _) = put_document(&app, Some("\"1\""), lhagva()).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn rejects_blank_names() {
+        let app = with_character("blank-names").await;
+        for (method, uri, body) in [
+            (Method::POST, "/api/users", json!({"name": " "})),
+            (
+                Method::POST,
+                "/api/users/1/characters",
+                json!({"name": "", "engine": "fantasy"}),
+            ),
+            (Method::PATCH, "/api/characters/1", json!({"name": "  "})),
+        ] {
+            let (status, _) = send(&app, method, uri, Some(body)).await;
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{uri}");
+        }
     }
 
     #[tokio::test]
