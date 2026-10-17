@@ -25,6 +25,9 @@ export function navigate(to: string, { replace = false } = {}) {
 /** The sign-in page, where a signed-out user is sent. */
 export const LOGIN = "/login";
 
+/** The signed-in user's own profile and identities. */
+export const PROFILE = "/profile";
+
 /** Follows a link inside the app without reloading the page. */
 export function follow(event: MouseEvent) {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;

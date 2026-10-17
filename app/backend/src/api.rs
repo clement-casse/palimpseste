@@ -3,7 +3,7 @@
 //! The API serves, checks and stores (ADR 0007): it rejects a request it
 //! cannot read, never a character breaking a rule. Signing in is under
 //! `/api/auth` (ADR 0009); every other route needs a session and reaches
-//! the signed-in user's characters only. Store calls block, so they run on
+//! the signed-in user's profile, identities (ADR 0010) and characters only. Store calls block, so they run on
 //! `spawn_blocking`. Each request is logged with its status and
 //! latency, each change to the store and each rejected request with why.
 
@@ -18,7 +18,7 @@ use axum::{
     routing::{any, get, put},
 };
 use palimpseste_document::{Document, Engine};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
@@ -27,7 +27,7 @@ use tracing::Level;
 
 use crate::{
     auth::{self, Auth, CurrentUser},
-    store::{self, Character, CharacterId, Replaced, Store, User},
+    store::{self, Character, CharacterId, ProfileUpdate, Replaced, Store, User},
 };
 
 /// What the handlers share: the store and the sign-in configuration.
@@ -60,6 +60,30 @@ struct Rename {
     name: String,
 }
 
+/// A change to the signed-in user: the fields given change.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProfileChange {
+    nickname: Option<String>,
+    profile: Option<String>,
+}
+
+/// An identity of the signed-in user, named by its provider.
+#[derive(Debug, Serialize)]
+struct IdentityView {
+    /// The id of its provider, unless that provider is no longer
+    /// configured.
+    provider: Option<String>,
+    /// The name of its provider, or its issuer.
+    name: String,
+    label: String,
+}
+
+/// The longest nickname, in characters.
+const NICKNAME_MAX: usize = 32;
+/// The longest profile, in characters.
+const PROFILE_MAX: usize = 2000;
+
 /// Why a request failed, besides the JSON the extractors reject (`400` for
 /// malformed JSON, `422` for an unknown shape).
 #[derive(Debug)]
@@ -74,6 +98,8 @@ pub enum ApiError {
     PreconditionRequired,
     /// A document replaced at a stale version: the current one is given.
     PreconditionFailed(i64),
+    /// Refused because of another user's data, with why.
+    Conflict(&'static str),
     Internal,
 }
 
@@ -98,6 +124,10 @@ impl IntoResponse for ApiError {
                 )
                     .into_response()
             }
+            Self::Conflict(reason) => {
+                tracing::info!(%reason, "conflicting request");
+                (StatusCode::CONFLICT, reason).into_response()
+            }
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         }
     }
@@ -113,7 +143,8 @@ pub fn router(store: Arc<Store>, auth: Arc<Auth>, frontend_dir: &Path) -> Router
     let not_found = || async { StatusCode::NOT_FOUND };
     let api = Router::new()
         .nest("/auth", auth::router())
-        .route("/me", get(me))
+        .route("/me", get(me).patch(update_me))
+        .route("/me/identities", get(identities))
         .route(
             "/me/characters",
             get(list_characters).post(create_character),
@@ -210,6 +241,66 @@ fn if_match(headers: &HeaderMap) -> ApiResult<Option<i64>> {
 
 async fn me(CurrentUser(user): CurrentUser) -> Json<User> {
     Json(user)
+}
+
+/// Changes the signed-in user's nickname or profile. A nickname is
+/// trimmed, not blank, at most `NICKNAME_MAX` characters and free; a
+/// profile is trimmed and at most `PROFILE_MAX` characters.
+async fn update_me(
+    CurrentUser(user): CurrentUser,
+    State(store): State<Arc<Store>>,
+    Json(change): Json<ProfileChange>,
+) -> ApiResult<Json<User>> {
+    let nickname = change.nickname.as_deref().map(filled_name).transpose()?;
+    if nickname
+        .as_ref()
+        .is_some_and(|nickname| nickname.chars().count() > NICKNAME_MAX)
+    {
+        return Err(ApiError::Unprocessable(format!(
+            "nickname longer than {NICKNAME_MAX} characters"
+        )));
+    }
+    let profile = change.profile.as_deref().map(str::trim).map(str::to_owned);
+    if profile
+        .as_ref()
+        .is_some_and(|profile| profile.chars().count() > PROFILE_MAX)
+    {
+        return Err(ApiError::Unprocessable(format!(
+            "profile longer than {PROFILE_MAX} characters"
+        )));
+    }
+    let updated = blocking(store, move |store| {
+        store.update_user(user.id, nickname.as_deref(), profile.as_deref())
+    })
+    .await?;
+    match updated {
+        ProfileUpdate::Updated(updated) => {
+            tracing::info!(user_id = %updated.id, "profile updated");
+            Ok(Json(updated))
+        }
+        ProfileUpdate::NicknameTaken => Err(ApiError::Conflict("nickname taken")),
+    }
+}
+
+/// The signed-in user's identities, in the order they were linked.
+async fn identities(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+) -> ApiResult<Json<Vec<IdentityView>>> {
+    let identities = blocking(state.store, move |store| store.identities(user.id)).await?;
+    Ok(Json(
+        identities
+            .into_iter()
+            .map(|identity| {
+                let provider = state.auth.provider_of(&identity.issuer);
+                IdentityView {
+                    provider: provider.map(|(id, _)| id.to_owned()),
+                    name: provider.map_or(identity.issuer, |(_, name)| name.to_owned()),
+                    label: identity.label,
+                }
+            })
+            .collect(),
+    ))
 }
 
 async fn list_characters(
@@ -350,7 +441,12 @@ mod tests {
         let store = Arc::new(Store::in_memory().unwrap());
         let mut cookies = ["Ana", "Ben"].map(|name| {
             let (user, _) = store
-                .user_for_identity("https://issuer.test", name, name)
+                .user_for_identity(
+                    "https://issuer.test",
+                    name,
+                    name,
+                    &format!("{name}@mail.test"),
+                )
                 .unwrap();
             session_cookie(&store, user.id)
         });
@@ -454,7 +550,7 @@ mod tests {
         let app = app("me");
         let (status, ana) = app.send_json(Method::GET, "/api/me", None).await;
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(ana, json!({"id": 1, "name": "Ana"}));
+        assert_eq!(ana, json!({"nickname": "Ana", "profile": ""}));
         let (status, _, ben) = send_with(
             &app.router,
             Some(&app.ben),
@@ -467,7 +563,59 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(
             serde_json::from_slice::<Value>(&ben).unwrap(),
-            json!({"id": 2, "name": "Ben"})
+            json!({"nickname": "Ben", "profile": ""})
+        );
+    }
+
+    #[tokio::test]
+    async fn updates_the_nickname_and_the_profile() {
+        let app = app("update-me");
+        let (status, ana) = app
+            .send_json(
+                Method::PATCH,
+                "/api/me",
+                Some(json!({"nickname": " Anaïs ", "profile": " Joue une barbare. "})),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            ana,
+            json!({"nickname": "Anaïs", "profile": "Joue une barbare."})
+        );
+        let (status, ana) = app
+            .send_json(Method::PATCH, "/api/me", Some(json!({"profile": ""})))
+            .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(ana, json!({"nickname": "Anaïs", "profile": ""}));
+
+        let (status, body) = app
+            .send(Method::PATCH, "/api/me", Some(json!({"nickname": "BEN"})))
+            .await;
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(body, b"nickname taken");
+        for change in [
+            json!({"nickname": "  "}),
+            json!({"nickname": "x".repeat(NICKNAME_MAX + 1)}),
+            json!({"profile": "x".repeat(PROFILE_MAX + 1)}),
+            json!({"id": 7}),
+        ] {
+            let (status, _) = app
+                .send(Method::PATCH, "/api/me", Some(change.clone()))
+                .await;
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{change}");
+        }
+        let (_, ana) = app.send_json(Method::GET, "/api/me", None).await;
+        assert_eq!(ana["nickname"], "Anaïs");
+    }
+
+    #[tokio::test]
+    async fn lists_the_identities_by_provider() {
+        let app = app("identities");
+        let (status, identities) = app.send_json(Method::GET, "/api/me/identities", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            identities,
+            json!([{"provider": "dex", "name": "Dex", "label": "Ana@mail.test"}])
         );
     }
 
@@ -529,6 +677,8 @@ mod tests {
         let app = with_character("session").await;
         let routes = [
             (Method::GET, "/api/me"),
+            (Method::PATCH, "/api/me"),
+            (Method::GET, "/api/me/identities"),
             (Method::GET, "/api/me/characters"),
             (Method::POST, "/api/me/characters"),
             (Method::GET, "/api/characters/1"),

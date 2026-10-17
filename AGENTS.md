@@ -73,18 +73,18 @@ Other engines are added in later deliveries. Do not add extension points, traits
 
 ## Current scope: `app/backend`
 
-An HTTP server that serves the application, signs users in, checks and stores (see `docs/adr/0005-backend-poc.md`, `docs/adr/0007-character-editing.md` and `docs/adr/0009-oidc-authentication.md`). It never applies a rule.
+An HTTP server that serves the application, signs users in, checks and stores (see `docs/adr/0005-backend-poc.md`, `docs/adr/0007-character-editing.md`, `docs/adr/0009-oidc-authentication.md` and `docs/adr/0010-users-and-identities.md`). It never applies a rule.
 
 In scope:
 
 - **Authentication** (ADR 0009): sign-in through any number of OIDC providers configured by the environment (Authorization Code with PKCE, `state` and `nonce`, through `openidconnect`), a user per identity (issuer, subject) created at its first sign-in, server-side sessions in an `HttpOnly`, `SameSite=Lax` cookie, sign-out.
-- **Users**: the signed-in user only (`/api/me`); every route but `/api/auth/*` needs a session.
+- **Users** (ADR 0010): a private id never sent out, a public nickname (unique regardless of ASCII case) and profile, changed by their owner; one or more identities, each with a private label, linked by a signed-in user through the sign-in flow. Only the signed-in user is reachable (`/api/me`); every route but `/api/auth/*` needs a session.
 - **Characters**: a list per user, reachable by their owner only, each with a name, its engine (`contemporain`, `fantasy`) and its choices document; read, renamed, deleted, and the document replaced with `If-Match`.
 - **Checks**: that requests are well formed and a document is readable by `palimpseste-document` (ADR 0007, D6). Never violations: a rule-breaking character is stored as sent.
 - **Persistence**: SQLite through `rusqlite`, called from `spawn_blocking`.
 - **Front end**: the built PWA served by the same router, falling back to `index.html`; hashed files under `/assets/` cached as immutable, every other file revalidated (see `docs/adr/0006-pwa-client.md`).
 
-Out of scope, do not implement or prepare for: linking identities, roles, friends, parties, campaigns, computing violations.
+Out of scope, do not implement or prepare for: unlinking or merging identities, showing users to each other, roles, friends, parties, campaigns, computing violations.
 
 ## Current scope: `app/document`
 
@@ -92,12 +92,12 @@ The choices document (`palimpseste-document`, ADR 0007): a versioned `serde` doc
 
 ## Current scope: `app/wasm` and `app/frontend`
 
-The engines compiled to WebAssembly, and the PWA that calls them (see `docs/adr/0006-pwa-client.md`, `docs/adr/0007-character-editing.md` and `docs/adr/0009-oidc-authentication.md`). The rules run locally.
+The engines compiled to WebAssembly, and the PWA that calls them (see `docs/adr/0006-pwa-client.md`, `docs/adr/0007-character-editing.md`, `docs/adr/0009-oidc-authentication.md` and `docs/adr/0010-users-and-identities.md`). The rules run locally.
 
 In scope:
 
 - **Bindings** (`palimpseste-wasm`): stateless functions over plain data, types described to TypeScript by `tsify` and passed as `tsify::Ts`. No Rust object crosses the boundary: `emptyDocument(engine)`, `catalog(engine)`, `evaluate(document)`.
-- **Front end** (`app/frontend`, TypeScript, Svelte 5 with runes, Vite, `vite-plugin-pwa`): sign in with a provider and sign out, list and create the user's characters, edit a character on its own page (`/characters/{id}`) step by step, with waivers and adjustments, saving the whole document. Plain Svelte, not SvelteKit. Use runes (`$state`, `$derived`, `$props`, `$effect`) and event attributes (`onclick`), never Svelte 4 syntax (`export let`, `$:`, stores for local state, `on:click`). TypeScript stays on 6.x until `svelte-check` supports 7.
+- **Front end** (`app/frontend`, TypeScript, Svelte 5 with runes, Vite, `vite-plugin-pwa`): sign in with a provider and sign out, edit their nickname and profile and link identities on their profile page (`/profile`), list and create the user's characters, edit a character on its own page (`/characters/{id}`) step by step, with waivers and adjustments, saving the whole document. Plain Svelte, not SvelteKit. Use runes (`$state`, `$derived`, `$props`, `$effect`) and event attributes (`onclick`), never Svelte 4 syntax (`export let`, `$:`, stores for local state, `on:click`). TypeScript stays on 6.x until `svelte-check` supports 7.
 
 Out of scope, do not implement or prepare for: offline storage and sync, the narrative steps beyond the character name, spending money. Each awaits its own decision (ADR 0006 and ADR 0007, Follow-ups).
 

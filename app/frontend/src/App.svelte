@@ -2,7 +2,8 @@
   import { ApiError, getMe, signOut } from "./api";
   import CharacterPage from "./character/CharacterPage.svelte";
   import Characters from "./Characters.svelte";
-  import { LOGIN, characterId, navigate, route } from "./router.svelte";
+  import ProfilePage from "./ProfilePage.svelte";
+  import { LOGIN, PROFILE, characterId, navigate, route } from "./router.svelte";
   import { session, signedIn, signedOut } from "./session.svelte";
   import SignIn from "./SignIn.svelte";
 
@@ -33,7 +34,9 @@
     <SignIn />
   {:else if session.user && route.path !== LOGIN}
     {#if editing !== null}
-      <CharacterPage id={editing} author={session.user.name} />
+      <CharacterPage id={editing} author={session.user.nickname} />
+    {:else if route.path === PROFILE}
+      <ProfilePage user={session.user} />
     {:else}
       <Characters user={session.user} onSignOut={leave} />
     {/if}

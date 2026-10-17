@@ -2,7 +2,7 @@
   import { type Character, type User, createCharacter, listCharacters } from "./api";
   import CharacterItem from "./CharacterItem.svelte";
   import { ENGINES } from "./engines";
-  import { navigate } from "./router.svelte";
+  import { PROFILE, follow, navigate } from "./router.svelte";
   import type { Engine } from "./wasm/palimpseste_wasm";
 
   let { user, onSignOut }: { user: User; onSignOut: () => void } = $props();
@@ -30,7 +30,8 @@
 
 <section>
   <header class="user">
-    <h2>Personnages de {user.name}</h2>
+    <h2>Personnages de {user.nickname}</h2>
+    <a href={PROFILE} onclick={follow}>Profil</a>
     <button type="button" onclick={onSignOut}>Se déconnecter</button>
   </header>
   {#if error}<p class="error">{error}</p>{/if}

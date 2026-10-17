@@ -31,7 +31,7 @@ use sha2::{Digest, Sha256};
 
 use crate::{
     api::{ApiError, AppState, blocking},
-    store::{PendingLogin, User},
+    store::{Linking, PendingLogin, User, UserId},
 };
 
 const SESSION_COOKIE: &str = "palimpseste_session";
@@ -41,11 +41,17 @@ const SESSION_TTL: Duration = Duration::from_hours(30 * 24);
 const LOGIN_TTL: Duration = Duration::from_mins(10);
 /// Where a sign-in ends: the app, told when it failed.
 const SIGNED_IN: &str = "/";
+const SIGN_IN: &str = "/login";
 const SIGN_IN_FAILED: &str = "/login?signin=failed";
+/// Where linking an identity ends: the profile page, told how (ADR 0010).
+const LINKED: &str = "/profile?link=done";
+const LINK_ALREADY_YOURS: &str = "/profile?link=already";
+const LINK_TAKEN: &str = "/profile?link=taken";
+const LINK_FAILED: &str = "/profile?link=failed";
 /// The scopes asked for besides `openid`, unless a provider sets its own.
 const DEFAULT_SCOPES: &str = "profile email";
-/// The name of a user whose ID token gives none.
-const DEFAULT_NAME: &str = "Joueur";
+/// The nickname of a new user whose ID token gives none.
+const DEFAULT_NICKNAME: &str = "Joueur";
 
 /// A client discovered from a provider's metadata, with its redirect URI.
 type Client = CoreClient<
@@ -202,6 +208,15 @@ impl Auth {
             .collect()
     }
 
+    /// The id and the name of the provider of identities from `issuer`,
+    /// if it is configured.
+    pub fn provider_of(&self, issuer: &str) -> Option<(&str, &str)> {
+        self.providers
+            .iter()
+            .find(|(provider, _)| provider.issuer.as_str() == issuer)
+            .map(|(provider, _)| (provider.id.as_str(), provider.name.as_str()))
+    }
+
     fn provider(&self, id: &str) -> Option<&(Provider, RedirectUrl)> {
         self.providers
             .iter()
@@ -239,6 +254,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/providers", get(providers))
         .route("/{provider}/login", get(login))
+        .route("/{provider}/link", get(link))
         .route("/{provider}/callback", get(callback))
         .route("/logout", post(logout))
 }
@@ -251,16 +267,23 @@ impl FromRequestParts<AppState> for CurrentUser {
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
-        let token_hash = cookie(&parts.headers, SESSION_COOKIE)
-            .map(hash)
-            .ok_or(ApiError::Unauthorized)?;
-        blocking(state.store.clone(), move |store| {
-            store.session_user(&token_hash)
-        })
-        .await?
-        .map(Self)
-        .ok_or(ApiError::Unauthorized)
+        session_user(state, &parts.headers)
+            .await?
+            .map(Self)
+            .ok_or(ApiError::Unauthorized)
     }
+}
+
+/// The user of the session the request sends, unless it is unknown or
+/// expired.
+async fn session_user(state: &AppState, headers: &HeaderMap) -> Result<Option<User>, ApiError> {
+    let Some(token_hash) = cookie(headers, SESSION_COOKIE).map(hash) else {
+        return Ok(None);
+    };
+    blocking(state.store.clone(), move |store| {
+        store.session_user(&token_hash)
+    })
+    .await
 }
 
 #[derive(Debug, Serialize)]
@@ -281,20 +304,38 @@ async fn providers(State(auth): State<Arc<Auth>>) -> Json<Vec<Listed>> {
     )
 }
 
-/// Starts signing in with a provider: redirects to it, keeping what the
-/// callback checks under a cookie of this browser.
+/// Starts signing in with a provider.
 async fn login(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Response, ApiError> {
+    start(&state, id, None).await
+}
+
+/// Starts linking an identity at a provider to the signed-in user (ADR
+/// 0010). A signed-out browser is sent to sign in instead.
+async fn link(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    match session_user(&state, &headers).await? {
+        Some(user) => start(&state, id, Some(user.id)).await,
+        None => Ok(Redirect::to(SIGN_IN).into_response()),
+    }
+}
+
+/// Redirects to provider `id`, keeping what the callback checks under a
+/// cookie of this browser, and the user to `link` the identity to, if any.
+async fn start(state: &AppState, id: String, link: Option<UserId>) -> Result<Response, ApiError> {
     let auth = &state.auth;
     let provider = auth.provider(&id).ok_or(ApiError::NotFound)?;
     let scopes = provider.0.scopes.iter().cloned();
     let client = match auth.client(provider).await {
         Ok(client) => client,
         Err(reason) => {
-            tracing::warn!(provider = %id, %reason, "sign-in failed");
-            return Ok(Redirect::to(SIGN_IN_FAILED).into_response());
+            tracing::warn!(provider = %id, %reason, linking = link.is_some(), "sign-in failed");
+            return Ok(Redirect::to(failed(link.is_some())).into_response());
         }
     };
     let (challenge, verifier) = PkceCodeChallenge::new_random_sha256();
@@ -312,6 +353,7 @@ async fn login(
         state: csrf.secret().clone(),
         nonce: nonce.secret().clone(),
         pkce_verifier: verifier.secret().clone(),
+        link,
     };
     let login_id = random_token();
     let cookie = auth.set_cookie(LOGIN_COOKIE, &login_id, LOGIN_COOKIE_PATH, LOGIN_TTL);
@@ -323,6 +365,11 @@ async fn login(
     Ok(([(header::SET_COOKIE, cookie)], Redirect::to(url.as_str())).into_response())
 }
 
+/// Where a failed sign-in, or a failed link, sends the browser.
+const fn failed(linking: bool) -> &'static str {
+    if linking { LINK_FAILED } else { SIGN_IN_FAILED }
+}
+
 /// What a provider sends back to the callback.
 #[derive(Debug, Deserialize)]
 struct Callback {
@@ -331,8 +378,20 @@ struct Callback {
     error: Option<String>,
 }
 
-/// Ends signing in with a provider: opens a session, or tells the app it
-/// failed. The sign-in in progress is used up either way.
+/// An identity a provider vouched for, with what it says of it.
+#[derive(Debug)]
+struct Claimed {
+    issuer: String,
+    subject: String,
+    /// The nickname a new user gets.
+    nickname: String,
+    /// Private: how its owner recognises the identity.
+    label: String,
+}
+
+/// Ends signing in, or linking, with a provider: opens a session or links
+/// the identity, or tells the app it failed. The sign-in in progress is
+/// used up either way.
 async fn callback(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -342,42 +401,60 @@ async fn callback(
     let clear_login = state
         .auth
         .set_cookie(LOGIN_COOKIE, "", LOGIN_COOKIE_PATH, Duration::ZERO);
-    match sign_in(&state, &id, callback, &headers).await {
-        Ok(token) => {
-            let session = state
-                .auth
-                .set_cookie(SESSION_COOKIE, &token, "/", SESSION_TTL);
-            (
-                AppendHeaders([
-                    (header::SET_COOKIE, clear_login),
-                    (header::SET_COOKIE, session),
-                ]),
-                Redirect::to(SIGNED_IN),
-            )
-                .into_response()
-        }
+    let (link, outcome) = match take_login(&state, &id, &headers).await {
+        Ok(login) => (login.link, verify(&state, &id, login, callback).await),
+        Err(reason) => (None, Err(reason)),
+    };
+    let claimed = match outcome {
+        Ok(claimed) => claimed,
         Err(reason) => {
-            tracing::warn!(provider = %id, %reason, "sign-in failed");
-            (
+            tracing::warn!(provider = %id, %reason, linking = link.is_some(), "sign-in failed");
+            return (
+                [(header::SET_COOKIE, clear_login)],
+                Redirect::to(failed(link.is_some())),
+            )
+                .into_response();
+        }
+    };
+    match link {
+        None => match open_session(&state, &id, claimed).await {
+            Ok(token) => {
+                let session = state
+                    .auth
+                    .set_cookie(SESSION_COOKIE, &token, "/", SESSION_TTL);
+                (
+                    AppendHeaders([
+                        (header::SET_COOKIE, clear_login),
+                        (header::SET_COOKIE, session),
+                    ]),
+                    Redirect::to(SIGNED_IN),
+                )
+                    .into_response()
+            }
+            Err(_) => (
                 [(header::SET_COOKIE, clear_login)],
                 Redirect::to(SIGN_IN_FAILED),
             )
-                .into_response()
+                .into_response(),
+        },
+        Some(user) => {
+            let to = match link_identity(&state, &id, user, claimed).await {
+                Ok(Linking::Linked) => LINKED,
+                Ok(Linking::AlreadyYours) => LINK_ALREADY_YOURS,
+                Ok(Linking::Taken) => LINK_TAKEN,
+                Err(_) => LINK_FAILED,
+            };
+            ([(header::SET_COOKIE, clear_login)], Redirect::to(to)).into_response()
         }
     }
 }
 
-/// Checks a callback against the sign-in in progress, and opens a session
-/// for the identity of its ID token. Gives the session token, or why it
-/// failed.
-async fn sign_in(
+/// Takes the sign-in in progress of this browser out of the store.
+async fn take_login(
     state: &AppState,
     id: &str,
-    callback: Callback,
     headers: &HeaderMap,
-) -> Result<String, String> {
-    let auth = &state.auth;
-    let provider = auth.provider(id).ok_or("unknown provider")?;
+) -> Result<PendingLogin, String> {
     let login_id = cookie(headers, LOGIN_COOKIE)
         .ok_or("no sign-in in progress in this browser")?
         .to_owned();
@@ -387,9 +464,23 @@ async fn sign_in(
     .await
     .map_err(|_| "store error")?
     .ok_or("unknown or expired sign-in")?;
-    if login.provider != id {
-        return Err("sign-in started with another provider".into());
+    if login.provider == id {
+        Ok(login)
+    } else {
+        Err("sign-in started with another provider".into())
     }
+}
+
+/// Checks a callback against the sign-in in progress, exchanges its code
+/// and verifies the ID token. Gives the identity, or why it failed.
+async fn verify(
+    state: &AppState,
+    id: &str,
+    login: PendingLogin,
+    callback: Callback,
+) -> Result<Claimed, String> {
+    let auth = &state.auth;
+    let provider = auth.provider(id).ok_or("unknown provider")?;
     if callback.state.as_deref() != Some(login.state.as_str()) {
         return Err("state does not match".into());
     }
@@ -410,23 +501,58 @@ async fn sign_in(
     let claims = id_token
         .claims(&client.id_token_verifier(), &Nonce::new(login.nonce))
         .map_err(|error| format!("invalid ID token: {error}"))?;
-    let issuer = claims.issuer().to_string();
-    let subject = claims.subject().to_string();
-    let name = display_name(claims);
+    Ok(Claimed {
+        issuer: claims.issuer().to_string(),
+        subject: claims.subject().to_string(),
+        nickname: nickname(claims),
+        label: label(claims),
+    })
+}
+
+/// Opens a session for the user of a claimed identity, created on its first
+/// sign-in. Gives the session token.
+async fn open_session(state: &AppState, id: &str, claimed: Claimed) -> Result<String, ApiError> {
     let token = random_token();
     let token_hash = hash(&token);
     let (user, created) = blocking(state.store.clone(), move |store| {
-        let (user, created) = store.user_for_identity(&issuer, &subject, &name)?;
+        let (user, created) = store.user_for_identity(
+            &claimed.issuer,
+            &claimed.subject,
+            &claimed.nickname,
+            &claimed.label,
+        )?;
         store.create_session(user.id, &token_hash, SESSION_TTL)?;
         Ok((user, created))
     })
-    .await
-    .map_err(|_| "store error")?;
+    .await?;
     if created {
         tracing::info!(user_id = %user.id, provider = id, "user created");
     }
     tracing::info!(user_id = %user.id, provider = id, "signed in");
     Ok(token)
+}
+
+/// Links a claimed identity to `user`, unless it belongs to another user.
+async fn link_identity(
+    state: &AppState,
+    id: &str,
+    user: UserId,
+    claimed: Claimed,
+) -> Result<Linking, ApiError> {
+    let linked = blocking(state.store.clone(), move |store| {
+        store.link_identity(user, &claimed.issuer, &claimed.subject, &claimed.label)
+    })
+    .await?;
+    match linked {
+        Linking::Linked => tracing::info!(user_id = %user, provider = id, "identity linked"),
+        Linking::AlreadyYours => {
+            tracing::info!(user_id = %user, provider = id, "identity already linked");
+        }
+        Linking::Taken => {
+            tracing::warn!(user_id = %user, provider = id, "identity of another user not linked");
+        }
+    }
+    Ok(linked)
 }
 
 /// Ends the session of the request, if any, and removes its cookie.
@@ -447,24 +573,45 @@ async fn logout(
     Ok((StatusCode::NO_CONTENT, [(header::SET_COOKIE, clear)]))
 }
 
-/// The name a new user gets: the first of the `name`, `preferred_username`
-/// and `email` claims that is not blank.
-fn display_name(claims: &CoreIdTokenClaims) -> String {
-    [
+/// The first of `claims` that is not blank.
+fn first<'a>(claims: impl IntoIterator<Item = Option<&'a str>>) -> Option<&'a str> {
+    claims
+        .into_iter()
+        .flatten()
+        .map(str::trim)
+        .find(|claim| !claim.is_empty())
+}
+
+/// The nickname a new user wants: the `preferred_username` or `name`
+/// claim. Never the email: a nickname is public.
+fn nickname(claims: &CoreIdTokenClaims) -> String {
+    first([
+        claims
+            .preferred_username()
+            .map(|username| username.as_str()),
         claims
             .name()
             .and_then(|name| name.get(None))
             .map(|name| name.as_str()),
+    ])
+    .unwrap_or(DEFAULT_NICKNAME)
+    .to_owned()
+}
+
+/// The private label of an identity: the `email`, `preferred_username` or
+/// `name` claim, or nothing.
+fn label(claims: &CoreIdTokenClaims) -> String {
+    first([
+        claims.email().map(|email| email.as_str()),
         claims
             .preferred_username()
             .map(|username| username.as_str()),
-        claims.email().map(|email| email.as_str()),
-    ]
-    .into_iter()
-    .flatten()
-    .map(str::trim)
-    .find(|name| !name.is_empty())
-    .unwrap_or(DEFAULT_NAME)
+        claims
+            .name()
+            .and_then(|name| name.get(None))
+            .map(|name| name.as_str()),
+    ])
+    .unwrap_or_default()
     .to_owned()
 }
 
@@ -593,6 +740,7 @@ mod tests {
                         "sub": grant.subject,
                         "nonce": grant.nonce,
                         "name": format!("{} Mock", grant.subject),
+                        "email": format!("{}@mail.test", grant.subject),
                     }))
                     .unwrap();
                     let id_token = CoreIdToken::new(
@@ -682,7 +830,25 @@ mod tests {
     /// A sign-in started: the login cookie, and the query of the redirect
     /// to the issuer.
     async fn start(app: &Router, issuer: &Issuer) -> (String, HashMap<String, String>) {
-        let response = get_with(app, "/api/auth/mock/login", None).await;
+        start_at(app, issuer, "/api/auth/mock/login", None).await
+    }
+
+    /// A link started by the user of `session`, as `start`.
+    async fn start_link(
+        app: &Router,
+        issuer: &Issuer,
+        session: &str,
+    ) -> (String, HashMap<String, String>) {
+        start_at(app, issuer, "/api/auth/mock/link", Some(session)).await
+    }
+
+    async fn start_at(
+        app: &Router,
+        issuer: &Issuer,
+        uri: &str,
+        session: Option<&str>,
+    ) -> (String, HashMap<String, String>) {
+        let response = get_with(app, uri, session).await;
         assert_eq!(response.status(), StatusCode::SEE_OTHER);
         let url = Url::parse(location(&response)).unwrap();
         assert_eq!(
@@ -741,7 +907,7 @@ mod tests {
         let session = session.unwrap();
         assert_eq!(
             me(&app, &session).await,
-            json!({"id": 1, "name": "ana Mock"})
+            json!({"nickname": "ana Mock", "profile": ""})
         );
 
         // A callback is used once.
@@ -751,11 +917,92 @@ mod tests {
         assert_eq!(replayed, None);
 
         // The same identity is the same user; another one is another user.
-        for (subject, id) in [("ana", 1), ("ben", 2)] {
-            let (login, query) = start(&app, &issuer).await;
-            issuer.grant("two", subject, &query["nonce"], &query["code_challenge"]);
-            let (_, session) = finish(&app, Some(&login), "two", &query["state"]).await;
-            assert_eq!(me(&app, &session.unwrap()).await["id"], id);
+        for (subject, nickname) in [("ana", "ana Mock"), ("ben", "ben Mock")] {
+            assert_eq!(
+                me(&app, &sign_in(&app, &issuer, subject).await).await["nickname"],
+                nickname
+            );
+        }
+    }
+
+    /// Signs in as `subject` at the issuer; gives the session cookie.
+    async fn sign_in(app: &Router, issuer: &Issuer, subject: &str) -> String {
+        let (login, query) = start(app, issuer).await;
+        issuer.grant("in", subject, &query["nonce"], &query["code_challenge"]);
+        let (to, session) = finish(app, Some(&login), "in", &query["state"]).await;
+        assert_eq!(to, "/");
+        session.unwrap()
+    }
+
+    /// Links `subject` at the issuer to the user of `session`; gives where
+    /// it ends.
+    async fn link(app: &Router, issuer: &Issuer, session: &str, subject: &str) -> String {
+        let (login, query) = start_link(app, issuer, session).await;
+        issuer.grant("link", subject, &query["nonce"], &query["code_challenge"]);
+        let (to, opened) = finish(app, Some(&login), "link", &query["state"]).await;
+        assert_eq!(opened, None, "linking opens no session");
+        to
+    }
+
+    async fn identities(app: &Router, session: &str) -> Value {
+        let response = get_with(app, "/api/me/identities", Some(session)).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        serde_json::from_slice(&body).unwrap()
+    }
+
+    #[tokio::test]
+    async fn links_identities_to_the_signed_in_user() {
+        let issuer = Issuer::start().await;
+        let app = app(&issuer);
+        let ana = sign_in(&app, &issuer, "ana").await;
+        let ben = sign_in(&app, &issuer, "ben").await;
+
+        assert_eq!(
+            link(&app, &issuer, &ana, "ana-2").await,
+            "/profile?link=done"
+        );
+        assert_eq!(
+            identities(&app, &ana).await,
+            json!([
+                {"provider": "mock", "name": "Mock", "label": "ana@mail.test"},
+                {"provider": "mock", "name": "Mock", "label": "ana-2@mail.test"},
+            ])
+        );
+        // The linked identity signs in as Ana.
+        let again = sign_in(&app, &issuer, "ana-2").await;
+        assert_eq!(me(&app, &again).await["nickname"], "ana Mock");
+
+        assert_eq!(
+            link(&app, &issuer, &ana, "ana-2").await,
+            "/profile?link=already"
+        );
+        assert_eq!(
+            link(&app, &issuer, &ana, "ben").await,
+            "/profile?link=taken"
+        );
+        assert_eq!(identities(&app, &ben).await.as_array().unwrap().len(), 1);
+        assert_eq!(identities(&app, &ana).await.as_array().unwrap().len(), 2);
+
+        // A link checks the callback as a sign-in does.
+        let (login, query) = start_link(&app, &issuer, &ana).await;
+        issuer.grant("forged", "ana-3", &query["nonce"], &query["code_challenge"]);
+        let (to, _) = finish(&app, Some(&login), "forged", "forged").await;
+        assert_eq!(to, "/profile?link=failed");
+        assert_eq!(identities(&app, &ana).await.as_array().unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn linking_needs_a_session() {
+        let issuer = Issuer::start().await;
+        let app = app(&issuer);
+        for session in [None, Some("palimpseste_session=unknown")] {
+            let response = get_with(&app, "/api/auth/mock/link", session).await;
+            assert_eq!(response.status(), StatusCode::SEE_OTHER);
+            assert_eq!(location(&response), "/login");
+            assert_eq!(set_cookies(&response), Vec::<String>::new());
         }
     }
 

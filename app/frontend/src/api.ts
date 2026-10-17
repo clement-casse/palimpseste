@@ -1,13 +1,23 @@
 // Client of the backend REST API (docs/adr/0005-backend-poc.md,
-// docs/adr/0007-character-editing.md, docs/adr/0009-oidc-authentication.md).
+// docs/adr/0007-character-editing.md, docs/adr/0009-oidc-authentication.md,
+// docs/adr/0010-users-and-identities.md).
 // The backend signs in, checks and stores; the rules run in the browser. The
 // session travels in an HttpOnly cookie, sent by every same-origin request.
 
 import { signedOut } from "./session.svelte";
 import type { Document, Engine } from "./wasm/palimpseste_wasm";
 
-export type User = { id: number; name: string };
+/** The signed-in user: their nickname and profile are public. */
+export type User = { nickname: string; profile: string };
 export type Provider = { id: string; name: string };
+/** An identity of the signed-in user, named by its provider. */
+export type Identity = {
+  /** The id of its provider, or `null` when it is no longer offered. */
+  provider: string | null;
+  name: string;
+  /** Private: the email or username at the provider; may be empty. */
+  label: string;
+};
 export type Character = {
   id: number;
   name: string;
@@ -52,8 +62,20 @@ export const listProviders = () => request<Provider[]>("/auth/providers");
 /** Where the browser goes to sign in with provider `id`: a page, not a fetch. */
 export const signInUrl = (id: string) => `/api/auth/${encodeURIComponent(id)}/login`;
 
+/** Where the browser goes to link an identity at provider `id` to the signed-in user. */
+export const linkUrl = (id: string) => `/api/auth/${encodeURIComponent(id)}/link`;
+
 /** The signed-in user; throws an `ApiError` with status 401 when signed out. */
 export const getMe = () => request<User>("/me");
+
+/**
+ * Changes the nickname or the profile of the signed-in user. Throws an
+ * `ApiError` with status 409 when another user has the nickname.
+ */
+export const updateMe = (change: Partial<User>) =>
+  request<User>("/me", { method: "PATCH", body: JSON.stringify(change) });
+
+export const listIdentities = () => request<Identity[]>("/me/identities");
 
 export const signOut = async () => {
   await send("/auth/logout", { method: "POST" });

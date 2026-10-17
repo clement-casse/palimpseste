@@ -67,6 +67,27 @@ ul {
   gap: 0.5rem;
 }
 
+.profile form,
+.profile .field {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.profile form {
+  gap: 0;
+}
+
+.profile form button {
+  align-self: flex-start;
+}
+
+textarea {
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+  resize: vertical;
+}
+
+.identities > li,
 .characters > li {
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--muted);

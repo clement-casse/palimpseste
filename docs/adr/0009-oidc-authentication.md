@@ -1,7 +1,7 @@
 # 0009. Authentication with OIDC providers
 
 Date: 2026-10-17.
-Status: accepted.
+Status: accepted, amended by ADR 0010 (users, linked identities).
 
 ## Context
 
