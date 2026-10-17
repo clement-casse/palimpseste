@@ -1,12 +1,12 @@
 //! The HTTP adapter: the JSON API under `/api`, the front end everywhere
 //! else.
 //!
-//! The API serves, checks and stores (ADR 0007): it rejects a request it
-//! cannot read, never a character breaking a rule. Signing in is under
-//! `/api/auth` (ADR 0009); every other route needs a session and reaches
-//! the signed-in user's profile, identities (ADR 0010) and characters only.
-//! Each request is logged with its status and latency, each rejected
-//! request with why (ADR 0008).
+//! The API serves, checks and stores (ADR BE-CHECKS): it rejects a request
+//! it cannot read, never a character breaking a rule. Signing in is under
+//! `/api/auth` (ADR BE-SIGN-IN); every other route needs a session and
+//! reaches the signed-in user's profile, identities (ADR BE-IDENTITIES) and
+//! characters only. Each request is logged with its status and latency,
+//! each rejected request with why (ADR BE-LOGS).
 
 mod frontend;
 mod sign_in;

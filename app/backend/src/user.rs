@@ -1,4 +1,4 @@
-//! Users (ADR 0010): a private id, a public nickname and profile, and the
+//! Users (ADR BE-USERS): a private id, a public nickname and profile, and the
 //! identities they sign in with.
 
 use std::fmt;

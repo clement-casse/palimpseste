@@ -1,13 +1,13 @@
 ---
 name: backend-structure
-description: Authoritative, opinionated guide for laying out and growing `app/backend` (the `palimpseste-backend` crate). Use when adding a use case, a repository method, an HTTP route, a domain rule, a model type, an adapter or a configuration option to the backend, when reviewing backend code, or when answering "where should X go?" in it. The conventions are deliberate compromises between hexagonal architecture (after howtocodeit's hexagonal Rust guide) and this codebase's constraints, recorded in ADR 0012. Apply them as they are. The only reason to deviate is a real technical impossibility.
+description: Authoritative, opinionated guide for laying out and growing `app/backend` (the `palimpseste-backend` crate). Use when adding a use case, a repository method, an HTTP route, a domain rule, a model type, an adapter or a configuration option to the backend, when reviewing backend code, or when answering "where should X go?" in it. The conventions are deliberate compromises between hexagonal architecture (after howtocodeit's hexagonal Rust guide) and this codebase's constraints, recorded in docs/adr/backend.md. Apply them as they are. The only reason to deviate is a real technical impossibility.
 ---
 
 # Backend structure
 
 This skill is the day-to-day reference for working inside `app/backend/`.
 It is **opinionated by design**: it encodes trade-offs already settled in
-[ADR 0012](../../../docs/adr/0012-backend-structure.md). `domain.rs`,
+[docs/adr/backend.md](../../../docs/adr/backend.md). `domain.rs`,
 layered folders, an `XxxApiServer` pass-through trait, a `Result<T>` alias
 and error enums with a variant per technology are rejected; do not bring
 them back under another name.
@@ -16,8 +16,8 @@ The point is **maintainability through unsurprising structure**: once a
 reader has accepted the dependency-injection discipline, every file is
 where they expect it.
 
-When this skill and an ADR disagree, the ADR wins and this skill is
-updated.
+When this skill and `docs/adr/backend.md` disagree, the document wins
+and this skill is updated.
 
 ---
 
@@ -357,9 +357,9 @@ workspace lints.)
 Everything is one bounded context: there is no cross-service dependency to
 manage. If a concern appears that has its own lifecycle, language and data
 (campaigns, parties), **do not** add a second trait inside this crate or a
-module named after it with its own layout. Write an ADR proposing the
-split (a second context in this crate, or a second crate); AGENTS.md
-forbids new crates without one.
+module named after it with its own layout. Propose the split (a second
+context in this crate, or a second crate) as a change to
+ADR BE-ONE-CONTEXT; AGENTS.md forbids new crates without one.
 
 ---
 
@@ -400,7 +400,7 @@ The trait *is* the use-case surface.
 There is **no authorizer** yet: with no roles, ownership through
 `ActionContext` is the whole policy. An `authorizer` role (trait
 `PalimpsesteAuthorizer`, domain-typed checks, a permissive implementation)
-arrives with parties or roles, by ADR.
+arrives with parties or roles, by a change to ADR BE-ACTION-CONTEXT.
 
 ---
 
@@ -422,8 +422,8 @@ tests); `mise run test` for the tests alone. Four shapes:
   - end to end, with the real service on `SqliteRepo::in_memory()`, and
     for sign-in a local OIDC issuer (`api/http/sign_in.rs`). These pin the
     HTTP contract the front end relies on: statuses, bodies, cookies,
-    redirects, `ETag`. Change their assertions only with an ADR changing
-    the contract.
+    redirects, `ETag`. Change their assertions only with a change to
+    ADR BE-API or ADR BE-CHECKS.
 
 Do not hand-write mocks: `automock` generates them.
 
@@ -439,10 +439,10 @@ Do not hand-write mocks: `automock` generates them.
    (`repo.rs`) and implement it in `repo/sqlite.rs` **first**, with its
    repository test.
 3. Implement it in `service.rs`; log the domain event (ids, never
-   documents, tokens or claims, ADR 0008); add a service test with mocks.
+   documents, tokens or claims, ADR BE-LOGS); add a service test with mocks.
 4. Expose it in `api/http.rs`: a route, a handler translating in and out,
    a view if it returns data; add an end-to-end test.
-5. Update the API table of the ADR introducing the route.
+5. Update the API table (ADR BE-API) in docs/adr/backend.md.
 
 ### Add a domain rule
 
@@ -485,7 +485,7 @@ a new type parameter, mocked under `cfg(test)`.
 
 ## 12. The opinionated stance, and its single escape hatch
 
-Refuse, pointing to ADR 0012 or this skill:
+Refuse, pointing to ADR BE-LAYOUT or this skill:
 
 - a `domain.rs`, `types.rs`, `models.rs`, a `mod.rs`;
 - layered folders, hexagonal vocabulary in names (`ports`, `adapters`,
@@ -504,8 +504,8 @@ the compiler, Cargo or a library cannot do while the conventions hold.
 When it fires:
 
 1. Do not code around it with a "small exception".
-2. Write an ADR proposing the change, with the failure (compiler error, ...)
-   that justifies it.
+2. Propose the change to docs/adr/backend.md, with the failure (compiler
+   error, ...) that justifies it.
 3. Once accepted, update this skill so the exception becomes the rule.
 
 Preference, elegance, "it would be cleaner if..." are not triggers. Unsure
@@ -515,15 +515,11 @@ whether a problem is technical or stylistic? It is stylistic.
 
 ## 13. Pointers
 
-- [ADR 0012](../../../docs/adr/0012-backend-structure.md): this structure.
-- [ADR 0005](../../../docs/adr/0005-backend-poc.md): the backend's origin
-  (axum, tokio, the front end served by the same router).
-- [ADR 0007](../../../docs/adr/0007-character-editing.md): characters,
-  documents, what the backend checks (D6), SQLite (D7).
-- [ADR 0008](../../../docs/adr/0008-backend-logging.md): what is logged.
-- [ADR 0009](../../../docs/adr/0009-oidc-authentication.md) and
-  [ADR 0010](../../../docs/adr/0010-users-and-identities.md): sign-in,
-  sessions, users and identities, the API.
+- [docs/adr/backend.md](../../../docs/adr/backend.md): this structure
+  (Structure), the routes and what they reject (API), SQLite, sign-in,
+  sessions, users and identities, configuration, what is logged.
+- [docs/adr/application.md](../../../docs/adr/application.md): why the
+  backend never applies a rule, the choices document it stores.
 - [AGENTS.md](../../../AGENTS.md): scope, design principles, Rust
   conventions.
 - [Master Hexagonal Architecture in Rust](https://www.howtocodeit.com/guides/master-hexagonal-architecture-in-rust)

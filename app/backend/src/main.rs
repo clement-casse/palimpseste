@@ -1,12 +1,12 @@
 //! The Palimpseste server: the composition root of `palimpseste_backend`
-//! (ADR 0012). It reads the configuration, builds the repository, the
+//! (ADR BE-INJECTION). It reads the configuration, builds the repository, the
 //! identity providers, the service and its HTTP adapter, and listens.
 //! `--help` lists the options and their environment variables.
 //!
 //! Each provider named by `--oidc-providers` is set by
 //! `PALIMPSESTE_OIDC_<ID>_NAME`, `_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`
 //! and optionally `_SCOPES` (besides `openid`, default `profile email`),
-//! `<ID>` upper-cased with dashes as underscores (ADR 0009). `RUST_LOG`
+//! `<ID>` upper-cased with dashes as underscores (ADR BE-CONFIG). `RUST_LOG`
 //! filters the logs, as a `tracing-subscriber` filter (default `info`).
 
 use std::{env, path::PathBuf, sync::Arc};

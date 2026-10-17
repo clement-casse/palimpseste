@@ -1,7 +1,7 @@
-//! Signing in with OIDC providers (ADR 0009) and linking identities
-//! (ADR 0010): the sign-in in progress between the redirect to a provider
-//! and its callback, the identity the provider vouches for, and how a
-//! sign-in ends.
+//! Signing in with OIDC providers (ADR BE-SIGN-IN) and linking identities
+//! (ADR BE-IDENTITIES): the sign-in in progress between the redirect to a
+//! provider and its callback, the identity the provider vouches for, and how
+//! a sign-in ends.
 
 use std::{fmt, time::Duration};
 

@@ -1,4 +1,4 @@
-//! Characters (ADR 0007): a name and the choices document of an engine,
+//! Characters (ADR APP-DOCUMENT): a name and the choices document of an engine,
 //! versioned so that a stale replacement is refused.
 
 use std::fmt;
@@ -99,7 +99,7 @@ pub struct Character {
     pub name: CharacterName,
     /// Its engine, the one of its document.
     pub engine: Engine,
-    /// Its choices document, stored as sent (ADR 0007, D6).
+    /// Its choices document, stored as sent (ADR BE-CHECKS).
     pub document: Document,
     /// The version of its document: the `ETag`.
     pub version: Version,

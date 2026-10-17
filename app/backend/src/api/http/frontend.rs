@@ -1,4 +1,4 @@
-//! The built front end (ADR 0006, ADR 0011): its files, falling back to its
+//! The built front end (ADR BE-FRONTEND): its files, falling back to its
 //! `index.html` so the front end can route itself.
 
 use std::path::Path;

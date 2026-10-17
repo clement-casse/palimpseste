@@ -1,4 +1,4 @@
-//! The repository in one SQLite database (ADR 0007, D7), through
+//! The repository in one SQLite database (ADR BE-STORE), through
 //! `rusqlite`. Queries block, so each runs off the async runtime, on
 //! `spawn_blocking`, behind one connection.
 
@@ -58,7 +58,8 @@ const SCHEMA: &str = "
 ";
 
 /// Brings a database of an earlier schema to the current one, then indexes
-/// it. Before ADR 0010, a user had a `name` (not unique), an identity no
+/// it. Before nicknames and linked identities (ADR BE-USERS and
+/// ADR BE-IDENTITIES), a user had a `name` (not unique), an identity no
 /// label, and a sign-in nothing to link.
 const MIGRATIONS: [(&str, &str, &str); 3] = [
     (

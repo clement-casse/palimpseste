@@ -1,9 +1,10 @@
-//! Palimpseste backend: signs users in through OIDC providers (ADR 0009),
-//! keeps their nickname, profile and identities (ADR 0010), and checks and
-//! stores their characters with their choices documents (ADR 0007). It
-//! never applies a rule: the rules run in the browser.
+//! Palimpseste backend: signs users in through OIDC providers
+//! (ADR BE-OIDC), keeps their nickname, profile and identities
+//! (ADR BE-USERS), and checks and stores their characters with their choices
+//! documents (ADR BE-CHECKS). It never applies a rule: the rules run in the
+//! browser.
 //!
-//! The crate is one bounded context laid out as ADR 0012 says: the model
+//! The crate is one bounded context laid out as ADR BE-LAYOUT says: the model
 //! ([`User`], [`Character`], ...), the use cases ([`PalimpsesteService`])
 //! and their [`Error`] here; [`PalimpsesteServiceImpl`] implements them on
 //! a [`PalimpsesteRepository`] ([`SqliteRepo`]) and [`IdentityProviders`]
@@ -52,7 +53,7 @@ pub trait PalimpsesteService: Send + Sync + 'static {
     fn providers(&self) -> Vec<ProviderSummary>;
 
     /// Starts signing in with `provider`, or linking an identity at it to
-    /// the user of `link` (ADR 0010).
+    /// the user of `link` (ADR BE-IDENTITIES).
     async fn start_sign_in(
         &self,
         provider: &ProviderId,
@@ -112,7 +113,7 @@ pub trait PalimpsesteService: Send + Sync + 'static {
     async fn delete_character(&self, ctx: &ActionContext, id: CharacterId) -> Result<(), Error>;
 
     /// Replaces the document of a character of the user, if it is readable
-    /// (ADR 0007, D6), of the character's engine, and the character is at
+    /// (ADR APP-READABLE), of the character's engine, and the character is at
     /// version `expected`. Gives the new version. Its rules are not checked.
     async fn replace_document(
         &self,
@@ -164,7 +165,7 @@ pub enum Error {
     /// A blank character name.
     #[error("empty name")]
     BlankName,
-    /// A document that cannot be stored (ADR 0007, D6), with why.
+    /// A document that cannot be stored (ADR BE-CHECKS), with why.
     #[error("{0}")]
     UnreadableDocument(String),
     /// A document of another engine than its character's.

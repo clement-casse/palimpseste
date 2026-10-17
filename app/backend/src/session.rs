@@ -1,4 +1,4 @@
-//! Sessions (ADR 0009): a random token the browser keeps, of which the
+//! Sessions (ADR BE-SESSIONS): a random token the browser keeps, of which the
 //! server keeps only the hash.
 
 use std::{fmt::Write as _, time::Duration};

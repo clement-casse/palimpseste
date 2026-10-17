@@ -1,4 +1,4 @@
-//! The routes under `/api/auth` (ADR 0009, ADR 0010), and the cookies they
+//! The routes under `/api/auth` (ADR BE-API), and the cookies they
 //! set. `login` and `link` keep the sign-in in progress under a short-lived
 //! cookie and redirect to the provider; `callback` ends it, then sends the
 //! browser back to the app, told how it went. The session token travels in
@@ -28,7 +28,8 @@ const LOGIN_COOKIE_PATH: &str = "/api/auth";
 const SIGNED_IN: &str = "/";
 const SIGN_IN: &str = "/login";
 const SIGN_IN_FAILED: &str = "/login?signin=failed";
-/// Where linking an identity ends: the profile page, told how (ADR 0010).
+/// Where linking an identity ends: the profile page, told how
+/// (ADR BE-IDENTITIES).
 const LINKED: &str = "/profile?link=done";
 const LINK_ALREADY_YOURS: &str = "/profile?link=already";
 const LINK_TAKEN: &str = "/profile?link=taken";
@@ -111,8 +112,8 @@ async fn login(
     start(&state, id.into(), None).await
 }
 
-/// Starts linking an identity at a provider to the signed-in user (ADR
-/// 0010). A signed-out browser is sent to sign in instead.
+/// Starts linking an identity at a provider to the signed-in user
+/// (ADR BE-IDENTITIES). A signed-out browser is sent to sign in instead.
 async fn link(
     State(state): State<AppState>,
     Path(id): Path<String>,

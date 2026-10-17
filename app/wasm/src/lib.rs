@@ -7,8 +7,9 @@
 //! described to TypeScript by `tsify` and passed as [`Ts`], which turns a
 //! value the front end got wrong into a thrown error instead of a panic.
 //!
-//! The rules run here, locally (ADR 0007): [`evaluate`] recomputes every
-//! value and violation of a document on each call, in microseconds.
+//! The rules run here, locally (ADR APP-LOCAL-RULES): [`evaluate`]
+//! recomputes every value and violation of a document on each call, in
+//! microseconds.
 
 mod catalog;
 mod sheet;

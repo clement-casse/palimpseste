@@ -1,4 +1,4 @@
-// What the app knows of itself as a PWA (ADR 0011): whether a new version
+// What the app knows of itself as a PWA (ADR FE-UPDATES): whether a new version
 // waits to be used, and whether the browser is online. `main.ts` registers
 // the service worker and reports new versions here.
 

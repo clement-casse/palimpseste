@@ -1,6 +1,4 @@
-// Client of the backend REST API (docs/adr/0005-backend-poc.md,
-// docs/adr/0007-character-editing.md, docs/adr/0009-oidc-authentication.md,
-// docs/adr/0010-users-and-identities.md).
+// Client of the backend REST API (ADR BE-API, in docs/adr/backend.md).
 // The backend signs in, checks and stores; the rules run in the browser. The
 // session travels in an HttpOnly cookie, sent by every same-origin request.
 

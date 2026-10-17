@@ -1,5 +1,5 @@
 // Saves a character's choices document shortly after each change, the whole
-// document at the version it was loaded at (ADR 0007). A conflict stops
+// document at the version it was loaded at (ADR FE-EDITOR). A conflict stops
 // saving: the character was saved elsewhere in between.
 
 import { ApiError, putDocument } from "../api";

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Edits a character following its engine's rules (ADR 0007). The choices
+  // Edits a character following its engine's rules (ADR FE-EDITOR). The choices
   // document is the only state: the engine, compiled to WebAssembly,
   // evaluates it on every edit, locally, and `DocumentSaver` saves it.
   import { onDestroy, untrack } from "svelte";

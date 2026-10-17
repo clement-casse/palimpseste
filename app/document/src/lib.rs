@@ -1,4 +1,4 @@
-//! The choices document of a character (ADR 0007).
+//! The choices document of a character (ADR APP-DOCUMENT).
 //!
 //! A [`Document`] holds what the player chose, with the adjustments and
 //! waivers granted on it, for one engine. Content is named by the engines'

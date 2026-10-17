@@ -1,5 +1,5 @@
 //! The use cases, on a repository and identity providers. Each change is
-//! logged with ids, never documents, tokens or claims (ADR 0008).
+//! logged with ids, never documents, tokens or claims (ADR BE-LOGS).
 
 use anyhow::anyhow;
 use async_trait::async_trait;

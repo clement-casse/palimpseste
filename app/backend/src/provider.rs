@@ -1,4 +1,4 @@
-//! The identity providers users sign in with (ADR 0009): what the service
+//! The identity providers users sign in with (ADR BE-OIDC): what the service
 //! asks of them, whatever the protocol.
 
 pub mod oidc;

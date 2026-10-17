@@ -1,4 +1,4 @@
-// French messages for the violations the engines report (ADR 0007, D5),
+// French messages for the violations the engines report (ADR FE-MESSAGES),
 // keyed by rule identifier and filled with the violation's parameters. A
 // rule without a message shows its identifier.
 
