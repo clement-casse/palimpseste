@@ -1,16 +1,28 @@
+/// <reference types="vitest/config" />
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 // The backend serves the built app and the API on the same origin. In
 // development, Vite serves the app and forwards `/api` to the backend.
+// Tests run the components' browser build in jsdom, without the PWA.
+const testing = Boolean(process.env.VITEST);
+
 export default defineConfig({
   plugins: [
     svelte(),
+    svelteTesting(),
+    !testing &&
     VitePWA({
-      registerType: "autoUpdate",
+      // A new version waits for the user (`src/pwa.svelte.ts`) rather than
+      // replacing the app mid-edit; `main.ts` registers the service worker.
+      registerType: "prompt",
+      injectRegister: false,
       includeAssets: ["apple-touch-icon.png"],
       manifest: {
+        id: "/",
+        scope: "/",
         name: "Palimpseste",
         short_name: "Palimpseste",
         description: "Personnages pour Chroniques Oubliées",
@@ -30,10 +42,16 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,wasm,png}"],
         // The API is never answered with the app shell.
         navigateFallbackDenylist: [/^\/api\//],
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
   server: {
     proxy: { "/api": "http://127.0.0.1:3000" },
+  },
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.ts"],
+    setupFiles: ["src/test/setup.ts"],
   },
 });

@@ -46,6 +46,12 @@ depends = ["wasm:build", "frontend:install"]
 dir = "app/frontend"
 run = "pnpm run check"
 
+[tasks."frontend:test"]
+description = "Run the front end tests (Vitest, jsdom)"
+depends = ["wasm:build", "frontend:install"]
+dir = "app/frontend"
+run = "pnpm run test"
+
 [tasks."frontend:build"]
 description = "Build the PWA into app/frontend/dist"
 depends = ["wasm:build", "frontend:install"]

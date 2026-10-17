@@ -34,3 +34,64 @@
     {/each}
   </ol>
 </nav>
+
+<style>
+  ol {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  @media (max-width: 40rem) {
+    ol {
+      flex-direction: row;
+      overflow-x: auto;
+    }
+  }
+
+  button {
+    width: 100%;
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    text-align: left;
+    background: none;
+    border: 1px solid transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  button span:first-child {
+    flex: 1;
+  }
+
+  button[aria-current="step"] {
+    border-color: var(--accent);
+    font-weight: bold;
+  }
+
+  .badge {
+    min-width: 1.4em;
+    padding: 0 0.3em;
+    border-radius: 1em;
+    text-align: center;
+    font-size: 0.8em;
+  }
+
+  .badge.incomplete {
+    background: var(--muted);
+    color: var(--page);
+  }
+
+  .badge.deviation {
+    background: var(--error);
+    color: var(--page);
+  }
+
+  .badge.done {
+    color: var(--accent);
+  }
+</style>

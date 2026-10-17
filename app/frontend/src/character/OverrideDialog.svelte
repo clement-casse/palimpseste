@@ -53,7 +53,7 @@
   }
 </script>
 
-<dialog bind:this={dialog} oncancel={oncancel} class="override">
+<dialog bind:this={dialog} {oncancel}>
   {#if request}
     <form onsubmit={submit}>
       {#if request.kind === "waiver"}
@@ -89,3 +89,36 @@
     </form>
   {/if}
 </dialog>
+
+<style>
+  dialog {
+    max-width: 30rem;
+    background: var(--page);
+    color: var(--ink);
+    border: 1px solid var(--accent);
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .confirm {
+    flex-direction: row;
+    align-items: baseline;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+</style>

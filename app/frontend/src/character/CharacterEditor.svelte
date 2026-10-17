@@ -1,19 +1,14 @@
 <script lang="ts">
   // Edits a character following its engine's rules (ADR 0007). The choices
   // document is the only state: the engine, compiled to WebAssembly,
-  // evaluates it on every edit, locally. The whole document is saved to the
-  // backend shortly after each change, at the version it was loaded at.
+  // evaluates it on every edit, locally, and `DocumentSaver` saves it.
   import { onDestroy, untrack } from "svelte";
 
-  import { ApiError, type Character, deleteCharacter, putDocument, renameCharacter } from "../api";
-  import { ENGINES } from "../engines";
-  import { follow, navigate } from "../router.svelte";
+  import type { Character } from "../api";
+  import { navigate, route, setHash } from "../router.svelte";
+  import { session } from "../session.svelte";
   import {
-    type ContemporainCatalog,
-    type ContemporainDocument,
     type Document,
-    type FantasyCatalog,
-    type FantasyDocument,
     type ReportedViolation,
     type Sheet,
     type Target,
@@ -22,136 +17,55 @@
   } from "../wasm/palimpseste_wasm";
   import CharacteristicSheet from "./CharacteristicSheet.svelte";
   import ContemporainEditor from "./ContemporainEditor.svelte";
+  import EditorHeader from "./EditorHeader.svelte";
   import { sameSubject } from "./edits";
   import FantasyEditor from "./FantasyEditor.svelte";
   import OverrideDialog from "./OverrideDialog.svelte";
   import Overrides from "./Overrides.svelte";
   import type { OverrideRequest } from "./override";
+  import { DocumentSaver } from "./saver.svelte";
   import StepNav from "./StepNav.svelte";
   import ValueSheet from "./ValueSheet.svelte";
   import Violations from "./Violations.svelte";
 
-  let { character, author }: { character: Character; author: string } = $props();
+  let { character }: { character: Character } = $props();
 
   // The editor starts from the loaded character and owns its copy from then
   // on; the page recreates it for another character.
   const initial = untrack(() => $state.snapshot(character));
-  const id = initial.id;
   const content = catalog(initial.engine);
-
-  let document = $state<Document>(initial.document);
-  let version = $state(initial.version);
-  let name = $state(initial.name);
-  // The name the backend holds, which renaming compares with.
-  let savedName = initial.name;
-  // Why renaming or deleting failed, apart from saving.
-  let actionError = $state<string | null>(null);
-
-  function reason(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
-  }
+  let choices = $state<Document>(initial.document);
+  // Overrides are signed by the signed-in user.
+  const author = $derived(session.user?.nickname ?? "");
 
   const evaluation = $derived.by((): { sheet: Sheet } | { error: string } => {
     try {
-      return { sheet: evaluate($state.snapshot(document)) };
+      return { sheet: evaluate($state.snapshot(choices)) };
     } catch (error) {
       return { error: error instanceof Error ? error.message : String(error) };
     }
   });
 
+  // The step shown is the URL's hash, so a reload keeps it.
   const steps = content.steps.map((step) => step.id);
-  let step = $state(steps.includes(location.hash.slice(1)) ? location.hash.slice(1) : steps[0]);
+  const step = $derived(steps.includes(route.hash) ? route.hash : steps[0]);
   const lastStep = steps[steps.length - 1];
 
-  function select(next: string) {
-    step = next;
-    history.replaceState(null, "", `#${next}`);
-  }
-
-  function edit<T>(change: (document: T) => void) {
-    change(document as T);
-  }
-
-  // Saving: the last document the backend holds, and what happened to the
-  // last attempt. A conflict stops saving until the page is reloaded.
-  let saved = $state(JSON.stringify(initial.document));
-  const current = $derived(JSON.stringify(document));
-  let status = $state<"saved" | "pending" | "saving" | "conflict" | "error">("saved");
-  let failure = $state<string | null>(null);
-  // The save in flight, if any: the next one waits for it, at its version.
-  let inflight: Promise<void> = Promise.resolve();
-
+  const saver = new DocumentSaver(initial.id, initial.version, JSON.stringify(initial.document));
+  const current = $derived(JSON.stringify(choices));
   $effect(() => {
     const json = current;
-    if (json === saved || status === "conflict" || status === "saving") return;
-    status = "pending";
-    const timer = setTimeout(() => save(json), 600);
-    return () => clearTimeout(timer);
+    untrack(() => saver.changed(json));
   });
+  // Leaving saves at once what waits, even a change no effect has seen yet.
+  onDestroy(() => saver.flush(JSON.stringify(choices)));
 
-  function save(json: string): Promise<void> {
-    status = "saving";
-    inflight = putDocument(id, json, version).then(
-      (next) => {
-        version = next;
-        saved = json;
-        failure = null;
-        status = "saved";
-      },
-      (error: unknown) => {
-        failure = reason(error);
-        status = error instanceof ApiError && error.status === 412 ? "conflict" : "error";
-      },
-    );
-    return inflight;
+  function deleted() {
+    saver.discard();
+    navigate("/");
   }
 
-  // Leaving the editor (a link, the back button) cancels the delay before
-  // saving: what it was waiting for is saved at once, after the save in
-  // flight. Closing the tab still asks first (`beforeunload`).
-  onDestroy(() => {
-    const json = JSON.stringify(document);
-    if (json === saved || status === "conflict") return;
-    void inflight.then(() => {
-      if (json !== saved && status !== "conflict") return save(json);
-    });
-  });
-
-  const STATUS = {
-    saved: "Enregistré",
-    pending: "Modifications en attente…",
-    saving: "Enregistrement…",
-    conflict: "Modifié ailleurs : rechargez la page",
-    error: "Échec de l'enregistrement",
-  };
-
-  // A blank name, or the one already saved, puts the saved one back.
-  async function rename() {
-    const next = name.trim();
-    if (!next || next === savedName) {
-      name = savedName;
-      return;
-    }
-    try {
-      savedName = name = (await renameCharacter(id, next)).name;
-      actionError = null;
-    } catch (error) {
-      actionError = reason(error);
-    }
-  }
-
-  async function remove() {
-    if (!confirm(`Supprimer ${name} ?`)) return;
-    try {
-      await deleteCharacter(id);
-      saved = current;
-      navigate("/");
-    } catch (error) {
-      actionError = reason(error);
-    }
-  }
-
-  // Overrides: waivers and adjustments, attributed to the current user.
+  // Overrides: waivers and adjustments, attributed to the signed-in user.
   let request = $state<OverrideRequest | null>(null);
 
   function confirmOverride(reason: string, amount: number) {
@@ -160,14 +74,14 @@
     if (!pending) return;
     if (pending.kind === "waiver") {
       const { rule, subject } = pending.violation;
-      (document.waivers ??= []).push({ rule, subject, author, reason });
+      (choices.waivers ??= []).push({ rule, subject, author, reason });
     } else {
-      (document.adjustments ??= []).push({ target: pending.target, amount, author, reason });
+      (choices.adjustments ??= []).push({ target: pending.target, amount, author, reason });
     }
   }
 
   function unwaive(violation: ReportedViolation) {
-    document.waivers = (document.waivers ?? []).filter(
+    choices.waivers = (choices.waivers ?? []).filter(
       (w) => !(w.rule === violation.rule && sameSubject(w.subject, violation.subject)),
     );
   }
@@ -179,50 +93,25 @@
 
 <svelte:window
   onbeforeunload={(event) => {
-    if (current !== saved) event.preventDefault();
+    if (saver.unsaved) event.preventDefault();
   }}
 />
 
 <section class="editor">
-  <header class="character">
-    <a href="/" onclick={follow}>← Personnages</a>
-    <input
-      class="name"
-      aria-label="Nom du personnage"
-      bind:value={name}
-      onchange={rename}
-    />
-    <span class="engine">{ENGINES[initial.engine]}</span>
-    <span class={["status", status]} title={failure ?? undefined}>{STATUS[status]}</span>
-    <button type="button" class="danger" onclick={remove}>Supprimer</button>
-  </header>
-  {#if failure && status !== "saved"}<p class="error">{failure}</p>{/if}
-  {#if actionError}<p class="error">{actionError}</p>{/if}
+  <EditorHeader character={initial} {saver} ondeleted={deleted} />
 
   {#if "error" in evaluation}
     <p class="error">Le document ne peut pas être évalué : {evaluation.error}</p>
   {:else}
     {@const sheet = evaluation.sheet}
     <div class="layout">
-      <StepNav steps={sheet.steps} current={step} onselect={select} />
+      <StepNav steps={sheet.steps} current={step} onselect={setHash} />
       <div class="step">
         <h2>{sheet.steps.find((s) => s.id === step)?.name}</h2>
-        {#if document.engine === "fantasy"}
-          <FantasyEditor
-            document={document as FantasyDocument}
-            catalog={content as FantasyCatalog}
-            {sheet}
-            {step}
-            {edit}
-          />
-        {:else}
-          <ContemporainEditor
-            document={document as ContemporainDocument}
-            catalog={content as ContemporainCatalog}
-            {sheet}
-            {step}
-            {edit}
-          />
+        {#if choices.engine === "fantasy" && content.engine === "fantasy" && sheet.details.engine === "fantasy"}
+          <FantasyEditor bind:choices catalog={content} details={sheet.details} {step} />
+        {:else if choices.engine === "contemporain" && content.engine === "contemporain" && sheet.details.engine === "contemporain"}
+          <ContemporainEditor bind:choices catalog={content} {sheet} details={sheet.details} {step} />
         {/if}
 
         {#if step === "characteristics"}
@@ -240,11 +129,11 @@
           onunwaive={unwaive}
         />
         <Overrides
-          waivers={document.waivers ?? []}
-          adjustments={document.adjustments ?? []}
+          waivers={choices.waivers ?? []}
+          adjustments={choices.adjustments ?? []}
           {sheet}
-          onremovewaiver={(i) => document.waivers?.splice(i, 1)}
-          onremoveadjustment={(i) => document.adjustments?.splice(i, 1)}
+          onremovewaiver={(i) => choices.waivers?.splice(i, 1)}
+          onremoveadjustment={(i) => choices.adjustments?.splice(i, 1)}
         />
       </div>
     </div>
@@ -252,3 +141,18 @@
 </section>
 
 <OverrideDialog {request} {author} onconfirm={confirmOverride} oncancel={() => (request = null)} />
+
+<style>
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(12rem, 16rem) 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  @media (max-width: 40rem) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

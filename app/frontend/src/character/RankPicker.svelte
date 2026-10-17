@@ -21,3 +21,10 @@
     </label>
   {/each}
 </span>
+
+<style>
+  .ranks {
+    display: inline-flex;
+    gap: 0.5rem;
+  }
+</style>

@@ -1,3 +1,6 @@
+/* Design tokens, element defaults and the utilities several components
+   share. Anything else is styled in its component. */
+
 :root {
   --ink: #2b2620;
   --page: #efe6d2;
@@ -31,8 +34,21 @@ main {
   padding: 1rem;
 }
 
+main.wide {
+  max-width: 64rem;
+}
+
 h1 {
   color: var(--accent);
+}
+
+a {
+  color: var(--accent);
+}
+
+ul {
+  padding: 0;
+  list-style: none;
 }
 
 form,
@@ -51,14 +67,25 @@ select {
 
 input,
 select,
-button {
+button,
+textarea {
   font: inherit;
   padding: 0.4rem 0.6rem;
 }
 
-ul {
-  padding: 0;
-  list-style: none;
+textarea {
+  resize: vertical;
+}
+
+/* A link that leaves the app (signing in, linking an identity), shown as a
+   button. */
+a.button {
+  display: inline-block;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--muted);
+  border-radius: 0.25rem;
+  color: inherit;
+  text-decoration: none;
 }
 
 .choices {
@@ -67,151 +94,13 @@ ul {
   gap: 0.5rem;
 }
 
-.profile form,
-.profile .field {
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.profile form {
-  gap: 0;
-}
-
-.profile form button {
-  align-self: flex-start;
-}
-
-textarea {
-  font: inherit;
-  padding: 0.4rem 0.6rem;
-  resize: vertical;
-}
-
-.identities > li,
-.characters > li {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--muted);
-}
-
-.violations {
-  padding-left: 1rem;
-  color: var(--muted);
-}
-
 .error {
   color: var(--error);
 }
 
-main.wide {
-  max-width: 64rem;
-}
-
-a {
-  color: var(--accent);
-}
-
-.hint,
-.clean {
+.hint {
   color: var(--muted);
   font-size: 0.9em;
-}
-
-/* Character editor */
-
-.character {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  align-items: center;
-}
-
-.character .name {
-  flex: 1 1 12rem;
-  font-size: 1.3em;
-  font-weight: bold;
-}
-
-.status {
-  font-size: 0.85em;
-  color: var(--muted);
-}
-
-.status.conflict,
-.status.error,
-.danger {
-  color: var(--error);
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: minmax(12rem, 16rem) 1fr;
-  gap: 1.5rem;
-  align-items: start;
-}
-
-@media (max-width: 40rem) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-.steps ol {
-  list-style: none;
-  padding: 0;
-  margin: 1rem 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-@media (max-width: 40rem) {
-  .steps ol {
-    flex-direction: row;
-    overflow-x: auto;
-  }
-}
-
-.steps button {
-  width: 100%;
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-  text-align: left;
-  background: none;
-  border: 1px solid transparent;
-  color: inherit;
-  cursor: pointer;
-}
-
-.steps button span:first-child {
-  flex: 1;
-}
-
-.steps button[aria-current="step"] {
-  border-color: var(--accent);
-  font-weight: bold;
-}
-
-.badge {
-  min-width: 1.4em;
-  padding: 0 0.3em;
-  border-radius: 1em;
-  text-align: center;
-  font-size: 0.8em;
-}
-
-.badge.incomplete {
-  background: var(--muted);
-  color: var(--page);
-}
-
-.badge.deviation {
-  background: var(--error);
-  color: var(--page);
-}
-
-.badge.done {
-  color: var(--accent);
 }
 
 .field {
@@ -231,19 +120,7 @@ a {
   align-items: center;
 }
 
-.facts {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1rem;
-}
-
-.facts dt {
-  color: var(--muted);
-}
-
-.facts dd {
-  margin: 0;
-}
+/* Shared by both engine editors. */
 
 .assign th {
   text-align: left;
@@ -259,163 +136,24 @@ a {
   width: 5rem;
 }
 
-.voies li,
-.traits li,
-.items li,
-.sheet summary,
-.breakdown li,
-.overrides li {
+.voies li {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
   justify-content: space-between;
-}
-
-.voies li,
-.traits li,
-.items li {
   padding: 0.2rem 0;
   border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
 }
 
-.items input {
-  flex: 0 0 4rem;
-  width: 4rem;
-}
-
-.add {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.ranks {
-  display: inline-flex;
-  gap: 0.5rem;
-}
-
-.tag {
-  margin-left: 0.4rem;
-  color: var(--accent);
-}
-
-.out-of-rules summary,
-.starting em {
-  color: var(--muted);
-}
-
-.starting .bundle {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-}
-
-button.link {
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--accent);
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.budget {
-  font-weight: bold;
-}
+/* Shared by the characteristic and value sheets. */
 
 .sheet summary {
-  cursor: pointer;
-  padding: 0.2rem 0;
-}
-
-.breakdown {
-  margin: 0.25rem 0 0.5rem 1rem;
-  color: var(--muted);
-}
-
-.breakdown .adjustment {
-  color: var(--accent);
-}
-
-.violations li {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  align-items: baseline;
-  padding: 0.3rem 0;
-  color: var(--ink);
-}
-
-.violations .kind {
-  font-size: 0.8em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.violations .deviation .kind {
-  color: var(--error);
-}
-
-.violations .recommended .kind,
-.violations .waived .kind,
-.violations .notice .kind {
-  color: var(--accent);
-}
-
-.violations .message {
-  flex: 1 1 16rem;
-}
-
-.violations .waived .message {
-  color: var(--muted);
-}
-
-.violations code,
-.overrides code {
-  font-size: 0.8em;
-  color: var(--muted);
-}
-
-.overrides .unused {
-  color: var(--muted);
-}
-
-dialog.override {
-  max-width: 30rem;
-  background: var(--page);
-  color: var(--ink);
-  border: 1px solid var(--accent);
-}
-
-dialog.override form {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.75rem;
-}
-
-dialog.override label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-dialog.override .confirm {
-  flex-direction: row;
-  align-items: baseline;
-}
-
-dialog.override .actions {
-  display: flex;
-  justify-content: flex-end;
   gap: 0.5rem;
-}
-
-.items li > span {
-  flex: 1;
-}
-
-.starting em {
-  margin: 0 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 0.2rem 0;
 }

@@ -8,7 +8,6 @@
     FantasyDetails,
     FantasyDocument,
     ItemEntry,
-    Sheet,
   } from "../wasm/palimpseste_wasm";
   import {
     CHARACTERISTICS,
@@ -25,33 +24,30 @@
   import RankPicker from "./RankPicker.svelte";
 
   let {
-    document,
+    choices = $bindable(),
     catalog,
-    sheet,
+    details,
     step,
-    edit,
   }: {
-    document: FantasyDocument;
+    choices: FantasyDocument;
     catalog: FantasyCatalog;
-    sheet: Sheet;
+    details: FantasyDetails;
     step: string;
-    edit: (change: (document: FantasyDocument) => void) => void;
   } = $props();
 
   const voieNames = $derived(namesOf(catalog.voies));
   const gearNames = $derived(
     namesOf([...catalog.weapons, ...catalog.armours, ...catalog.shields]),
   );
-  const profil = $derived(catalog.profils.find((p) => p.id === document.profil));
-  const peuple = $derived(catalog.peuples.find((p) => p.id === document.peuple));
-  const series = $derived(catalog.series.find((s) => s.id === document.series));
-  const details = $derived(sheet.details as FantasyDetails);
+  const profil = $derived(catalog.profils.find((p) => p.id === choices.profil));
+  const peuple = $derived(catalog.peuples.find((p) => p.id === choices.peuple));
+  const series = $derived(catalog.series.find((s) => s.id === choices.series));
 
   // Characteristics switched to a value outside the series.
   let custom = $state<Partial<Record<Characteristic, boolean>>>({});
 
   function assigned(c: Characteristic): number | undefined {
-    return document.seriesValues?.[c] ?? undefined;
+    return choices.seriesValues?.[c] ?? undefined;
   }
 
   function seriesChoice(c: Characteristic): string {
@@ -70,17 +66,13 @@
   function assign(c: Characteristic, choice: string) {
     custom[c] = choice === "other";
     if (choice === "other") return;
-    edit((d) => {
-      d.seriesValues ??= {};
-      d.seriesValues[c] = choice === "" ? undefined : Number(choice);
-    });
+    choices.seriesValues ??= {};
+    choices.seriesValues[c] = choice === "" ? undefined : Number(choice);
   }
 
   function assignOther(c: Characteristic, value: number | undefined) {
-    edit((d) => {
-      d.seriesValues ??= {};
-      d.seriesValues[c] = value;
-    });
+    choices.seriesValues ??= {};
+    choices.seriesValues[c] = value;
   }
 
   function keyMark(c: Characteristic): string {
@@ -90,13 +82,13 @@
   }
 
   const otherVoies = $derived(
-    (document.voies ?? [])
+    (choices.voies ?? [])
       .map((voie) => voie.id)
       .filter((id) => !profil?.voies.includes(id) && !details.peupleSlotOptions.includes(id)),
   );
 
   function setVoie(id: string, ranks: number[]) {
-    edit((d) => setRanks(d, id, ranks));
+    setRanks(choices, id, ranks);
   }
 
   /** Whether an armour or shield is within the profil's limit; without a profil, every one is. */
@@ -107,22 +99,18 @@
   }
 
   function addGear(id: string) {
-    edit((d) => {
-      if (catalog.armours.some((a) => a.id === id)) d.armour = id;
-      else if (catalog.shields.some((s) => s.id === id)) d.shield = id;
-      else {
-        const items = (d.items ??= []);
-        const item = items.find((i) => i.kind === "weapon" && i.id === id);
-        if (item) item.quantity += 1;
-        else items.push({ kind: "weapon", id, quantity: 1 });
-      }
-    });
+    if (catalog.armours.some((a) => a.id === id)) choices.armour = id;
+    else if (catalog.shields.some((s) => s.id === id)) choices.shield = id;
+    else {
+      const items = (choices.items ??= []);
+      const item = items.find((i) => i.kind === "weapon" && i.id === id);
+      if (item) item.quantity += 1;
+      else items.push({ kind: "weapon", id, quantity: 1 });
+    }
   }
 
   function setItems(items: ItemEntry[]) {
-    edit((d) => {
-      d.items = items;
-    });
+    choices.items = items;
   }
 </script>
 
@@ -130,10 +118,10 @@
   <label class="field">
     Profil
     <select
-      value={document.profil ?? ""}
+      value={choices.profil ?? ""}
       onchange={(e) => {
         const id = valueOf(e);
-        edit((d) => (d.profil = id || undefined));
+        (choices.profil = id || undefined);
       }}
     >
       <option value="">— Choisir —</option>
@@ -168,10 +156,10 @@
   <label class="field">
     Peuple
     <select
-      value={document.peuple ?? ""}
+      value={choices.peuple ?? ""}
       onchange={(e) => {
         const id = valueOf(e);
-        edit((d) => (d.peuple = id || undefined));
+        (choices.peuple = id || undefined);
       }}
     >
       <option value="">— Choisir —</option>
@@ -206,8 +194,8 @@
         <input
           type="radio"
           name="series"
-          checked={document.series === s.id}
-          onchange={() => edit((d) => (d.series = s.id))}
+          checked={choices.series === s.id}
+          onchange={() => (choices.series = s.id)}
         />
         {s.name} ({s.values.map(signed).join(", ")})
       </label>
@@ -253,10 +241,10 @@
     <label class="field">
       Bonus de peuple (+1)
       <select
-        value={document.peupleBonus ?? ""}
+        value={choices.peupleBonus ?? ""}
         onchange={(e) => {
           const c = valueOf(e) as Characteristic | "";
-          edit((d) => (d.peupleBonus = c || undefined));
+          (choices.peupleBonus = c || undefined);
         }}
       >
         <option value="">— Choisir —</option>
@@ -273,10 +261,10 @@
     <label class="field">
       Malus de peuple (-1)
       <select
-        value={document.peupleMalus ?? ""}
+        value={choices.peupleMalus ?? ""}
         onchange={(e) => {
           const c = valueOf(e) as Characteristic | "";
-          edit((d) => (d.peupleMalus = c || undefined));
+          (choices.peupleMalus = c || undefined);
         }}
       >
         <option value="">
@@ -309,7 +297,7 @@
       {#each profil.voies as id (id)}
         <li>
           <span>{voieNames.get(id)}</span>
-          <RankPicker ranks={ranksOf(document.voies, id)} onchange={(r) => setVoie(id, r)} />
+          <RankPicker ranks={ranksOf(choices.voies, id)} onchange={(r) => setVoie(id, r)} />
         </li>
       {/each}
     </ul>
@@ -322,7 +310,7 @@
       {#each details.peupleSlotOptions as id (id)}
         <li>
           <span>{voieNames.get(id)}</span>
-          <RankPicker ranks={ranksOf(document.voies, id)} onchange={(r) => setVoie(id, r)} />
+          <RankPicker ranks={ranksOf(choices.voies, id)} onchange={(r) => setVoie(id, r)} />
         </li>
       {/each}
     </ul>
@@ -335,7 +323,7 @@
       {#each otherVoies as id (id)}
         <li>
           <span>{voieNames.get(id) ?? id}</span>
-          <RankPicker ranks={ranksOf(document.voies, id)} onchange={(r) => setVoie(id, r)} />
+          <RankPicker ranks={ranksOf(choices.voies, id)} onchange={(r) => setVoie(id, r)} />
         </li>
       {/each}
     </ul>
@@ -348,7 +336,7 @@
       }}
     >
       <option value="">Ajouter une voie…</option>
-      {#each catalog.voies.filter((v) => !ranksOf(document.voies, v.id).length) as v (v.id)}
+      {#each catalog.voies.filter((v) => !ranksOf(choices.voies, v.id).length) as v (v.id)}
         <option value={v.id}>{v.name}</option>
       {/each}
     </select>
@@ -358,10 +346,10 @@
     <label class="field">
       Armure
       <select
-        value={document.armour ?? ""}
+        value={choices.armour ?? ""}
         onchange={(e) => {
           const id = valueOf(e);
-          edit((d) => (d.armour = id || undefined));
+          (choices.armour = id || undefined);
         }}
       >
         <option value="">Aucune</option>
@@ -380,10 +368,10 @@
     <label class="field">
       Bouclier
       <select
-        value={document.shield ?? ""}
+        value={choices.shield ?? ""}
         onchange={(e) => {
           const id = valueOf(e);
-          edit((d) => (d.shield = id || undefined));
+          (choices.shield = id || undefined);
         }}
       >
         <option value="">Aucun</option>
@@ -430,22 +418,62 @@
     </p>
   {/if}
   <h3>Objets portés</h3>
-  <Items items={document.items ?? []} weapons={catalog.weapons} onchange={setItems} />
+  <Items items={choices.items ?? []} weapons={catalog.weapons} onchange={setItems} />
   <label class="field">
     Bourse ({catalog.purseDice} pa, à lancer)
     <input
       type="number"
       step="1"
-      value={document.purse === undefined ? "" : document.purse / 10}
+      value={choices.purse === undefined ? "" : choices.purse / 10}
       onchange={(e) => {
         // Typed in pa, held in pc.
-        const pa = integerOf(e, document.purse === undefined ? undefined : document.purse / 10, {
+        const pa = integerOf(e, choices.purse === undefined ? undefined : choices.purse / 10, {
           min: Math.ceil(I32_MIN / 10),
           max: Math.floor(I32_MAX / 10),
         });
-        if (pa !== null) edit((d) => (d.purse = pa === undefined ? undefined : pa * 10));
+        if (pa !== null) (choices.purse = pa === undefined ? undefined : pa * 10);
       }}
     />
   </label>
   {#if details.money}<p class="hint">Argent : {details.money}</p>{/if}
 {/if}
+
+<style>
+  .facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+  }
+
+  .facts dt {
+    color: var(--muted);
+  }
+
+  .facts dd {
+    margin: 0;
+  }
+
+  .out-of-rules summary {
+    color: var(--muted);
+  }
+
+  .bundle {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+  }
+
+  .starting em {
+    margin: 0 0.5rem;
+    color: var(--muted);
+  }
+
+  button.link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>

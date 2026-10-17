@@ -1,15 +1,8 @@
 <script lang="ts">
-  import {
-    ApiError,
-    type Identity,
-    type Provider,
-    type User,
-    linkUrl,
-    listIdentities,
-    listProviders,
-    updateMe,
-  } from "./api";
-  import { follow } from "./router.svelte";
+  import { ApiError, type User, linkUrl, listIdentities, listProviders, updateMe } from "./api";
+  import ErrorMessage from "./ErrorMessage.svelte";
+  import { describe } from "./errors";
+  import { follow, takeQuery } from "./router.svelte";
   import { signedIn } from "./session.svelte";
 
   let { user }: { user: User } = $props();
@@ -21,8 +14,7 @@
     taken: { text: "Ce compte est déjà associé à un autre utilisateur.", error: true },
     failed: { text: "L’association a échoué.", error: true },
   };
-  const outcome = LINK_OUTCOMES[new URLSearchParams(location.search).get("link") ?? ""];
-  if (location.search) history.replaceState(null, "", location.pathname);
+  const outcome = LINK_OUTCOMES[takeQuery("link") ?? ""];
 
   // Seeded once from the user: the form then holds the edits.
   // svelte-ignore state_referenced_locally
@@ -31,19 +23,10 @@
   let profile = $state(user.profile);
   let status = $state<{ text: string; error: boolean } | null>(null);
   let saving = $state(false);
-  let identities = $state<Identity[]>([]);
-  let providers = $state<Provider[]>([]);
+  const identities = listIdentities();
+  const providers = listProviders();
 
   const changed = $derived(nickname.trim() !== user.nickname || profile.trim() !== user.profile);
-
-  listIdentities().then(
-    (all) => (identities = all),
-    (e: Error) => (status = { text: e.message, error: true }),
-  );
-  listProviders().then(
-    (all) => (providers = all),
-    (e: Error) => (status = { text: e.message, error: true }),
-  );
 
   function save(event: SubmitEvent) {
     event.preventDefault();
@@ -56,9 +39,9 @@
           profile = saved.profile;
           status = { text: "Profil enregistré.", error: false };
         },
-        (e: Error) => {
-          const taken = e instanceof ApiError && e.status === 409;
-          status = { text: taken ? "Ce pseudonyme est déjà pris." : e.message, error: true };
+        (error: unknown) => {
+          const taken = error instanceof ApiError && error.status === 409;
+          status = { text: taken ? "Ce pseudonyme est déjà pris." : describe(error), error: true };
         },
       )
       .finally(() => (saving = false));
@@ -88,23 +71,49 @@
   <h3>Comptes associés</h3>
   {#if outcome}<p class={{ error: outcome.error }}>{outcome.text}</p>{/if}
   <p class="hint">Chacun de ces comptes vous connecte à ce même profil. Vous seul les voyez.</p>
-  <ul class="identities">
-    {#each identities as identity, index (index)}
-      <li>
-        <strong>{identity.name}</strong>
-        {#if identity.label}· {identity.label}{/if}
-      </li>
-    {/each}
-  </ul>
-  {#if providers.length > 0}
-    <ul class="choices">
-      {#each providers as provider (provider.id)}
+  {#await identities}
+    <p>Chargement…</p>
+  {:then identities}
+    <ul class="identities">
+      {#each identities as identity, index (index)}
         <li>
-          <button type="button" onclick={() => location.assign(linkUrl(provider.id))}>
-            Associer un compte {provider.name}
-          </button>
+          <strong>{identity.name}</strong>
+          {#if identity.label}· {identity.label}{/if}
         </li>
       {/each}
     </ul>
-  {/if}
+  {:catch error}
+    <ErrorMessage {error} />
+  {/await}
+  {#await providers then providers}
+    <ul class="choices">
+      {#each providers as provider (provider.id)}
+        <!-- Linking leaves the app for the provider: a link, not a script. -->
+        <li><a class="button" href={linkUrl(provider.id)}>Associer un compte {provider.name}</a></li>
+      {/each}
+    </ul>
+  {:catch error}
+    <ErrorMessage {error} />
+  {/await}
 </section>
+
+<style>
+  form,
+  .field {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  form {
+    gap: 0;
+  }
+
+  form button {
+    align-self: flex-start;
+  }
+
+  .identities > li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--muted);
+  }
+</style>

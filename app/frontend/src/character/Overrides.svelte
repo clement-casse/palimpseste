@@ -64,3 +64,22 @@
     </ul>
   </section>
 {/if}
+
+<style>
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  code {
+    font-size: 0.8em;
+    color: var(--muted);
+  }
+
+  .unused {
+    color: var(--muted);
+  }
+</style>

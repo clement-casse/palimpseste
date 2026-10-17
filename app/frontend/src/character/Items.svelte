@@ -78,3 +78,30 @@
     <button type="submit" disabled={!other.trim()}>Ajouter</button>
   </form>
 </div>
+
+<style>
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+  }
+
+  li > span {
+    flex: 1;
+  }
+
+  li input {
+    flex: 0 0 4rem;
+    width: 4rem;
+  }
+
+  .add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+</style>

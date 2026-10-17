@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Character } from "./api";
   import { ENGINES } from "./engines";
-  import { follow } from "./router.svelte";
+  import { characterPath, follow } from "./router.svelte";
   import { evaluate } from "./wasm/palimpseste_wasm";
 
   let { character }: { character: Character } = $props();
@@ -20,7 +20,7 @@
 </script>
 
 <li>
-  <a href="/characters/{character.id}" onclick={follow}>
+  <a href={characterPath(character.id)} onclick={follow}>
     <strong>{character.name}</strong>
   </a>
   · {ENGINES[character.engine]} ·
@@ -32,3 +32,10 @@
     {open} point{open > 1 ? "s" : ""} à régler
   {/if}
 </li>
+
+<style>
+  li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--muted);
+  }
+</style>

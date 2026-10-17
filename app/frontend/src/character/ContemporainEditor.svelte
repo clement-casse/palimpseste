@@ -24,22 +24,21 @@
   import RankPicker from "./RankPicker.svelte";
 
   let {
-    document,
+    choices = $bindable(),
     catalog,
     sheet,
+    details,
     step,
-    edit,
   }: {
-    document: ContemporainDocument;
+    choices: ContemporainDocument;
     catalog: ContemporainCatalog;
     sheet: Sheet;
+    details: ContemporainDetails;
     step: string;
-    edit: (change: (document: ContemporainDocument) => void) => void;
   } = $props();
 
   const voieNames = $derived(namesOf(catalog.voies));
-  const domaine = $derived(catalog.domaines.find((d) => d.id === document.domaine));
-  const details = $derived(sheet.details as ContemporainDetails);
+  const domaine = $derived(catalog.domaines.find((d) => d.id === choices.domaine));
   const domaineVoies = $derived(new Set(domaine?.slots.flat() ?? []));
 
   function total(id: string): string {
@@ -48,46 +47,38 @@
   }
 
   function pointsOf(id: string): number | undefined {
-    return document.traits?.find((t) => t.id === id)?.points;
+    return choices.traits?.find((t) => t.id === id)?.points;
   }
 
   function setTrait(id: string, points: number | undefined) {
-    edit((d) => {
-      const traits = (d.traits ??= []);
-      const index = traits.findIndex((t) => t.id === id);
-      if (points === undefined) {
-        if (index >= 0) traits.splice(index, 1);
-      } else if (index >= 0) {
-        traits[index].points = points;
-      } else {
-        traits.push({ id, points });
-      }
-    });
+    const traits = (choices.traits ??= []);
+    const index = traits.findIndex((t) => t.id === id);
+    if (points === undefined) {
+      if (index >= 0) traits.splice(index, 1);
+    } else if (index >= 0) {
+      traits[index].points = points;
+    } else {
+      traits.push({ id, points });
+    }
   }
 
   function setPoints(c: Characteristic, points: number | undefined) {
-    edit((d) => {
-      d.caracPoints ??= {};
-      d.caracPoints[c] = points ?? 0;
-    });
+    choices.caracPoints ??= {};
+    choices.caracPoints[c] = points ?? 0;
   }
 
   function setItems(items: ItemEntry[]) {
-    edit((d) => {
-      d.items = items;
-    });
+    choices.items = items;
   }
 
   function toggleProtection(id: string, worn: boolean) {
-    edit((d) => {
-      const protections = (d.protections ??= []);
-      d.protections = worn ? [...protections, id] : protections.filter((p) => p !== id);
-    });
+    const protections = (choices.protections ??= []);
+    choices.protections = worn ? [...protections, id] : protections.filter((p) => p !== id);
   }
 
   const startingWeapons = $derived(
     catalog.voies.filter(
-      (voie) => voie.startingWeapon && ranksOf(document.voies, voie.id).length > 0,
+      (voie) => voie.startingWeapon && ranksOf(choices.voies, voie.id).length > 0,
     ),
   );
 </script>
@@ -100,10 +91,10 @@
         type="number"
         min="0"
         step="1"
-        value={document.age ?? ""}
+        value={choices.age ?? ""}
         onchange={(e) => {
-          const age = integerOf(e, document.age, { min: 0, max: U16_MAX });
-          if (age !== null) edit((d) => (d.age = age));
+          const age = integerOf(e, choices.age, { min: 0, max: U16_MAX });
+          if (age !== null) (choices.age = age);
         }}
       />
     </label>
@@ -112,10 +103,10 @@
   <label class="field">
     Domaine
     <select
-      value={document.domaine ?? ""}
+      value={choices.domaine ?? ""}
       onchange={(e) => {
         const id = valueOf(e);
-        edit((d) => (d.domaine = id || undefined));
+        (choices.domaine = id || undefined);
       }}
     >
       <option value="">— Choisir —</option>
@@ -150,8 +141,8 @@
           {#if domaineVoies.has(voie.id)}<small class="tag">domaine</small>{/if}
         </span>
         <RankPicker
-          ranks={ranksOf(document.voies, voie.id)}
-          onchange={(ranks) => edit((d) => setRanks(d, voie.id, ranks))}
+          ranks={ranksOf(choices.voies, voie.id)}
+          onchange={(ranks) => setRanks(choices, voie.id, ranks)}
         />
       </li>
     {/each}
@@ -216,9 +207,9 @@
               type="number"
               step="1"
               aria-label="Points attribués à {c}"
-              value={document.caracPoints?.[c] ?? 0}
+              value={choices.caracPoints?.[c] ?? 0}
               onchange={(e) => {
-                const points = integerOf(e, document.caracPoints?.[c] ?? 0);
+                const points = integerOf(e, choices.caracPoints?.[c] ?? 0);
                 if (points !== null) setPoints(c, points);
               }}
             />
@@ -243,7 +234,7 @@
         <label>
           <input
             type="checkbox"
-            checked={document.protections?.includes(protection.id) ?? false}
+            checked={choices.protections?.includes(protection.id) ?? false}
             onchange={(e) =>
               toggleProtection(
                 protection.id,
@@ -258,8 +249,29 @@
   <p class="hint">Aucune voie ne donne de protection : en porter une se négocie avec le MJ.</p>
   <h3>Objets portés</h3>
   <Items
-    items={document.items ?? []}
+    items={choices.items ?? []}
     weapons={catalog.weapons.filter((w) => w.attackMode.id !== "unarmed")}
     onchange={setItems}
   />
 {/if}
+
+<style>
+  .budget {
+    font-weight: bold;
+  }
+
+  .traits li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+  }
+
+  .tag {
+    margin-left: 0.4rem;
+    color: var(--accent);
+  }
+</style>

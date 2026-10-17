@@ -41,3 +41,53 @@
 {:else}
   <p class="clean">Rien à régler dans cette étape.</p>
 {/if}
+
+<style>
+  ul {
+    padding-left: 1rem;
+    color: var(--muted);
+  }
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    align-items: baseline;
+    padding: 0.3rem 0;
+    color: var(--ink);
+  }
+
+  .kind {
+    font-size: 0.8em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .deviation .kind {
+    color: var(--error);
+  }
+
+  .recommended .kind,
+  .waived .kind,
+  .notice .kind {
+    color: var(--accent);
+  }
+
+  .message {
+    flex: 1 1 16rem;
+  }
+
+  .waived .message {
+    color: var(--muted);
+  }
+
+  code {
+    font-size: 0.8em;
+    color: var(--muted);
+  }
+
+  .clean {
+    color: var(--muted);
+    font-size: 0.9em;
+  }
+</style>

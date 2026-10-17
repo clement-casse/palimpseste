@@ -27,13 +27,23 @@ export type Character = {
   version: number;
 };
 
-/** A request the backend refused, with its HTTP status. */
+/**
+ * A request the backend refused. Its message is technical (method, path,
+ * status, reason); `describe` in `errors.ts` tells users what happened.
+ */
 export class ApiError extends Error {
   readonly status: number;
+  readonly method: string;
+  readonly path: string;
+  /** What the backend said, if anything. */
+  readonly reason: string;
 
-  constructor(status: number, message: string) {
-    super(message);
+  constructor(status: number, method: string, path: string, reason: string) {
+    super(`${method} /api${path}: ${status}${reason ? ` (${reason})` : ""}`);
     this.status = status;
+    this.method = method;
+    this.path = path;
+    this.reason = reason;
   }
 }
 
@@ -44,11 +54,7 @@ async function send(path: string, init?: RequestInit): Promise<Response> {
   });
   if (response.status === 401) signedOut();
   if (!response.ok) {
-    const reason = await response.text();
-    throw new ApiError(
-      response.status,
-      `${init?.method ?? "GET"} /api${path}: ${response.status}${reason ? ` (${reason})` : ""}`,
-    );
+    throw new ApiError(response.status, init?.method ?? "GET", path, await response.text());
   }
   return response;
 }
