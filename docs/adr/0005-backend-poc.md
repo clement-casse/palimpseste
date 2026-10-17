@@ -1,7 +1,7 @@
 # 0005. Backend proof of concept
 
 Date: 2026-10-15.
-Status: accepted.
+Status: accepted, amended by ADR 0012 (lib and bin, structure).
 
 ## Context
 

@@ -84,6 +84,8 @@ In scope:
 - **Persistence**: SQLite through `rusqlite`, called from `spawn_blocking`.
 - **Front end**: the built PWA served by the same router, falling back to `index.html`; hashed files under `/assets/` cached as immutable, every other file revalidated (see `docs/adr/0006-pwa-client.md`).
 
+- **Structure** (ADR 0012): one bounded context in a lib + bin crate; the model, the use cases (`PalimpsesteService`) and `Error` in `lib.rs` and concept-named files, adapters in `repo/`, `provider/` and `api/`, wiring and clap configuration in `main.rs` only. Follow `.claude/skills/backend-structure/SKILL.md`.
+
 Out of scope, do not implement or prepare for: unlinking or merging identities, showing users to each other, roles, friends, parties, campaigns, computing violations.
 
 ## Current scope: `app/document`
