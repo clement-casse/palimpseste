@@ -1,5 +1,6 @@
 //! Palimpseste backend: signs users in through OIDC providers
-//! (ADR BE-OIDC), keeps their nickname, profile and identities
+//! (ADR BE-OIDC), creates their account at their first sign-in
+//! (ADR BE-FIRST-SIGN-IN), keeps their nickname, profile and identities
 //! (ADR BE-USERS), and checks and stores their characters with their choices
 //! documents (ADR BE-CHECKS). It never applies a rule: the rules run in the
 //! browser.
@@ -13,6 +14,7 @@
 pub mod api;
 mod character;
 mod provider;
+mod registration;
 mod repo;
 mod service;
 mod session;
@@ -27,6 +29,7 @@ pub use crate::{
     api::http::HttpApi,
     character::{Character, CharacterId, CharacterName, Version},
     provider::{IdentityProviders, OidcProviders, ProviderConfig},
+    registration::{PendingRegistration, REGISTRATION_TTL, Registration, RegistrationToken},
     repo::{PalimpsesteRepository, SqliteRepo},
     service::PalimpsesteServiceImpl,
     session::{SESSION_TTL, SessionToken, TokenHash},
@@ -61,14 +64,32 @@ pub trait PalimpsesteService: Send + Sync + 'static {
     ) -> Result<StartedSignIn, Error>;
 
     /// Ends the sign-in in progress `sign_in` with the provider's `answer`:
-    /// opens a session for the user of the identity, created on its first
-    /// sign-in, or links the identity. The sign-in is used up either way.
+    /// opens a session for the user of the identity, starts its registration
+    /// when no user has it, or links the identity. The sign-in is used up
+    /// either way.
     async fn finish_sign_in(
         &self,
         provider: &ProviderId,
         sign_in: Option<SignInId>,
         answer: ProviderAnswer,
     ) -> Result<SignInEnd, Error>;
+
+    /// The registration in progress `token`, with the provider of its
+    /// identity.
+    async fn registration(&self, token: &RegistrationToken) -> Result<PendingRegistration, Error>;
+
+    /// Completes the registration in progress `token`: creates its user with
+    /// `nickname` and `profile`, and opens a session for them.
+    async fn register(
+        &self,
+        token: &RegistrationToken,
+        nickname: Nickname,
+        profile: Profile,
+    ) -> Result<(User, SessionToken), Error>;
+
+    /// Cancels the registration in progress `token`, if it exists: no user
+    /// is created and the identity stays free.
+    async fn cancel_registration(&self, token: &RegistrationToken) -> Result<(), Error>;
 
     /// The user of a live session.
     async fn session_user(&self, token: &SessionToken) -> Result<User, Error>;
@@ -147,6 +168,12 @@ pub enum Error {
     /// The identity belongs to another user: never moved, never merged.
     #[error("identity of another user")]
     IdentityTaken,
+    /// The user already has an identity at this provider: one per provider.
+    #[error("an identity at this provider is already linked")]
+    ProviderAlreadyLinked,
+    /// No registration in progress in this browser, or it expired.
+    #[error("no registration in progress")]
+    NoRegistration,
     /// A blank nickname.
     #[error("empty name")]
     BlankNickname,

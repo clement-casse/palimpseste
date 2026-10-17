@@ -1,5 +1,5 @@
-//! What the service keeps: users, identities, sessions, sign-ins in
-//! progress and characters. The repository keeps what it is given and
+//! What the service keeps: users, identities, sessions, sign-ins and
+//! registrations in progress, and characters. The repository keeps what it is given and
 //! never reads the rules; it decides only what needs a transaction.
 
 pub mod sqlite;
@@ -12,7 +12,7 @@ use palimpseste_document::Document;
 pub use self::sqlite::SqliteRepo;
 use crate::{
     Character, CharacterId, CharacterName, Error, Identity, Linking, Nickname, PendingSignIn,
-    Profile, SignInId, TokenHash, User, UserId, Version,
+    Profile, Registration, SignInId, TokenHash, User, UserId, Version,
 };
 
 /// The persistence the service needs. Every character is reached through
@@ -20,17 +20,45 @@ use crate::{
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait PalimpsesteRepository: Send + Sync + 'static {
-    /// The user of the identity `subject` at `issuer`, created on its first
-    /// sign-in with the first free of the nickname candidates of
-    /// `wanted_nickname`. The identity's label becomes `label`. Also tells
-    /// whether the user was created.
-    async fn user_for_identity(
+    /// The user of the identity `subject` at `issuer`, unless no user has
+    /// it. The identity's label becomes `label`.
+    async fn identity_user(
         &self,
+        issuer: &str,
+        subject: &str,
+        label: &str,
+    ) -> Result<Option<User>, Error>;
+
+    /// Keeps for `ttl`, known by the hash `token`, the registration of the
+    /// identity `subject` at `issuer`, labelled `label`, suggesting the first
+    /// free of the nickname candidates of `wanted_nickname`.
+    async fn create_registration(
+        &self,
+        token: &TokenHash,
         issuer: &str,
         subject: &str,
         wanted_nickname: &str,
         label: &str,
-    ) -> Result<(User, bool), Error>;
+        ttl: Duration,
+    ) -> Result<(), Error>;
+
+    /// The registration `token`, unless it is unknown or expired.
+    async fn registration(&self, token: &TokenHash) -> Result<Option<Registration>, Error>;
+
+    /// Completes the registration `token`: creates its user with `nickname`
+    /// and `profile`, owner of its identity, and removes it. `None` when it
+    /// is unknown or expired; [`Error::NicknameTaken`] when another user has
+    /// the nickname, keeping the registration; [`Error::IdentityTaken`] when
+    /// a user got the identity meanwhile.
+    async fn register(
+        &self,
+        token: &TokenHash,
+        nickname: Nickname,
+        profile: Profile,
+    ) -> Result<Option<User>, Error>;
+
+    /// Removes the registration `token`, if any.
+    async fn delete_registration(&self, token: &TokenHash) -> Result<(), Error>;
 
     /// Changes the given fields of `user`; [`Error::NicknameTaken`] when
     /// another user has the nickname.
@@ -45,7 +73,9 @@ pub trait PalimpsesteRepository: Send + Sync + 'static {
     async fn identities(&self, user: UserId) -> Result<Vec<Identity>, Error>;
 
     /// Links the identity `subject` at `issuer` to `user`, labelled
-    /// `label`; [`Error::IdentityTaken`] when it is another user's.
+    /// `label`; [`Error::IdentityTaken`] when it is another user's,
+    /// [`Error::ProviderAlreadyLinked`] when `user` has another identity at
+    /// `issuer`.
     async fn link_identity(
         &self,
         user: UserId,
@@ -80,7 +110,7 @@ pub trait PalimpsesteRepository: Send + Sync + 'static {
     /// unknown or expired: a sign-in is completed once at most.
     async fn take_sign_in(&self, id: &SignInId) -> Result<Option<PendingSignIn>, Error>;
 
-    /// Removes the expired sessions and sign-ins.
+    /// Removes the expired sessions, sign-ins and registrations.
     async fn purge_expired(&self) -> Result<(), Error>;
 
     /// Creates a character of `owner` at [`Version::FIRST`].

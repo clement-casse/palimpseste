@@ -7,9 +7,10 @@ use palimpseste_document::{Document, Engine};
 
 use crate::{
     ActionContext, Character, CharacterId, CharacterName, Error, IdentityProviders, LinkedIdentity,
-    Linking, Nickname, PalimpsesteRepository, PalimpsesteService, PendingSignIn, Profile,
-    ProviderAnswer, ProviderId, ProviderSummary, SESSION_TTL, SIGN_IN_TTL, SessionToken, SignInEnd,
-    SignInId, StartedSignIn, User, UserId, VerifiedIdentity, Version,
+    Linking, Nickname, PalimpsesteRepository, PalimpsesteService, PendingRegistration,
+    PendingSignIn, Profile, ProviderAnswer, ProviderId, ProviderSummary, REGISTRATION_TTL,
+    RegistrationToken, SESSION_TTL, SIGN_IN_TTL, SessionToken, SignInEnd, SignInId, StartedSignIn,
+    User, UserId, VerifiedIdentity, Version,
 };
 
 /// The use cases, keeping their data in `R` and signing in through `P`.
@@ -63,30 +64,43 @@ impl<R: PalimpsesteRepository, P: IdentityProviders> PalimpsesteServiceImpl<R, P
         self.providers.verify(provider, &code, pending).await
     }
 
-    /// Opens a session for the user of `identity`, created on its first
-    /// sign-in.
-    async fn open_session(
+    /// Opens a session for the user of `identity`, or starts its
+    /// registration when no user has it (ADR BE-FIRST-SIGN-IN).
+    async fn sign_in(
         &self,
         provider: &ProviderId,
         identity: &VerifiedIdentity,
-    ) -> Result<SessionToken, Error> {
-        let (user, created) = self
+    ) -> Result<SignInEnd, Error> {
+        let known = self
             .repo
-            .user_for_identity(
+            .identity_user(&identity.issuer, &identity.subject, identity.label())
+            .await?;
+        if let Some(user) = known {
+            let token = self.open_session(user.id).await?;
+            tracing::info!(user_id = %user.id, %provider, "signed in");
+            return Ok(SignInEnd::SignedIn(token));
+        }
+        let token = RegistrationToken::random();
+        self.repo
+            .create_registration(
+                &token.hash(),
                 &identity.issuer,
                 &identity.subject,
                 identity.wanted_nickname(),
                 identity.label(),
+                REGISTRATION_TTL,
             )
             .await?;
+        tracing::info!(%provider, "registration started");
+        Ok(SignInEnd::Registering(token))
+    }
+
+    /// Opens a session of `user`.
+    async fn open_session(&self, user: UserId) -> Result<SessionToken, Error> {
         let token = SessionToken::random();
         self.repo
-            .create_session(user.id, &token.hash(), SESSION_TTL)
+            .create_session(user, &token.hash(), SESSION_TTL)
             .await?;
-        if created {
-            tracing::info!(user_id = %user.id, %provider, "user created");
-        }
-        tracing::info!(user_id = %user.id, %provider, "signed in");
         Ok(token)
     }
 
@@ -109,6 +123,9 @@ impl<R: PalimpsesteRepository, P: IdentityProviders> PalimpsesteServiceImpl<R, P
             Err(Error::IdentityTaken) => {
                 tracing::warn!(user_id = %user, %provider, "identity of another user not linked");
             }
+            Err(Error::ProviderAlreadyLinked) => {
+                tracing::info!(user_id = %user, %provider, "second identity at a provider not linked");
+            }
             Err(_) => {}
         }
         linked
@@ -120,7 +137,7 @@ impl<R: PalimpsesteRepository, P: IdentityProviders> PalimpsesteServiceImpl<R, P
 fn sign_in_failed(linking: bool, error: Error) -> Error {
     match error {
         Error::Underlying(cause) => Error::SignInFailed { linking, cause },
-        Error::SignInFailed { .. } | Error::IdentityTaken => error,
+        Error::SignInFailed { .. } | Error::IdentityTaken | Error::ProviderAlreadyLinked => error,
         other => Error::SignInFailed {
             linking,
             cause: anyhow::Error::new(other),
@@ -184,17 +201,48 @@ impl<R: PalimpsesteRepository, P: IdentityProviders> PalimpsesteService
             .await
             .map_err(failed)?;
         match link {
-            None => self
-                .open_session(provider, &identity)
-                .await
-                .map(SignInEnd::SignedIn)
-                .map_err(failed),
+            None => self.sign_in(provider, &identity).await.map_err(failed),
             Some(user) => self
                 .link_identity(provider, user, &identity)
                 .await
                 .map(SignInEnd::Linked)
                 .map_err(failed),
         }
+    }
+
+    async fn registration(&self, token: &RegistrationToken) -> Result<PendingRegistration, Error> {
+        let registration = self
+            .repo
+            .registration(&token.hash())
+            .await?
+            .ok_or(Error::NoRegistration)?;
+        Ok(PendingRegistration {
+            provider: self.providers.provider_of(&registration.issuer),
+            registration,
+        })
+    }
+
+    async fn register(
+        &self,
+        token: &RegistrationToken,
+        nickname: Nickname,
+        profile: Profile,
+    ) -> Result<(User, SessionToken), Error> {
+        let user = self
+            .repo
+            .register(&token.hash(), nickname, profile)
+            .await?
+            .ok_or(Error::NoRegistration)?;
+        tracing::info!(user_id = %user.id, "user created");
+        let session = self.open_session(user.id).await?;
+        tracing::info!(user_id = %user.id, "signed in");
+        Ok((user, session))
+    }
+
+    async fn cancel_registration(&self, token: &RegistrationToken) -> Result<(), Error> {
+        self.repo.delete_registration(&token.hash()).await?;
+        tracing::info!("registration cancelled");
+        Ok(())
     }
 
     async fn session_user(&self, token: &SessionToken) -> Result<User, Error> {
@@ -310,7 +358,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        Authorization, Identity, provider::MockIdentityProviders, repo::MockPalimpsesteRepository,
+        Authorization, Identity, Registration, provider::MockIdentityProviders,
+        repo::MockPalimpsesteRepository,
     };
 
     const ANA: ActionContext = ActionContext { user: UserId(1) };
@@ -426,33 +475,119 @@ mod tests {
         ));
     }
 
-    #[tokio::test]
-    async fn a_callback_opens_a_session_for_the_identity() {
+    /// A callback answered with the identity `verified()`.
+    fn signing_in(
+        mut repo: MockPalimpsesteRepository,
+    ) -> PalimpsesteServiceImpl<MockPalimpsesteRepository, MockIdentityProviders> {
         let mut providers = MockIdentityProviders::new();
         providers
             .expect_verify()
             .withf(|_, code, _| code == "code")
             .returning(|_, _, _| Ok(verified()));
-        let mut repo = MockPalimpsesteRepository::new();
         repo.expect_take_sign_in()
             .returning(|_| Ok(Some(pending(None))));
-        repo.expect_user_for_identity()
-            .with(
-                eq("https://issuer.test"),
-                eq("ana"),
-                eq("Ana"),
-                eq("ana@mail.test"),
-            )
-            .returning(|_, _, _, _| Ok((user(), true)));
+        service(repo, providers)
+    }
+
+    #[tokio::test]
+    async fn a_callback_opens_a_session_for_a_known_identity() {
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_identity_user()
+            .with(eq("https://issuer.test"), eq("ana"), eq("ana@mail.test"))
+            .returning(|_, _, _| Ok(Some(user())));
+        repo.expect_create_registration().never();
         repo.expect_create_session()
             .withf(|user, _, ttl| *user == ANA.user && *ttl == SESSION_TTL)
             .times(1)
             .returning(|_, _, _| Ok(()));
-        let ended = service(repo, providers)
+        let ended = signing_in(repo)
             .finish_sign_in(&dex(), Some(SignInId::from_cookie("id")), answer("state"))
             .await
             .unwrap();
         assert!(matches!(ended, SignInEnd::SignedIn(_)));
+    }
+
+    #[tokio::test]
+    async fn a_callback_starts_registering_an_unknown_identity() {
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_identity_user().returning(|_, _, _| Ok(None));
+        repo.expect_create_registration()
+            .withf(|_, issuer, subject, wanted, label, ttl| {
+                (issuer, subject, wanted, label)
+                    == ("https://issuer.test", "ana", "Ana", "ana@mail.test")
+                    && *ttl == REGISTRATION_TTL
+            })
+            .times(1)
+            .returning(|_, _, _, _, _, _| Ok(()));
+        repo.expect_create_session().never();
+        let ended = signing_in(repo)
+            .finish_sign_in(&dex(), Some(SignInId::from_cookie("id")), answer("state"))
+            .await
+            .unwrap();
+        assert!(matches!(ended, SignInEnd::Registering(_)));
+    }
+
+    #[tokio::test]
+    async fn registering_creates_the_user_and_opens_a_session() {
+        let token = RegistrationToken::from_cookie("token");
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_register()
+            .with(
+                eq(token.hash()),
+                eq(Nickname::parse("Ana").unwrap()),
+                eq(Profile::default()),
+            )
+            .returning(|_, _, _| Ok(Some(user())));
+        repo.expect_create_session()
+            .withf(|user, _, _| *user == ANA.user)
+            .times(1)
+            .returning(|_, _, _| Ok(()));
+        let (created, _) = service(repo, MockIdentityProviders::new())
+            .register(&token, Nickname::parse("Ana").unwrap(), Profile::default())
+            .await
+            .unwrap();
+        assert_eq!(created, user());
+
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_register().returning(|_, _, _| Ok(None));
+        repo.expect_create_session().never();
+        let result = service(repo, MockIdentityProviders::new())
+            .register(&token, Nickname::parse("Ana").unwrap(), Profile::default())
+            .await;
+        assert!(matches!(result, Err(Error::NoRegistration)));
+    }
+
+    #[tokio::test]
+    async fn a_registration_is_shown_with_its_provider() {
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_registration().returning(|_| {
+            Ok(Some(Registration {
+                issuer: "https://issuer.test".into(),
+                subject: "ana".into(),
+                label: "ana@mail.test".into(),
+                nickname: Nickname::parse("Ana").unwrap(),
+            }))
+        });
+        let mut providers = MockIdentityProviders::new();
+        providers.expect_provider_of().returning(|_| {
+            Some(ProviderSummary {
+                id: dex(),
+                name: "Dex".into(),
+            })
+        });
+        let pending = service(repo, providers)
+            .registration(&RegistrationToken::from_cookie("token"))
+            .await
+            .unwrap();
+        assert_eq!(pending.registration.nickname.as_str(), "Ana");
+        assert_eq!(pending.provider.unwrap().name, "Dex");
+
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_registration().returning(|_| Ok(None));
+        let result = service(repo, MockIdentityProviders::new())
+            .registration(&RegistrationToken::from_cookie("token"))
+            .await;
+        assert!(matches!(result, Err(Error::NoRegistration)));
     }
 
     #[tokio::test]

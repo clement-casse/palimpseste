@@ -97,6 +97,7 @@ app/backend/
     ├── user.rs            # model: UserId, User, Nickname, Profile, Identity
     ├── session.rs         # model: SessionToken, TokenHash, SESSION_TTL
     ├── sign_in.rs         # model: ProviderId, PendingSignIn, VerifiedIdentity, SignInEnd, ...
+    ├── registration.rs    # model: RegistrationToken, Registration, PendingRegistration
     ├── character.rs       # model: CharacterId, CharacterName, Version, Character
     ├── service.rs         # PalimpsesteServiceImpl<R: PalimpsesteRepository, P: IdentityProviders>
     ├── repo.rs            # PalimpsesteRepository trait
@@ -145,6 +146,7 @@ the name says *which* concept.
 | `user.rs` | `UserId`, `User`, `Nickname`, `Profile`, `Identity`, nickname candidates |
 | `session.rs` | `SessionToken`, `TokenHash`, `SESSION_TTL`, random tokens |
 | `sign_in.rs` | `ProviderId`, `ProviderSummary`, `SignInId`, `Authorization`, `PendingSignIn`, `ProviderAnswer`, `VerifiedIdentity` (nickname and label from claims), `Linking`, `SignInEnd`, `LinkedIdentity`, `SIGN_IN_TTL` |
+| `registration.rs` | `RegistrationToken`, `Registration`, `PendingRegistration`, `REGISTRATION_TTL` |
 | `character.rs` | `CharacterId`, `CharacterName`, `Version`, `Character` |
 
 ### Rules live in the model
@@ -283,7 +285,8 @@ this section spells out the compromise.
 
 - **User-facing → a named variant**, exhaustive and matchable:
   `NoSession`, `UnknownProvider`, `BlankNickname`, `NicknameTooLong`,
-  `ProfileTooLong`, `NicknameTaken`, `IdentityTaken`, `CharacterNotFound`,
+  `ProfileTooLong`, `NicknameTaken`, `IdentityTaken`,
+  `ProviderAlreadyLinked`, `NoRegistration`, `CharacterNotFound`,
   `BlankName`, `UnreadableDocument`, `OtherEngine`, `Stale`, `SignInFailed`.
   The user can change what they do: pick another nickname, reload, sign in
   again.

@@ -32,13 +32,18 @@ impl SessionToken {
 
     /// What the repository keeps: reading it gives no usable session.
     pub(crate) fn hash(&self) -> TokenHash {
-        TokenHash(hex(&Sha256::digest(self.0.as_bytes())))
+        hash_token(&self.0)
     }
 }
 
-/// The SHA-256 of a session token, in hex.
+/// The SHA-256 of a secret token (a session's, a registration's), in hex.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenHash(pub(crate) String);
+
+/// The hash of `token`, which the repository keeps instead of it.
+pub(crate) fn hash_token(token: &str) -> TokenHash {
+    TokenHash(hex(&Sha256::digest(token.as_bytes())))
+}
 
 /// 32 random bytes, in hex.
 pub(crate) fn random_token() -> String {

@@ -5,7 +5,7 @@
 
 use std::{fmt, time::Duration};
 
-use crate::{Identity, SessionToken, UserId, session::random_token};
+use crate::{Identity, RegistrationToken, SessionToken, UserId, session::random_token};
 
 /// How long a sign-in in progress waits for its callback.
 pub const SIGN_IN_TTL: Duration = Duration::from_mins(10);
@@ -140,8 +140,8 @@ pub struct VerifiedIdentity {
 }
 
 impl VerifiedIdentity {
-    /// The nickname a new user wants: the `preferred_username` or `name`
-    /// claim, else "Joueur". Never the email: a nickname is public.
+    /// The nickname suggested to a new user: the `preferred_username` or
+    /// `name` claim, else "Joueur". Never the email: a nickname is public.
     pub(crate) fn wanted_nickname(&self) -> &str {
         first([&self.preferred_username, &self.name]).unwrap_or(DEFAULT_NICKNAME)
     }
@@ -176,6 +176,9 @@ pub enum Linking {
 pub enum SignInEnd {
     /// Signed in: the session opened.
     SignedIn(SessionToken),
+    /// An identity no user has: its registration started, for the browser
+    /// to complete or cancel (ADR BE-FIRST-SIGN-IN).
+    Registering(RegistrationToken),
     /// An identity linked to the user who started the sign-in.
     Linked(Linking),
 }

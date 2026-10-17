@@ -1,8 +1,10 @@
 //! The routes under `/api/auth` (ADR BE-API), and the cookies they
 //! set. `login` and `link` keep the sign-in in progress under a short-lived
 //! cookie and redirect to the provider; `callback` ends it, then sends the
-//! browser back to the app, told how it went. The session token travels in
-//! an `HttpOnly`, `SameSite=Lax` cookie.
+//! browser back to the app, told how it went. An identity no user has is
+//! sent to create its account, its registration kept under another cookie
+//! until `registration` completes or cancels it (ADR BE-FIRST-SIGN-IN). The
+//! session token travels in an `HttpOnly`, `SameSite=Lax` cookie.
 
 use std::time::Duration;
 
@@ -15,17 +17,22 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{AppState, Rejection, session_user};
+use super::{AppState, Rejection, UserView, session_user};
 use crate::{
-    ActionContext, Error, Linking, ProviderAnswer, ProviderId, SESSION_TTL, SIGN_IN_TTL,
-    SessionToken, SignInEnd, SignInId,
+    ActionContext, Error, Linking, Nickname, PendingRegistration, Profile, ProviderAnswer,
+    ProviderId, REGISTRATION_TTL, RegistrationToken, SESSION_TTL, SIGN_IN_TTL, SessionToken,
+    SignInEnd, SignInId,
 };
 
 const SESSION_COOKIE: &str = "palimpseste_session";
 const LOGIN_COOKIE: &str = "palimpseste_login";
 const LOGIN_COOKIE_PATH: &str = "/api/auth";
-/// Where a sign-in ends: the app, told when it failed.
+const REGISTRATION_COOKIE: &str = "palimpseste_registration";
+const REGISTRATION_COOKIE_PATH: &str = "/api/auth/registration";
+/// Where a sign-in ends: the app, the account creation page for an
+/// identity no user has, or the sign-in page when it failed.
 const SIGNED_IN: &str = "/";
+const REGISTER: &str = "/register";
 const SIGN_IN: &str = "/login";
 const SIGN_IN_FAILED: &str = "/login?signin=failed";
 /// Where linking an identity ends: the profile page, told how
@@ -33,6 +40,7 @@ const SIGN_IN_FAILED: &str = "/login?signin=failed";
 const LINKED: &str = "/profile?link=done";
 const LINK_ALREADY_YOURS: &str = "/profile?link=already";
 const LINK_TAKEN: &str = "/profile?link=taken";
+const LINK_PROVIDER_LINKED: &str = "/profile?link=provider";
 const LINK_FAILED: &str = "/profile?link=failed";
 
 /// The routes under `/api/auth`.
@@ -42,6 +50,10 @@ pub(super) fn routes() -> Router<AppState> {
         .route("/{provider}/login", get(login))
         .route("/{provider}/link", get(link))
         .route("/{provider}/callback", get(callback))
+        .route(
+            "/registration",
+            get(registration).post(register).delete(cancel_registration),
+        )
         .route("/logout", post(logout))
 }
 
@@ -197,9 +209,26 @@ async fn callback(
             )
                 .into_response();
         }
+        Ok(SignInEnd::Registering(token)) => {
+            let registration = state.cookies.set(
+                REGISTRATION_COOKIE,
+                token.as_str(),
+                REGISTRATION_COOKIE_PATH,
+                REGISTRATION_TTL,
+            );
+            return (
+                AppendHeaders([
+                    (header::SET_COOKIE, clear_login),
+                    (header::SET_COOKIE, registration),
+                ]),
+                Redirect::to(REGISTER),
+            )
+                .into_response();
+        }
         Ok(SignInEnd::Linked(Linking::Linked)) => LINKED,
         Ok(SignInEnd::Linked(Linking::AlreadyYours)) => LINK_ALREADY_YOURS,
         Err(Error::IdentityTaken) => LINK_TAKEN,
+        Err(Error::ProviderAlreadyLinked) => LINK_PROVIDER_LINKED,
         Err(Error::SignInFailed { linking, cause }) => {
             tracing::warn!(provider = %id, reason = format!("{cause:#}"), linking, "sign-in failed");
             failed(linking)
@@ -210,6 +239,97 @@ async fn callback(
         }
     };
     ([(header::SET_COOKIE, clear_login)], Redirect::to(to)).into_response()
+}
+
+/// The registration in progress of the request; [`Error::NoRegistration`]
+/// without its cookie.
+fn registration_token(headers: &HeaderMap) -> Result<RegistrationToken, Error> {
+    cookie(headers, REGISTRATION_COOKIE)
+        .map(RegistrationToken::from_cookie)
+        .ok_or(Error::NoRegistration)
+}
+
+/// A registration in progress, as the person creating their account sees
+/// it.
+#[derive(Debug, Serialize)]
+struct RegistrationView {
+    /// The nickname suggested.
+    nickname: String,
+    /// The name of the identity's provider, or its issuer.
+    provider: String,
+    label: String,
+}
+
+/// The account a registration creates.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NewAccount {
+    nickname: String,
+    #[serde(default)]
+    profile: String,
+}
+
+/// The registration in progress in this browser.
+async fn registration(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<RegistrationView>, Rejection> {
+    let token = registration_token(&headers)?;
+    let PendingRegistration {
+        registration,
+        provider,
+    } = state.service.registration(&token).await?;
+    Ok(Json(RegistrationView {
+        nickname: registration.nickname.0,
+        provider: provider.map_or(registration.issuer, |provider| provider.name),
+        label: registration.label,
+    }))
+}
+
+/// Completes the registration in progress: creates the account and signs
+/// it in.
+async fn register(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(account): Json<NewAccount>,
+) -> Result<Response, Rejection> {
+    let token = registration_token(&headers)?;
+    let nickname = Nickname::parse(&account.nickname)?;
+    let profile = Profile::parse(&account.profile)?;
+    let (user, session) = state.service.register(&token, nickname, profile).await?;
+    let clear = state.cookies.set(
+        REGISTRATION_COOKIE,
+        "",
+        REGISTRATION_COOKIE_PATH,
+        Duration::ZERO,
+    );
+    let session = state
+        .cookies
+        .set(SESSION_COOKIE, session.as_str(), "/", SESSION_TTL);
+    Ok((
+        StatusCode::CREATED,
+        AppendHeaders([(header::SET_COOKIE, clear), (header::SET_COOKIE, session)]),
+        Json(UserView::from(user)),
+    )
+        .into_response())
+}
+
+/// Cancels the registration in progress, if any, and removes its cookie:
+/// the identity stays free.
+async fn cancel_registration(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, Rejection> {
+    if let Ok(token) = registration_token(&headers) {
+        state.service.cancel_registration(&token).await?;
+    }
+    let clear = state.cookies.set(
+        REGISTRATION_COOKIE,
+        "",
+        REGISTRATION_COOKIE_PATH,
+        Duration::ZERO,
+    );
+    Ok((StatusCode::NO_CONTENT, [(header::SET_COOKIE, clear)]))
 }
 
 /// Ends the session of the request, if any, and removes its cookie.
@@ -232,7 +352,11 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use axum::{Form, body::Body, http::Request};
+    use axum::{
+        Form,
+        body::Body,
+        http::{Method, Request},
+    };
     use openidconnect::{
         JsonWebKeyId, PkceCodeChallenge, PkceCodeVerifier, PrivateSigningKey,
         core::{CoreIdToken, CoreIdTokenClaims, CoreJwsSigningAlgorithm, CoreRsaPrivateSigningKey},
@@ -357,12 +481,12 @@ mod tests {
     }
 
     fn app(issuer: &Issuer) -> Router {
-        app_with(provider(issuer))
+        app_with(vec![provider(issuer)])
     }
 
-    fn app_with(provider: ProviderConfig) -> Router {
+    fn app_with(providers: Vec<ProviderConfig>) -> Router {
         let public_url = "http://localhost:3000/";
-        let providers = OidcProviders::new(public_url, vec![provider]).unwrap();
+        let providers = OidcProviders::new(public_url, providers).unwrap();
         let service = Arc::new(PalimpsesteServiceImpl::new(
             SqliteRepo::in_memory(),
             providers,
@@ -371,15 +495,36 @@ mod tests {
         HttpApi::new(service, &dir, public_url).router()
     }
 
-    async fn get_with(app: &Router, uri: &str, cookie: Option<&str>) -> Response {
-        let request = cookie
-            .into_iter()
-            .fold(Request::get(uri), |request, cookie| {
-                request.header(header::COOKIE, cookie)
-            })
-            .body(Body::empty())
-            .unwrap();
+    async fn send(
+        app: &Router,
+        method: Method,
+        uri: &str,
+        cookie: Option<&str>,
+        body: Option<Value>,
+    ) -> Response {
+        let request = cookie.into_iter().fold(
+            Request::builder().method(method).uri(uri),
+            |request, cookie| request.header(header::COOKIE, cookie),
+        );
+        let request = match body {
+            Some(body) => request
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string())),
+            None => request.body(Body::empty()),
+        }
+        .unwrap();
         app.clone().oneshot(request).await.unwrap()
+    }
+
+    async fn get_with(app: &Router, uri: &str, cookie: Option<&str>) -> Response {
+        send(app, Method::GET, uri, cookie, None).await
+    }
+
+    async fn body_json(response: Response) -> Value {
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        serde_json::from_slice(&body).unwrap()
     }
 
     /// The `name=value` of each cookie a response sets.
@@ -395,6 +540,13 @@ mod tests {
             .collect()
     }
 
+    /// The `name=value` of cookie `name`, if the response sets it.
+    fn set_cookie(response: &Response, name: &str) -> Option<String> {
+        set_cookies(response)
+            .into_iter()
+            .find(|cookie| cookie.starts_with(&format!("{name}=")))
+    }
+
     fn location(response: &Response) -> &str {
         response.headers()[header::LOCATION].to_str().unwrap()
     }
@@ -403,15 +555,6 @@ mod tests {
     /// to the issuer.
     async fn start(app: &Router, issuer: &Issuer) -> (String, HashMap<String, String>) {
         start_at(app, issuer, "/api/auth/mock/login", None).await
-    }
-
-    /// A link started by the user of `session`, as `start`.
-    async fn start_link(
-        app: &Router,
-        issuer: &Issuer,
-        session: &str,
-    ) -> (String, HashMap<String, String>) {
-        start_at(app, issuer, "/api/auth/mock/link", Some(session)).await
     }
 
     async fn start_at(
@@ -434,29 +577,94 @@ mod tests {
         (cookies[0].clone(), query)
     }
 
-    /// Ends a sign-in: where it redirects to, and the session cookie set.
-    async fn finish(
+    /// How a callback ended: where it redirects to, and the session and
+    /// registration cookies it sets.
+    #[derive(Debug)]
+    struct Ended {
+        to: String,
+        session: Option<String>,
+        registration: Option<String>,
+    }
+
+    /// Ends a sign-in at the mock provider.
+    async fn finish(app: &Router, login: Option<&str>, code: &str, state: &str) -> Ended {
+        finish_at(app, "mock", login, code, state).await
+    }
+
+    async fn finish_at(
         app: &Router,
+        provider: &str,
         login: Option<&str>,
         code: &str,
         state: &str,
-    ) -> (String, Option<String>) {
-        let uri = format!("/api/auth/mock/callback?code={code}&state={state}");
+    ) -> Ended {
+        let uri = format!("/api/auth/{provider}/callback?code={code}&state={state}");
         let response = get_with(app, &uri, login).await;
         assert_eq!(response.status(), StatusCode::SEE_OTHER);
-        let session = set_cookies(&response)
-            .into_iter()
-            .find(|cookie| cookie.starts_with("palimpseste_session="));
-        (location(&response).to_owned(), session)
+        Ended {
+            to: location(&response).to_owned(),
+            session: set_cookie(&response, SESSION_COOKIE),
+            registration: set_cookie(&response, REGISTRATION_COOKIE),
+        }
     }
 
     async fn me(app: &Router, session: &str) -> Value {
         let response = get_with(app, "/api/me", Some(session)).await;
         assert_eq!(response.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        serde_json::from_slice(&body).unwrap()
+        body_json(response).await
+    }
+
+    /// Signs in as `subject` at the mock provider, to the end of the
+    /// callback.
+    async fn sign_in_as(app: &Router, issuer: &Issuer, subject: &str) -> Ended {
+        sign_in_at(app, issuer, "mock", subject).await
+    }
+
+    async fn sign_in_at(app: &Router, issuer: &Issuer, provider: &str, subject: &str) -> Ended {
+        let uri = format!("/api/auth/{provider}/login");
+        let (login, query) = start_at(app, issuer, &uri, None).await;
+        issuer.grant("in", subject, &query["nonce"], &query["code_challenge"]);
+        finish_at(app, provider, Some(&login), "in", &query["state"]).await
+    }
+
+    /// Signs in as `subject`, a registered identity; gives the session
+    /// cookie.
+    async fn sign_in(app: &Router, issuer: &Issuer, subject: &str) -> String {
+        let ended = sign_in_as(app, issuer, subject).await;
+        assert_eq!(ended.to, "/");
+        assert_eq!(ended.registration, None);
+        ended.session.unwrap()
+    }
+
+    /// Signs in as `subject` for the first time; gives the registration
+    /// cookie.
+    async fn start_registration(app: &Router, issuer: &Issuer, subject: &str) -> String {
+        let ended = sign_in_as(app, issuer, subject).await;
+        assert_eq!(ended.to, "/register");
+        assert_eq!(ended.session, None, "a registration opens no session");
+        ended.registration.unwrap()
+    }
+
+    const REGISTRATION: &str = "/api/auth/registration";
+
+    /// Completes the registration of the browser with `account`.
+    async fn register(app: &Router, registration: Option<&str>, account: Value) -> Response {
+        send(app, Method::POST, REGISTRATION, registration, Some(account)).await
+    }
+
+    /// Registers `subject` with the nickname suggested; gives the session
+    /// cookie.
+    async fn sign_up(app: &Router, issuer: &Issuer, subject: &str) -> String {
+        let registration = start_registration(app, issuer, subject).await;
+        let suggested = body_json(get_with(app, REGISTRATION, Some(&registration)).await).await;
+        let response = register(
+            app,
+            Some(&registration),
+            json!({"nickname": suggested["nickname"]}),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::CREATED);
+        set_cookie(&response, SESSION_COOKIE).unwrap()
     }
 
     #[tokio::test]
@@ -474,96 +682,182 @@ mod tests {
         assert_eq!(query["scope"], "openid profile email");
 
         issuer.grant("one", "ana", &query["nonce"], &query["code_challenge"]);
-        let (to, session) = finish(&app, Some(&login), "one", &query["state"]).await;
-        assert_eq!(to, "/");
-        let session = session.unwrap();
-        assert_eq!(
-            me(&app, &session).await,
-            json!({"nickname": "ana Mock", "profile": ""})
-        );
+        let ended = finish(&app, Some(&login), "one", &query["state"]).await;
+        assert_eq!(ended.to, "/register");
+        assert!(ended.registration.is_some());
 
         // A callback is used once.
         issuer.grant("one", "ana", &query["nonce"], &query["code_challenge"]);
-        let (to, replayed) = finish(&app, Some(&login), "one", &query["state"]).await;
-        assert_eq!(to, "/login?signin=failed");
-        assert_eq!(replayed, None);
+        let replayed = finish(&app, Some(&login), "one", &query["state"]).await;
+        assert_eq!(replayed.to, "/login?signin=failed");
+        assert_eq!(replayed.session, None);
+        assert_eq!(replayed.registration, None);
+    }
 
-        // The same identity is the same user; another one is another user.
-        for (subject, nickname) in [("ana", "ana Mock"), ("ben", "ben Mock")] {
-            assert_eq!(
-                me(&app, &sign_in(&app, &issuer, subject).await).await["nickname"],
-                nickname
-            );
+    #[tokio::test]
+    async fn the_first_sign_in_creates_the_account() {
+        let issuer = Issuer::start().await;
+        let app = app(&issuer);
+        let registration = start_registration(&app, &issuer, "ana").await;
+        let response = get_with(&app, "/api/me", Some(&registration)).await;
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        let response = get_with(&app, REGISTRATION, Some(&registration)).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            body_json(response).await,
+            json!({"nickname": "ana Mock", "provider": "Mock", "label": "ana@mail.test"})
+        );
+
+        for (account, status) in [
+            (json!({"nickname": " "}), StatusCode::UNPROCESSABLE_ENTITY),
+            (
+                json!({"nickname": "Ana", "id": 1}),
+                StatusCode::UNPROCESSABLE_ENTITY,
+            ),
+        ] {
+            let response = register(&app, Some(&registration), account.clone()).await;
+            assert_eq!(response.status(), status, "{account}");
         }
+        let response = register(&app, None, json!({"nickname": "Ana"})).await;
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+        let response = register(
+            &app,
+            Some(&registration),
+            json!({"nickname": " Anaïs ", "profile": " Joue une barbare. "}),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::CREATED);
+        assert_eq!(
+            set_cookie(&response, REGISTRATION_COOKIE).as_deref(),
+            Some("palimpseste_registration=")
+        );
+        let session = set_cookie(&response, SESSION_COOKIE).unwrap();
+        let created = json!({"nickname": "Anaïs", "profile": "Joue une barbare."});
+        assert_eq!(body_json(response).await, created);
+        assert_eq!(me(&app, &session).await, created);
+
+        // The registration is used up; the next sign-in goes straight in.
+        let response = register(&app, Some(&registration), json!({"nickname": "Ana"})).await;
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(
+            me(&app, &sign_in(&app, &issuer, "ana").await).await,
+            created
+        );
+
+        // Another identity is another account, its nickname its own.
+        let ben = start_registration(&app, &issuer, "ben").await;
+        let response = register(&app, Some(&ben), json!({"nickname": "anaïs"})).await;
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+        let response = register(&app, Some(&ben), json!({"nickname": "Ben"})).await;
+        assert_eq!(response.status(), StatusCode::CREATED);
     }
 
-    /// Signs in as `subject` at the issuer; gives the session cookie.
-    async fn sign_in(app: &Router, issuer: &Issuer, subject: &str) -> String {
-        let (login, query) = start(app, issuer).await;
-        issuer.grant("in", subject, &query["nonce"], &query["code_challenge"]);
-        let (to, session) = finish(app, Some(&login), "in", &query["state"]).await;
-        assert_eq!(to, "/");
-        session.unwrap()
+    #[tokio::test]
+    async fn a_cancelled_registration_leaves_the_identity_free() {
+        let issuer = Issuer::start().await;
+        let app = app(&issuer);
+        let registration = start_registration(&app, &issuer, "ana").await;
+        let response = send(
+            &app,
+            Method::DELETE,
+            REGISTRATION,
+            Some(&registration),
+            None,
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        let cleared = response.headers()[header::SET_COOKIE].to_str().unwrap();
+        assert!(
+            cleared
+                .starts_with("palimpseste_registration=; Path=/api/auth/registration; Max-Age=0"),
+            "{cleared}"
+        );
+        let response = get_with(&app, REGISTRATION, Some(&registration)).await;
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let response = register(&app, Some(&registration), json!({"nickname": "Ana"})).await;
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let response = send(&app, Method::DELETE, REGISTRATION, None, None).await;
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+        // Signing in again starts another registration.
+        start_registration(&app, &issuer, "ana").await;
     }
 
-    /// Links `subject` at the issuer to the user of `session`; gives where
-    /// it ends.
-    async fn link(app: &Router, issuer: &Issuer, session: &str, subject: &str) -> String {
-        let (login, query) = start_link(app, issuer, session).await;
+    /// Links `subject` at `provider` of `issuer` to the user of `session`;
+    /// gives where it ends.
+    async fn link(
+        app: &Router,
+        issuer: &Issuer,
+        provider: &str,
+        session: &str,
+        subject: &str,
+    ) -> String {
+        let uri = format!("/api/auth/{provider}/link");
+        let (login, query) = start_at(app, issuer, &uri, Some(session)).await;
         issuer.grant("link", subject, &query["nonce"], &query["code_challenge"]);
-        let (to, opened) = finish(app, Some(&login), "link", &query["state"]).await;
-        assert_eq!(opened, None, "linking opens no session");
-        to
+        let ended = finish_at(app, provider, Some(&login), "link", &query["state"]).await;
+        assert_eq!(ended.session, None, "linking opens no session");
+        assert_eq!(ended.registration, None, "linking registers nobody");
+        ended.to
     }
 
     async fn identities(app: &Router, session: &str) -> Value {
         let response = get_with(app, "/api/me/identities", Some(session)).await;
         assert_eq!(response.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        serde_json::from_slice(&body).unwrap()
+        body_json(response).await
     }
 
     #[tokio::test]
-    async fn links_identities_to_the_signed_in_user() {
-        let issuer = Issuer::start().await;
-        let app = app(&issuer);
-        let ana = sign_in(&app, &issuer, "ana").await;
-        let ben = sign_in(&app, &issuer, "ben").await;
+    async fn links_one_identity_per_provider_to_the_signed_in_user() {
+        let (issuer, other) = (Issuer::start().await, Issuer::start().await);
+        let app = app_with(vec![
+            provider(&issuer),
+            ProviderConfig::new("other", "Other", &other.url, CLIENT_ID, "secret").unwrap(),
+        ]);
+        let ana = sign_up(&app, &issuer, "ana").await;
+        let ben = sign_up(&app, &issuer, "ben").await;
 
         assert_eq!(
-            link(&app, &issuer, &ana, "ana-2").await,
+            link(&app, &other, "other", &ana, "ana-2").await,
             "/profile?link=done"
         );
         assert_eq!(
             identities(&app, &ana).await,
             json!([
                 {"provider": "mock", "name": "Mock", "label": "ana@mail.test"},
-                {"provider": "mock", "name": "Mock", "label": "ana-2@mail.test"},
+                {"provider": "other", "name": "Other", "label": "ana-2@mail.test"},
             ])
         );
         // The linked identity signs in as Ana.
-        let again = sign_in(&app, &issuer, "ana-2").await;
-        assert_eq!(me(&app, &again).await["nickname"], "ana Mock");
+        let again = sign_in_at(&app, &other, "other", "ana-2").await;
+        assert_eq!(again.to, "/");
+        assert_eq!(
+            me(&app, &again.session.unwrap()).await["nickname"],
+            "ana Mock"
+        );
 
         assert_eq!(
-            link(&app, &issuer, &ana, "ana-2").await,
+            link(&app, &other, "other", &ana, "ana-2").await,
             "/profile?link=already"
         );
         assert_eq!(
-            link(&app, &issuer, &ana, "ben").await,
+            link(&app, &issuer, "mock", &ana, "ben").await,
             "/profile?link=taken"
+        );
+        assert_eq!(
+            link(&app, &issuer, "mock", &ana, "ana-3").await,
+            "/profile?link=provider"
         );
         assert_eq!(identities(&app, &ben).await.as_array().unwrap().len(), 1);
         assert_eq!(identities(&app, &ana).await.as_array().unwrap().len(), 2);
 
         // A link checks the callback as a sign-in does.
-        let (login, query) = start_link(&app, &issuer, &ana).await;
-        issuer.grant("forged", "ana-3", &query["nonce"], &query["code_challenge"]);
-        let (to, _) = finish(&app, Some(&login), "forged", "forged").await;
-        assert_eq!(to, "/profile?link=failed");
-        assert_eq!(identities(&app, &ana).await.as_array().unwrap().len(), 2);
+        let (login, query) = start_at(&app, &other, "/api/auth/other/link", Some(&ben)).await;
+        other.grant("forged", "ben-2", &query["nonce"], &query["code_challenge"]);
+        let ended = finish_at(&app, "other", Some(&login), "forged", "forged").await;
+        assert_eq!(ended.to, "/profile?link=failed");
+        assert_eq!(identities(&app, &ben).await.as_array().unwrap().len(), 1);
     }
 
     #[tokio::test]
@@ -581,15 +875,16 @@ mod tests {
     #[tokio::test]
     async fn asks_for_the_scopes_of_the_provider() {
         let issuer = Issuer::start().await;
-        let app = app_with(provider(&issuer).with_scopes(" identify  openid email "));
+        let app = app_with(vec![
+            provider(&issuer).with_scopes(" identify  openid email "),
+        ]);
         let (login, query) = start(&app, &issuer).await;
         assert_eq!(query["scope"], "openid identify email");
         issuer.grant("one", "ana", &query["nonce"], &query["code_challenge"]);
-        let (to, session) = finish(&app, Some(&login), "one", &query["state"]).await;
-        assert_eq!(to, "/");
-        assert!(session.is_some());
+        let ended = finish(&app, Some(&login), "one", &query["state"]).await;
+        assert_eq!(ended.to, "/register");
 
-        let app = app_with(provider(&issuer).with_scopes(""));
+        let app = app_with(vec![provider(&issuer).with_scopes("")]);
         let (_, query) = start(&app, &issuer).await;
         assert_eq!(query["scope"], "openid");
     }
@@ -618,9 +913,10 @@ mod tests {
                 _ => challenge = "another",
             }
             issuer.grant("code", "ana", nonce, challenge);
-            let (to, session) = finish(&app, cookie, "code", state).await;
-            assert_eq!(to, "/login?signin=failed", "{case}");
-            assert_eq!(session, None, "{case}");
+            let ended = finish(&app, cookie, "code", state).await;
+            assert_eq!(ended.to, "/login?signin=failed", "{case}");
+            assert_eq!(ended.session, None, "{case}");
+            assert_eq!(ended.registration, None, "{case}");
         }
     }
 

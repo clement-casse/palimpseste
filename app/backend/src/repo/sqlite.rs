@@ -15,8 +15,8 @@ use rusqlite::{Connection, OptionalExtension, Row, Transaction, params};
 
 use crate::{
     Character, CharacterId, CharacterName, Error, Identity, Linking, Nickname, PendingSignIn,
-    Profile, ProviderId, SignInId, TokenHash, User, UserId, Version, repo::PalimpsesteRepository,
-    user::nickname_candidates,
+    Profile, ProviderId, Registration, SignInId, TokenHash, User, UserId, Version,
+    repo::PalimpsesteRepository, user::nickname_candidates,
 };
 
 const SCHEMA: &str = "
@@ -55,6 +55,14 @@ const SCHEMA: &str = "
         expires_at INTEGER NOT NULL,
         link_user INTEGER REFERENCES users (id)
     );
+    CREATE TABLE IF NOT EXISTS registrations (
+        token_hash TEXT PRIMARY KEY,
+        issuer TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        label TEXT NOT NULL,
+        nickname TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+    );
 ";
 
 /// Brings a database of an earlier schema to the current one, then indexes
@@ -84,14 +92,15 @@ const MIGRATIONS: [(&str, &str, &str); 3] = [
 
 const INDEXES: &str = "
     CREATE UNIQUE INDEX IF NOT EXISTS users_nickname ON users (nickname COLLATE NOCASE);
+    CREATE UNIQUE INDEX IF NOT EXISTS identities_user_issuer ON identities (user_id, issuer);
 ";
 
 const USER_COLUMNS: &str = "users.id, users.nickname, users.profile";
 
 const CHARACTER_COLUMNS: &str = "id, name, engine, document, version";
 
-/// Users, their identities, sessions, sign-ins and characters, in one
-/// SQLite database. Clones share the connection.
+/// Users, their identities, sessions, sign-ins, registrations and
+/// characters, in one SQLite database. Clones share the connection.
 #[derive(Debug, Clone)]
 pub struct SqliteRepo {
     connection: Arc<Mutex<Connection>>,
@@ -169,63 +178,136 @@ enum Replaced {
 
 #[async_trait]
 impl PalimpsesteRepository for SqliteRepo {
-    async fn user_for_identity(
+    async fn identity_user(
         &self,
+        issuer: &str,
+        subject: &str,
+        label: &str,
+    ) -> Result<Option<User>, Error> {
+        let (issuer, subject, label) = (issuer.to_owned(), subject.to_owned(), label.to_owned());
+        self.call("finding the user of an identity", move |connection| {
+            let transaction = connection.transaction()?;
+            let known = transaction
+                .query_row(
+                    &format!(
+                        "SELECT {USER_COLUMNS} FROM identities
+                         JOIN users ON users.id = identities.user_id
+                         WHERE identities.issuer = ?1 AND identities.subject = ?2"
+                    ),
+                    params![issuer, subject],
+                    user,
+                )
+                .optional()?;
+            if known.is_some() {
+                transaction.execute(
+                    "UPDATE identities SET label = ?1 WHERE issuer = ?2 AND subject = ?3",
+                    params![label, issuer, subject],
+                )?;
+            }
+            transaction.commit()?;
+            Ok(known)
+        })
+        .await
+    }
+
+    async fn create_registration(
+        &self,
+        token: &TokenHash,
         issuer: &str,
         subject: &str,
         wanted_nickname: &str,
         label: &str,
-    ) -> Result<(User, bool), Error> {
-        let (issuer, subject, wanted, label) = (
+        ttl: Duration,
+    ) -> Result<(), Error> {
+        let (token, issuer, subject, wanted, label) = (
+            token.0.clone(),
             issuer.to_owned(),
             subject.to_owned(),
             wanted_nickname.to_owned(),
             label.to_owned(),
         );
-        self.call(
-            "finding or creating the user of an identity",
-            move |connection| {
-                let transaction = connection.transaction()?;
-                let known = transaction
-                    .query_row(
-                        &format!(
-                            "SELECT {USER_COLUMNS} FROM identities
-                         JOIN users ON users.id = identities.user_id
-                         WHERE identities.issuer = ?1 AND identities.subject = ?2"
-                        ),
-                        params![issuer, subject],
-                        user,
-                    )
-                    .optional()?;
-                let created = known.is_none();
-                let user = if let Some(known) = known {
-                    transaction.execute(
-                        "UPDATE identities SET label = ?1 WHERE issuer = ?2 AND subject = ?3",
-                        params![label, issuer, subject],
-                    )?;
-                    known
-                } else {
-                    let nickname = free_nickname(&transaction, &wanted)?;
-                    transaction.execute(
-                        "INSERT INTO users (nickname) VALUES (?1)",
-                        params![nickname.0],
-                    )?;
-                    let id = UserId(transaction.last_insert_rowid());
-                    transaction.execute(
-                        "INSERT INTO identities (issuer, subject, user_id, label)
-                     VALUES (?1, ?2, ?3, ?4)",
-                        params![issuer, subject, id.0, label],
-                    )?;
-                    User {
-                        id,
-                        nickname,
-                        profile: Profile::default(),
-                    }
-                };
+        self.call("keeping a registration in progress", move |connection| {
+            let transaction = connection.transaction()?;
+            let nickname = free_nickname(&transaction, &wanted)?;
+            transaction.execute(
+                "INSERT INTO registrations (token_hash, issuer, subject, label, nickname, expires_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, unixepoch() + ?6)",
+                params![token, issuer, subject, label, nickname.0, seconds(ttl)],
+            )?;
+            transaction.commit()
+        })
+        .await
+    }
+
+    async fn registration(&self, token: &TokenHash) -> Result<Option<Registration>, Error> {
+        let token = token.0.clone();
+        self.call("reading a registration in progress", move |connection| {
+            live_registration(connection, &token)
+        })
+        .await
+    }
+
+    async fn register(
+        &self,
+        token: &TokenHash,
+        nickname: Nickname,
+        profile: Profile,
+    ) -> Result<Option<User>, Error> {
+        let token = token.0.clone();
+        self.call("completing a registration", move |connection| {
+            let transaction = connection.transaction()?;
+            let Some(registration) = live_registration(&transaction, &token)? else {
+                return Ok(Ok(None));
+            };
+            if nickname_taken(&transaction, &nickname.0, None)? {
+                return Ok(Err(Error::NicknameTaken));
+            }
+            let owned: bool = transaction.query_row(
+                "SELECT EXISTS (SELECT 1 FROM identities WHERE issuer = ?1 AND subject = ?2)",
+                params![registration.issuer, registration.subject],
+                |row| row.get(0),
+            )?;
+            transaction.execute(
+                "DELETE FROM registrations WHERE token_hash = ?1",
+                params![token],
+            )?;
+            if owned {
                 transaction.commit()?;
-                Ok((user, created))
-            },
-        )
+                return Ok(Err(Error::IdentityTaken));
+            }
+            transaction.execute(
+                "INSERT INTO users (nickname, profile) VALUES (?1, ?2)",
+                params![nickname.0, profile.0],
+            )?;
+            let id = UserId(transaction.last_insert_rowid());
+            transaction.execute(
+                "INSERT INTO identities (issuer, subject, user_id, label) VALUES (?1, ?2, ?3, ?4)",
+                params![
+                    registration.issuer,
+                    registration.subject,
+                    id.0,
+                    registration.label
+                ],
+            )?;
+            transaction.commit()?;
+            Ok(Ok(Some(User {
+                id,
+                nickname,
+                profile,
+            })))
+        })
+        .await?
+    }
+
+    async fn delete_registration(&self, token: &TokenHash) -> Result<(), Error> {
+        let token = token.0.clone();
+        self.call("cancelling a registration", move |connection| {
+            connection.execute(
+                "DELETE FROM registrations WHERE token_hash = ?1",
+                params![token],
+            )?;
+            Ok(())
+        })
         .await
     }
 
@@ -299,7 +381,7 @@ impl PalimpsesteRepository for SqliteRepo {
                 )
                 .optional()?;
             let linked = match owner {
-                Some(owner) if owner != user.0 => return Ok(None),
+                Some(owner) if owner != user.0 => return Ok(Err(Error::IdentityTaken)),
                 Some(_) => {
                     transaction.execute(
                         "UPDATE identities SET label = ?1 WHERE issuer = ?2 AND subject = ?3",
@@ -308,6 +390,14 @@ impl PalimpsesteRepository for SqliteRepo {
                     Linking::AlreadyYours
                 }
                 None => {
+                    let at_issuer: bool = transaction.query_row(
+                        "SELECT EXISTS (SELECT 1 FROM identities WHERE user_id = ?1 AND issuer = ?2)",
+                        params![user.0, issuer],
+                        |row| row.get(0),
+                    )?;
+                    if at_issuer {
+                        return Ok(Err(Error::ProviderAlreadyLinked));
+                    }
                     transaction.execute(
                         "INSERT INTO identities (issuer, subject, user_id, label)
                          VALUES (?1, ?2, ?3, ?4)",
@@ -317,10 +407,9 @@ impl PalimpsesteRepository for SqliteRepo {
                 }
             };
             transaction.commit()?;
-            Ok(Some(linked))
+            Ok(Ok(linked))
         })
         .await?
-        .ok_or(Error::IdentityTaken)
     }
 
     async fn create_session(
@@ -422,12 +511,16 @@ impl PalimpsesteRepository for SqliteRepo {
     }
 
     async fn purge_expired(&self) -> Result<(), Error> {
-        self.call("purging expired sessions and sign-ins", |connection| {
-            connection.execute_batch(
-                "DELETE FROM sessions WHERE expires_at <= unixepoch();
-                 DELETE FROM logins WHERE expires_at <= unixepoch();",
-            )
-        })
+        self.call(
+            "purging expired sessions, sign-ins and registrations",
+            |connection| {
+                connection.execute_batch(
+                    "DELETE FROM sessions WHERE expires_at <= unixepoch();
+                 DELETE FROM logins WHERE expires_at <= unixepoch();
+                 DELETE FROM registrations WHERE expires_at <= unixepoch();",
+                )
+            },
+        )
         .await
     }
 
@@ -587,6 +680,28 @@ fn free_nickname(transaction: &Transaction<'_>, wanted: &str) -> rusqlite::Resul
     unreachable!("nickname candidates never end")
 }
 
+/// The registration `token`, unless it is unknown or expired.
+fn live_registration(
+    connection: &Connection,
+    token: &str,
+) -> rusqlite::Result<Option<Registration>> {
+    connection
+        .query_row(
+            "SELECT issuer, subject, label, nickname FROM registrations
+             WHERE token_hash = ?1 AND expires_at > unixepoch()",
+            params![token],
+            |row| {
+                Ok(Registration {
+                    issuer: row.get(0)?,
+                    subject: row.get(1)?,
+                    label: row.get(2)?,
+                    nickname: Nickname(row.get(3)?),
+                })
+            },
+        )
+        .optional()
+}
+
 fn find_character(
     connection: &Connection,
     owner: UserId,
@@ -639,11 +754,18 @@ mod tests {
     const ISSUER: &str = "https://issuer.test";
     const HOUR: Duration = Duration::from_hours(1);
 
-    async fn sign_in(repo: &SqliteRepo, subject: &str, nickname: &str) -> User {
-        repo.user_for_identity(ISSUER, subject, nickname, "")
+    /// Registers the identity `subject` at the issuer, with the nickname
+    /// suggested for `wanted`.
+    async fn sign_up(repo: &SqliteRepo, subject: &str, wanted: &str) -> User {
+        let token = token(&format!("registration {subject}"));
+        repo.create_registration(&token, ISSUER, subject, wanted, "", HOUR)
+            .await
+            .unwrap();
+        let suggested = repo.registration(&token).await.unwrap().unwrap().nickname;
+        repo.register(&token, suggested, Profile::default())
             .await
             .unwrap()
-            .0
+            .unwrap()
     }
 
     fn pending(provider: &str, link: Option<UserId>) -> PendingSignIn {
@@ -672,32 +794,118 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn an_identity_is_one_user() {
+    async fn an_identity_is_registered_once() {
         let repo = SqliteRepo::in_memory();
-        let (ana, created) = repo
-            .user_for_identity(ISSUER, "a", "Ana", "ana@mail.test")
+        let ana_token = token("ana");
+        assert_eq!(repo.identity_user(ISSUER, "a", "").await.unwrap(), None);
+        repo.create_registration(&ana_token, ISSUER, "a", "Ana", "ana@mail.test", HOUR)
             .await
             .unwrap();
-        assert!(created);
-        assert_eq!(ana.nickname.as_str(), "Ana");
-        assert_eq!(ana.profile.as_str(), "");
-        let (again, created) = repo
-            .user_for_identity(ISSUER, "a", "Other", "ana@new.test")
+        assert_eq!(
+            repo.registration(&ana_token).await.unwrap(),
+            Some(Registration {
+                issuer: ISSUER.into(),
+                subject: "a".into(),
+                label: "ana@mail.test".into(),
+                nickname: nickname("Ana"),
+            })
+        );
+        // A registration creates no user until completed.
+        assert_eq!(repo.identity_user(ISSUER, "a", "").await.unwrap(), None);
+        let ana = repo
+            .register(&ana_token, nickname("Anaïs"), Profile("Joue.".into()))
             .await
+            .unwrap()
             .unwrap();
-        assert!(!created);
-        assert_eq!(again, ana);
+        assert_eq!(ana.nickname.as_str(), "Anaïs");
+        assert_eq!(ana.profile.as_str(), "Joue.");
+        assert_eq!(repo.registration(&ana_token).await.unwrap(), None);
+        assert_eq!(
+            repo.register(&ana_token, nickname("Again"), Profile::default())
+                .await
+                .unwrap(),
+            None
+        );
+        assert_eq!(
+            repo.identity_user(ISSUER, "a", "ana@new.test")
+                .await
+                .unwrap(),
+            Some(ana.clone())
+        );
         assert_eq!(
             repo.identities(ana.id).await.unwrap(),
             vec![identity(ISSUER, "ana@new.test")]
         );
-        let (elsewhere, created) = repo
-            .user_for_identity("https://other.test", "a", "Ana", "")
+        assert_eq!(
+            repo.identity_user("https://other.test", "a", "")
+                .await
+                .unwrap(),
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn a_registration_waits_for_a_free_nickname() {
+        let repo = SqliteRepo::in_memory();
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let ben_token = token("ben");
+        repo.create_registration(&ben_token, ISSUER, "b", "Ben", "", HOUR)
             .await
             .unwrap();
-        assert!(created);
-        assert_ne!(elsewhere.id, ana.id);
-        assert_ne!(sign_in(&repo, "b", "Ben").await.id, ana.id);
+        assert!(matches!(
+            repo.register(&ben_token, nickname("ANA"), Profile::default())
+                .await,
+            Err(Error::NicknameTaken)
+        ));
+        let ben = repo
+            .register(&ben_token, nickname("Ben"), Profile::default())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_ne!(ben.id, ana.id);
+    }
+
+    #[tokio::test]
+    async fn registrations_end_when_cancelled_expired_or_raced() {
+        let repo = SqliteRepo::in_memory();
+        let (cancelled, expired) = (token("cancelled"), token("expired"));
+        repo.create_registration(&cancelled, ISSUER, "a", "Ana", "", HOUR)
+            .await
+            .unwrap();
+        repo.create_registration(&expired, ISSUER, "b", "Ben", "", Duration::ZERO)
+            .await
+            .unwrap();
+        repo.delete_registration(&cancelled).await.unwrap();
+        repo.delete_registration(&cancelled).await.unwrap();
+        for token in [&cancelled, &expired] {
+            assert_eq!(repo.registration(token).await.unwrap(), None);
+            assert_eq!(
+                repo.register(token, nickname("X"), Profile::default())
+                    .await
+                    .unwrap(),
+                None
+            );
+        }
+        repo.purge_expired().await.unwrap();
+        assert_eq!(repo.identity_user(ISSUER, "a", "").await.unwrap(), None);
+
+        // Two browsers registering one identity: the second is refused.
+        let (first, second) = (token("first"), token("second"));
+        for token in [&first, &second] {
+            repo.create_registration(token, ISSUER, "c", "Cy", "", HOUR)
+                .await
+                .unwrap();
+        }
+        repo.register(&first, nickname("Cy"), Profile::default())
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(matches!(
+            repo.register(&second, nickname("Cy 2"), Profile::default())
+                .await,
+            Err(Error::IdentityTaken)
+        ));
+        assert_eq!(repo.registration(&second).await.unwrap(), None);
     }
 
     #[tokio::test]
@@ -706,22 +914,22 @@ mod tests {
         let mut nicknames = Vec::new();
         for (subject, wanted) in ["Ana", "ana", "ANA", "Ben"].iter().enumerate() {
             nicknames.push(
-                sign_in(&repo, &subject.to_string(), wanted)
+                sign_up(&repo, &subject.to_string(), wanted)
                     .await
                     .nickname
                     .0,
             );
         }
         assert_eq!(nicknames, ["Ana", "ana 2", "ANA 3", "Ben"]);
-        let long = sign_in(&repo, "long", &"x".repeat(40)).await.nickname;
+        let long = sign_up(&repo, "long", &"x".repeat(40)).await.nickname;
         assert_eq!(long.0, "x".repeat(28));
     }
 
     #[tokio::test]
     async fn profiles_are_updated_with_a_free_nickname() {
         let repo = SqliteRepo::in_memory();
-        let ana = sign_in(&repo, "a", "Ana").await;
-        let ben = sign_in(&repo, "b", "Ben").await;
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let ben = sign_up(&repo, "b", "Ben").await;
         assert!(matches!(
             repo.update_user(ben.id, Some(nickname("aNa")), Some(Profile("x".into())))
                 .await,
@@ -752,8 +960,8 @@ mod tests {
     #[tokio::test]
     async fn identities_are_linked_to_one_user() {
         let repo = SqliteRepo::in_memory();
-        let ana = sign_in(&repo, "a", "Ana").await;
-        let ben = sign_in(&repo, "b", "Ben").await;
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let ben = sign_up(&repo, "b", "Ben").await;
         let other = "https://other.test";
         assert_eq!(
             repo.link_identity(ana.id, other, "a2", "ana@other")
@@ -771,6 +979,11 @@ mod tests {
             repo.link_identity(ana.id, ISSUER, "b", "").await,
             Err(Error::IdentityTaken)
         ));
+        // One identity per provider.
+        assert!(matches!(
+            repo.link_identity(ana.id, other, "a3", "").await,
+            Err(Error::ProviderAlreadyLinked)
+        ));
         assert_eq!(
             repo.identities(ana.id).await.unwrap(),
             vec![identity(ISSUER, ""), identity(other, "ana@renamed")]
@@ -779,18 +992,18 @@ mod tests {
             repo.identities(ben.id).await.unwrap(),
             vec![identity(ISSUER, "")]
         );
-        let (signed_in, created) = repo
-            .user_for_identity(other, "a2", "Someone", "")
-            .await
-            .unwrap();
-        assert!(!created);
-        assert_eq!(signed_in, ana);
+        assert_eq!(
+            repo.identity_user(other, "a2", "ana@renamed")
+                .await
+                .unwrap(),
+            Some(ana)
+        );
     }
 
     #[tokio::test]
     async fn sessions_resolve_until_deleted_or_expired() {
         let repo = SqliteRepo::in_memory();
-        let ana = sign_in(&repo, "a", "Ana").await;
+        let ana = sign_up(&repo, "a", "Ana").await;
         repo.create_session(ana.id, &token("live"), SESSION_TTL)
             .await
             .unwrap();
@@ -808,7 +1021,7 @@ mod tests {
     #[tokio::test]
     async fn a_sign_in_is_taken_once_and_before_it_expires() {
         let repo = SqliteRepo::in_memory();
-        let ana = sign_in(&repo, "a", "Ana").await;
+        let ana = sign_up(&repo, "a", "Ana").await;
         let id = |name: &str| SignInId::from_cookie(name);
         repo.create_sign_in(&id("live"), &pending("dex", None), HOUR)
             .await
@@ -839,8 +1052,8 @@ mod tests {
     #[tokio::test]
     async fn characters_belong_to_their_user() {
         let repo = SqliteRepo::in_memory();
-        let ana = sign_in(&repo, "a", "Ana").await;
-        let ben = sign_in(&repo, "b", "Ben").await;
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let ben = sign_up(&repo, "b", "Ben").await;
         let fantasy = Document::empty(Engine::Fantasy);
         let brune = repo
             .create_character(ana.id, &brune_name(), &fantasy)
@@ -879,7 +1092,7 @@ mod tests {
     #[tokio::test]
     async fn documents_are_replaced_at_the_expected_version_only() {
         let repo = SqliteRepo::in_memory();
-        let ana = sign_in(&repo, "a", "Ana").await;
+        let ana = sign_up(&repo, "a", "Ana").await;
         let brune = repo
             .create_character(ana.id, &brune_name(), &Document::empty(Engine::Fantasy))
             .await
@@ -912,7 +1125,7 @@ mod tests {
     #[tokio::test]
     async fn characters_are_renamed_and_deleted() {
         let repo = SqliteRepo::in_memory();
-        let ana = sign_in(&repo, "a", "Ana").await;
+        let ana = sign_up(&repo, "a", "Ana").await;
         let brune = repo
             .create_character(ana.id, &brune_name(), &Document::empty(Engine::Fantasy))
             .await
@@ -960,8 +1173,7 @@ mod tests {
             .unwrap();
         for _ in 0..2 {
             let repo = SqliteRepo::open(&path).await.unwrap();
-            let (ana, created) = repo.user_for_identity(ISSUER, "a", "X", "").await.unwrap();
-            assert!(!created);
+            let ana = repo.identity_user(ISSUER, "a", "").await.unwrap().unwrap();
             assert_eq!(ana.nickname.as_str(), "Ana");
             assert_eq!(
                 repo.identities(ana.id).await.unwrap(),
@@ -984,7 +1196,7 @@ mod tests {
         let _ = std::fs::remove_file(&path);
         let (ana, brune) = {
             let repo = SqliteRepo::open(&path).await.unwrap();
-            let ana = sign_in(&repo, "a", "Ana").await;
+            let ana = sign_up(&repo, "a", "Ana").await;
             repo.create_session(ana.id, &token("token"), HOUR)
                 .await
                 .unwrap();

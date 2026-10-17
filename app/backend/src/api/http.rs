@@ -129,7 +129,7 @@ impl IntoResponse for Rejection {
         };
         match error {
             Error::NoSession => StatusCode::UNAUTHORIZED.into_response(),
-            Error::UnknownProvider | Error::CharacterNotFound => {
+            Error::UnknownProvider | Error::CharacterNotFound | Error::NoRegistration => {
                 StatusCode::NOT_FOUND.into_response()
             }
             Error::BlankNickname
@@ -142,7 +142,7 @@ impl IntoResponse for Rejection {
                 tracing::warn!(%reason, "unprocessable request");
                 (StatusCode::UNPROCESSABLE_ENTITY, reason).into_response()
             }
-            Error::NicknameTaken | Error::IdentityTaken => {
+            Error::NicknameTaken | Error::IdentityTaken | Error::ProviderAlreadyLinked => {
                 let reason = error.to_string();
                 tracing::info!(%reason, "conflicting request");
                 (StatusCode::CONFLICT, reason).into_response()
@@ -451,14 +451,22 @@ mod tests {
         let repo = SqliteRepo::in_memory();
         let mut cookies = Vec::new();
         for name in ["Ana", "Ben"] {
-            let (user, _) = repo
-                .user_for_identity(
-                    "https://issuer.test",
-                    name,
-                    name,
-                    &format!("{name}@mail.test"),
-                )
+            let token = SessionToken::random().hash();
+            let label = format!("{name}@mail.test");
+            repo.create_registration(
+                &token,
+                "https://issuer.test",
+                name,
+                name,
+                &label,
+                SESSION_TTL,
+            )
+            .await
+            .unwrap();
+            let user = repo
+                .register(&token, Nickname::parse(name).unwrap(), Profile::default())
                 .await
+                .unwrap()
                 .unwrap();
             cookies.push(session_cookie(&repo, user.id).await);
         }
