@@ -10,7 +10,16 @@
     ItemEntry,
     Sheet,
   } from "../wasm/palimpseste_wasm";
-  import { CHARACTERISTICS, integerOf, namesOf, ranksOf, setRanks, signed, valueOf } from "./edits";
+  import {
+    CHARACTERISTICS,
+    U16_MAX,
+    integerOf,
+    namesOf,
+    ranksOf,
+    setRanks,
+    signed,
+    valueOf,
+  } from "./edits";
   import Items from "./Items.svelte";
   import RankPicker from "./RankPicker.svelte";
 
@@ -93,8 +102,8 @@
         step="1"
         value={document.age ?? ""}
         onchange={(e) => {
-          const age = integerOf(e);
-          edit((d) => (d.age = age !== undefined && age >= 0 ? age : undefined));
+          const age = integerOf(e, document.age, { min: 0, max: U16_MAX });
+          if (age !== null) edit((d) => (d.age = age));
         }}
       />
     </label>
@@ -208,7 +217,10 @@
               step="1"
               aria-label="Points attribués à {c}"
               value={document.caracPoints?.[c] ?? 0}
-              onchange={(e) => setPoints(c, integerOf(e))}
+              onchange={(e) => {
+                const points = integerOf(e, document.caracPoints?.[c] ?? 0);
+                if (points !== null) setPoints(c, points);
+              }}
             />
           </td>
         </tr>

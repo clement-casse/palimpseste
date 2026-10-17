@@ -2,7 +2,7 @@
   // Items carried: weapons of the engine's tables, and free text items the
   // rules never check (D-26).
   import type { ItemEntry } from "../wasm/palimpseste_wasm";
-  import { integerOf, valueOf } from "./edits";
+  import { U32_MAX, integerOf, valueOf } from "./edits";
 
   let {
     items,
@@ -22,9 +22,13 @@
     return item.kind === "weapon" ? (names.get(item.id) ?? item.id) : item.name;
   }
 
-  function setQuantity(index: number, quantity: number | undefined) {
-    if (quantity === undefined) return;
+  function setQuantity(index: number, quantity: number) {
     onchange(items.map((item, i) => (i === index ? { ...item, quantity } : item)));
+  }
+
+  function typeQuantity(event: Event, index: number) {
+    const quantity = integerOf(event, items[index].quantity, { min: 0, max: U32_MAX, blank: false });
+    if (typeof quantity === "number") setQuantity(index, quantity);
   }
 
   function addWeapon(event: Event) {
@@ -54,7 +58,7 @@
         min="0"
         aria-label="Quantité"
         value={item.quantity}
-        onchange={(event) => setQuantity(i, integerOf(event))}
+        onchange={(event) => typeQuantity(event, i)}
       />
       <button type="button" onclick={() => onchange(items.filter((_, j) => j !== i))}>
         Retirer

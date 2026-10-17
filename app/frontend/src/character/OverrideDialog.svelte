@@ -3,6 +3,7 @@
   // user. Breaking a rule stays possible, never easier than following it;
   // an absolute rule asks for an explicit confirmation.
   import { message } from "../messages";
+  import { I32_MAX, I32_MIN } from "./edits";
   import type { OverrideRequest } from "./override";
 
   let {
@@ -30,7 +31,8 @@
   const valid = $derived(
     reason.trim() !== "" &&
       (!absolute || confirmed) &&
-      (request?.kind !== "adjustment" || (Number.isInteger(amount) && amount !== 0)),
+      (request?.kind !== "adjustment" ||
+        (Number.isInteger(amount) && amount !== 0 && amount >= I32_MIN && amount <= I32_MAX)),
   );
 
   $effect(() => {

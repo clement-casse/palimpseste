@@ -3,7 +3,7 @@
   // document is the only state: the engine, compiled to WebAssembly,
   // evaluates it on every edit, locally. The whole document is saved to the
   // backend shortly after each change, at the version it was loaded at.
-  import { untrack } from "svelte";
+  import { onDestroy, untrack } from "svelte";
 
   import { ApiError, type Character, deleteCharacter, putDocument, renameCharacter } from "../api";
   import { ENGINES } from "../engines";
@@ -42,6 +42,14 @@
   let document = $state<Document>(initial.document);
   let version = $state(initial.version);
   let name = $state(initial.name);
+  // The name the backend holds, which renaming compares with.
+  let savedName = initial.name;
+  // Why renaming or deleting failed, apart from saving.
+  let actionError = $state<string | null>(null);
+
+  function reason(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
 
   const evaluation = $derived.by((): { sheet: Sheet } | { error: string } => {
     try {
@@ -70,6 +78,8 @@
   const current = $derived(JSON.stringify(document));
   let status = $state<"saved" | "pending" | "saving" | "conflict" | "error">("saved");
   let failure = $state<string | null>(null);
+  // The save in flight, if any: the next one waits for it, at its version.
+  let inflight: Promise<void> = Promise.resolve();
 
   $effect(() => {
     const json = current;
@@ -79,18 +89,33 @@
     return () => clearTimeout(timer);
   });
 
-  async function save(json: string) {
+  function save(json: string): Promise<void> {
     status = "saving";
-    try {
-      version = await putDocument(id, json, version);
-      saved = json;
-      failure = null;
-      status = "saved";
-    } catch (error) {
-      failure = error instanceof Error ? error.message : String(error);
-      status = error instanceof ApiError && error.status === 412 ? "conflict" : "error";
-    }
+    inflight = putDocument(id, json, version).then(
+      (next) => {
+        version = next;
+        saved = json;
+        failure = null;
+        status = "saved";
+      },
+      (error: unknown) => {
+        failure = reason(error);
+        status = error instanceof ApiError && error.status === 412 ? "conflict" : "error";
+      },
+    );
+    return inflight;
   }
+
+  // Leaving the editor (a link, the back button) cancels the delay before
+  // saving: what it was waiting for is saved at once, after the save in
+  // flight. Closing the tab still asks first (`beforeunload`).
+  onDestroy(() => {
+    const json = JSON.stringify(document);
+    if (json === saved || status === "conflict") return;
+    void inflight.then(() => {
+      if (json !== saved && status !== "conflict") return save(json);
+    });
+  });
 
   const STATUS = {
     saved: "Enregistré",
@@ -100,13 +125,18 @@
     error: "Échec de l'enregistrement",
   };
 
+  // A blank name, or the one already saved, puts the saved one back.
   async function rename() {
     const next = name.trim();
-    if (!next || next === initial.name) return;
+    if (!next || next === savedName) {
+      name = savedName;
+      return;
+    }
     try {
-      name = (await renameCharacter(id, next)).name;
+      savedName = name = (await renameCharacter(id, next)).name;
+      actionError = null;
     } catch (error) {
-      failure = error instanceof Error ? error.message : String(error);
+      actionError = reason(error);
     }
   }
 
@@ -117,7 +147,7 @@
       saved = current;
       navigate("/");
     } catch (error) {
-      failure = error instanceof Error ? error.message : String(error);
+      actionError = reason(error);
     }
   }
 
@@ -167,6 +197,7 @@
     <button type="button" class="danger" onclick={remove}>Supprimer</button>
   </header>
   {#if failure && status !== "saved"}<p class="error">{failure}</p>{/if}
+  {#if actionError}<p class="error">{actionError}</p>{/if}
 
   {#if "error" in evaluation}
     <p class="error">Le document ne peut pas être évalué : {evaluation.error}</p>

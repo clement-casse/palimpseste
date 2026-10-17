@@ -43,11 +43,32 @@ export function valueOf(event: Event): string {
     : "";
 }
 
-/** A whole number typed by the user, `undefined` when blank or not a number. */
-export function integerOf(event: Event): number | undefined {
+// The bounds of the integer types of the choices document: a number beyond
+// them makes the whole document unreadable by its engine.
+export const U16_MAX = 65_535;
+export const U32_MAX = 4_294_967_295;
+export const I32_MIN = -2_147_483_648;
+export const I32_MAX = 2_147_483_647;
+
+/**
+ * The whole number typed in the input that fired `event`, within `min` and
+ * `max`, or `undefined` when blank and `blank` allows it. Anything else puts
+ * the input back to `current` and gives `null`, so the document never holds
+ * a number it cannot store.
+ */
+export function integerOf(
+  event: Event,
+  current: number | undefined,
+  { min = I32_MIN, max = I32_MAX, blank = true } = {},
+): number | undefined | null {
   const text = valueOf(event).trim();
   const value = Number(text);
-  return text === "" || !Number.isInteger(value) ? undefined : value;
+  if (text === "" && blank) return undefined;
+  if (text !== "" && Number.isInteger(value) && value >= min && value <= max) return value;
+  if (event.currentTarget instanceof HTMLInputElement) {
+    event.currentTarget.value = current === undefined ? "" : String(current);
+  }
+  return null;
 }
 
 export function signed(value: number): string {

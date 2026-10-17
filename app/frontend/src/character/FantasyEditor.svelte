@@ -10,7 +10,17 @@
     ItemEntry,
     Sheet,
   } from "../wasm/palimpseste_wasm";
-  import { CHARACTERISTICS, integerOf, namesOf, ranksOf, setRanks, signed, valueOf } from "./edits";
+  import {
+    CHARACTERISTICS,
+    I32_MAX,
+    I32_MIN,
+    integerOf,
+    namesOf,
+    ranksOf,
+    setRanks,
+    signed,
+    valueOf,
+  } from "./edits";
   import Items from "./Items.svelte";
   import RankPicker from "./RankPicker.svelte";
 
@@ -228,7 +238,10 @@
                 step="1"
                 aria-label="Valeur hors série de {c}"
                 value={assigned(c) ?? ""}
-                onchange={(e) => assignOther(c, integerOf(e))}
+                onchange={(e) => {
+                  const value = integerOf(e, assigned(c));
+                  if (value !== null) assignOther(c, value);
+                }}
               />
             {/if}
           </td>
@@ -425,8 +438,12 @@
       step="1"
       value={document.purse === undefined ? "" : document.purse / 10}
       onchange={(e) => {
-        const pa = integerOf(e);
-        edit((d) => (d.purse = pa === undefined ? undefined : pa * 10));
+        // Typed in pa, held in pc.
+        const pa = integerOf(e, document.purse === undefined ? undefined : document.purse / 10, {
+          min: Math.ceil(I32_MIN / 10),
+          max: Math.floor(I32_MAX / 10),
+        });
+        if (pa !== null) edit((d) => (d.purse = pa === undefined ? undefined : pa * 10));
       }}
     />
   </label>
