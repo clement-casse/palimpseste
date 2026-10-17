@@ -2,6 +2,7 @@
   import { ApiError, type User, linkUrl, listIdentities, listProviders, updateMe } from "./api";
   import ErrorMessage from "./ErrorMessage.svelte";
   import { describe } from "./errors";
+  import ProfileFields from "./ProfileFields.svelte";
   import { follow, takeQuery } from "./router.svelte";
   import { signedIn } from "./session.svelte";
 
@@ -12,6 +13,10 @@
     done: { text: "Compte associé : il permet désormais de vous connecter.", error: false },
     already: { text: "Ce compte était déjà associé au vôtre.", error: false },
     taken: { text: "Ce compte est déjà associé à un autre utilisateur.", error: true },
+    provider: {
+      text: "Un seul compte par fournisseur : un compte de ce fournisseur est déjà associé.",
+      error: true,
+    },
     failed: { text: "L’association a échoué.", error: true },
   };
   const outcome = LINK_OUTCOMES[takeQuery("link") ?? ""];
@@ -23,8 +28,8 @@
   let profile = $state(user.profile);
   let status = $state<{ text: string; error: boolean } | null>(null);
   let saving = $state(false);
-  const identities = listIdentities();
-  const providers = listProviders();
+  // Each provider with the identity linked there, if any.
+  const accounts = Promise.all([listIdentities(), listProviders()]);
 
   const changed = $derived(nickname.trim() !== user.nickname || profile.trim() !== user.profile);
 
@@ -55,41 +60,38 @@
   </header>
 
   <form onsubmit={save}>
-    <label class="field">
-      Pseudonyme
-      <input bind:value={nickname} maxlength="32" required />
-    </label>
-    <label class="field">
-      Présentation
-      <textarea bind:value={profile} maxlength="2000" rows="5"></textarea>
-    </label>
-    <p class="hint">Votre pseudonyme et votre présentation sont publics.</p>
+    <ProfileFields bind:nickname bind:profile />
     <button type="submit" disabled={saving || !nickname.trim() || !changed}>Enregistrer</button>
   </form>
   {#if status}<p class={{ error: status.error }}>{status.text}</p>{/if}
 
   <h3>Comptes associés</h3>
   {#if outcome}<p class={{ error: outcome.error }}>{outcome.text}</p>{/if}
-  <p class="hint">Chacun de ces comptes vous connecte à ce même profil. Vous seul les voyez.</p>
-  {#await identities}
+  <p class="hint">
+    Chacun de ces comptes, un par fournisseur, vous connecte à ce même profil. Vous seul les voyez.
+  </p>
+  {#await accounts}
     <p>Chargement…</p>
-  {:then identities}
+  {:then [identities, providers]}
     <ul class="identities">
-      {#each identities as identity, index (index)}
+      {#each providers as provider (provider.id)}
+        {@const linked = identities.find((identity) => identity.provider === provider.id)}
+        <li>
+          <strong>{provider.name}</strong>
+          {#if linked}
+            · {linked.label || "compte associé"}
+          {:else}
+            <!-- Linking leaves the app for the provider: a link, not a script. -->
+            <a class="button" href={linkUrl(provider.id)}>Associer un compte {provider.name}</a>
+          {/if}
+        </li>
+      {/each}
+      {#each identities.filter((identity) => identity.provider === null) as identity, index (index)}
         <li>
           <strong>{identity.name}</strong>
           {#if identity.label}· {identity.label}{/if}
+          <span class="hint">(fournisseur retiré)</span>
         </li>
-      {/each}
-    </ul>
-  {:catch error}
-    <ErrorMessage {error} />
-  {/await}
-  {#await providers then providers}
-    <ul class="choices">
-      {#each providers as provider (provider.id)}
-        <!-- Linking leaves the app for the provider: a link, not a script. -->
-        <li><a class="button" href={linkUrl(provider.id)}>Associer un compte {provider.name}</a></li>
       {/each}
     </ul>
   {:catch error}
@@ -98,8 +100,7 @@
 </section>
 
 <style>
-  form,
-  .field {
+  form {
     flex-direction: column;
     align-items: stretch;
   }
@@ -113,6 +114,10 @@
   }
 
   .identities > li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--muted);
   }

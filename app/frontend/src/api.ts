@@ -8,6 +8,15 @@ import type { Document, Engine } from "./wasm/palimpseste_wasm";
 /** The signed-in user: their nickname and profile are public. */
 export type User = { nickname: string; profile: string };
 export type Provider = { id: string; name: string };
+/** An account being created: the first sign-in of an identity no user has. */
+export type Registration = {
+  /** The nickname suggested, free when the sign-in ended. */
+  nickname: string;
+  /** The name of the identity's provider. */
+  provider: string;
+  /** Private: the email or username at the provider; may be empty. */
+  label: string;
+};
 /** An identity of the signed-in user, named by its provider. */
 export type Identity = {
   /** The id of its provider, or `null` when it is no longer offered. */
@@ -68,6 +77,24 @@ export const signInUrl = (id: string) => `/api/auth/${encodeURIComponent(id)}/lo
 
 /** Where the browser goes to link an identity at provider `id` to the signed-in user. */
 export const linkUrl = (id: string) => `/api/auth/${encodeURIComponent(id)}/link`;
+
+/**
+ * The account being created in this browser; throws an `ApiError` with
+ * status 404 when none is, or it expired.
+ */
+export const getRegistration = () => request<Registration>("/auth/registration");
+
+/**
+ * Creates the account being created, signing it in. Throws an `ApiError`
+ * with status 409 when another user has the nickname.
+ */
+export const register = (account: User) =>
+  request<User>("/auth/registration", { method: "POST", body: JSON.stringify(account) });
+
+/** Abandons the account being created: the identity stays free. */
+export const cancelRegistration = async () => {
+  await send("/auth/registration", { method: "DELETE" });
+};
 
 /** The signed-in user; throws an `ApiError` with status 401 when signed out. */
 export const getMe = () => request<User>("/me");

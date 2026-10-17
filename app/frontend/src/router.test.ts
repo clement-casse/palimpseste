@@ -6,6 +6,7 @@ describe("match", () => {
   it("names the page of each path", () => {
     expect(match("/")).toEqual({ name: "characters" });
     expect(match("/login")).toEqual({ name: "login" });
+    expect(match("/register")).toEqual({ name: "register" });
     expect(match("/profile")).toEqual({ name: "profile" });
     expect(match("/characters/12")).toEqual({ name: "character", id: 12 });
     for (const path of ["/characters/x", "/characters/1/more", "/nothing", "/login/"]) {

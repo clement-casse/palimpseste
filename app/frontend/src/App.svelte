@@ -5,6 +5,7 @@
   import Characters from "./Characters.svelte";
   import NotFound from "./NotFound.svelte";
   import ProfilePage from "./ProfilePage.svelte";
+  import Register from "./Register.svelte";
   import { LOGIN, match, navigate, route } from "./router.svelte";
   import { session, signedIn, signedOut } from "./session.svelte";
   import SignIn from "./SignIn.svelte";
@@ -27,8 +28,10 @@
 
   const page = $derived(match(route.path));
 
-  // Signed out, only the sign-in page; signed in, never it.
+  // Signed out, only the sign-in page and creating an account; signed in,
+  // never the sign-in page.
   $effect(() => {
+    if (page.name === "register") return;
     if (session.user === null && page.name !== "login") navigate(LOGIN, { replace: true });
     else if (session.user && page.name === "login") navigate("/", { replace: true });
   });
@@ -41,7 +44,9 @@
     <ErrorMessage error={failure} />
     {#if session.user === undefined}<button type="button" onclick={check}>Réessayer</button>{/if}
   {/if}
-  {#if session.user === null && page.name === "login"}
+  {#if page.name === "register"}
+    <Register />
+  {:else if session.user === null && page.name === "login"}
     <SignIn />
   {:else if session.user && page.name !== "login"}
     {#if page.name === "character"}

@@ -21,8 +21,8 @@ their components for Svelte 4 syntax).
 
 **FE-PAGES: One page per path.** `/` lists the user's characters,
 `/characters/{id}` edits one (the current step in the hash), `/profile`
-shows the user's profile, `/login` the sign-in page; any other path is
-`NotFound.svelte`.
+shows the user's profile, `/login` the sign-in page, `/register` creates
+an account; any other path is `NotFound.svelte`.
 
 **FE-SHARED-STATE: Shared state in `.svelte.ts` modules.** The session
 (`session.svelte.ts`), the URL (`router.svelte.ts`) and the PWA status
@@ -46,9 +46,14 @@ component styles itself in its `<style>`.
 **FE-SIGN-IN: Signing in by navigation.** The app asks `/api/me` who is
 signed in; a signed-out user, or any request answered `401`, goes to
 `/login`, which lists the providers and leaves for
-`/api/auth/{id}/login`. The profile page holds the nickname and profile in
-one form, the user's identities by provider and label, and a button per
-provider to link one more.
+`/api/auth/{id}/login`. The first sign-in of an identity comes back to
+`/register` ("Créer un compte", ADR BE-FIRST-SIGN-IN), shown signed in or
+not: the suggested nickname and an empty presentation to change, "Créer le
+compte" to sign in to the new account, "Annuler" to abandon it and go back
+to `/login`. Both it and the profile page hold the nickname and profile in
+`ProfileFields.svelte`. The profile page lists each provider with the
+identity linked there (one at most), or a button to link one, then the
+identities of providers no longer offered.
 
 **FE-EDITOR: The character editor, split.** `DocumentSaver`
 (`saver.svelte.ts`) owns saving: the whole document shortly after each

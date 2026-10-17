@@ -30,6 +30,9 @@ export const route = {
 /** The sign-in page, where a signed-out user is sent. */
 export const LOGIN = "/login";
 
+/** Creating an account, where the first sign-in of an identity ends. */
+export const REGISTER = "/register";
+
 /** The signed-in user's own profile and identities. */
 export const PROFILE = "/profile";
 
@@ -41,11 +44,13 @@ export type Page =
   | { name: "character"; id: number }
   | { name: "profile" }
   | { name: "login" }
+  | { name: "register" }
   | { name: "not-found" };
 
 export function match(path: string): Page {
   if (path === "/") return { name: "characters" };
   if (path === LOGIN) return { name: "login" };
+  if (path === REGISTER) return { name: "register" };
   if (path === PROFILE) return { name: "profile" };
   const character = /^\/characters\/(\d+)$/.exec(path);
   if (character) return { name: "character", id: Number(character[1]) };

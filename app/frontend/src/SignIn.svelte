@@ -11,6 +11,7 @@
 <section>
   <h2>Connexion</h2>
   {#if failed}<p class="error" role="alert">La connexion a échoué.</p>{/if}
+  <p class="hint">Première connexion ? Vous créerez votre compte à l’étape suivante.</p>
   {#await providers}
     <p>Chargement…</p>
   {:then providers}
