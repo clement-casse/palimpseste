@@ -67,7 +67,7 @@ mod weapon;
 pub use armour::{Armour, Shield};
 pub use character::{AttackMode, Character, Target, Value};
 pub use characteristics::{SERIES_VALUE, Series};
-pub use equipment::{Gear, Item, ItemName, Quantity, StartingItem, StartingLine};
+pub use equipment::{Gear, Item, StartingItem, StartingLine};
 pub use label::{label, term_label};
 pub use money::{Money, purse_dice};
 pub use peuple::Peuple;

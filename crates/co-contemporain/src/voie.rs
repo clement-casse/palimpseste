@@ -1,12 +1,10 @@
 //! The 18 voies (COC.CNT.VOIES) and the checks on acquired ranks.
 
-use std::collections::BTreeSet;
-
-use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId};
+use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId, voie_rank_violations};
 
 use crate::{
     AttackMode, Character, Value,
-    rules::{CAPACITY_POINTS, MAX_VOIES, VOIE_MECHANIC, VOIE_ORDER, VOIE_STRUCTURE},
+    rules::{CAPACITY_POINTS, MAX_VOIES, VOIE_MECHANIC},
 };
 
 /// One of the 18 voies of COC2.
@@ -151,45 +149,19 @@ impl Voie {
     }
 }
 
-/// Lowest and highest rank of a voie (CO.VOIE.STRUCTURE).
-const RANKS: std::ops::RangeInclusive<u8> = 1..=5;
-
 /// Voies allowed in total, whatever the age bracket (COC.CRE.MAX-VOIES).
 const ABSOLUTE_MAX_VOIES: i32 = 6;
 
-/// Checks the acquired ranks against the voie structure and the creation
-/// budgets.
+/// Checks the acquired ranks against the voie structure (ADR KER-VOIE) and
+/// the creation budgets.
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     for (voie, ranks) in character.voies() {
-        check_structure(voie, ranks, violations);
+        violations.extend(voie_rank_violations(&voie.id(), ranks, VOIE_MECHANIC));
     }
     check_max_rank(character, violations);
     check_voie_budget(character, violations);
     check_max_voies(character, violations);
     check_capacity_points(character, violations);
-}
-
-/// CO.VOIE.STRUCTURE and CO.VOIE.ORDER for one voie.
-fn check_structure(voie: Voie, ranks: &BTreeSet<Rank>, violations: &mut Vec<Violation>) {
-    let subject = || Subject::Voie(voie.id());
-    for rank in ranks.iter().filter(|rank| !RANKS.contains(&rank.get())) {
-        violations.push(
-            Violation::deviation(VOIE_STRUCTURE, VOIE_MECHANIC, subject(), Severity::Standard)
-                .with_parameter("rank", i32::from(rank.get())),
-        );
-    }
-    let highest = ranks.last().map_or(0, |rank| rank.get());
-    let mut missing = (1..highest)
-        .filter(|r| !ranks.contains(&Rank::new(*r)))
-        .peekable();
-    if let Some(&first) = missing.peek() {
-        let count = missing.fold(0_i32, |count, _| count + 1);
-        violations.push(
-            Violation::deviation(VOIE_ORDER, VOIE_MECHANIC, subject(), Severity::Standard)
-                .with_parameter("first_missing", i32::from(first))
-                .with_parameter("missing", count),
-        );
-    }
 }
 
 /// COC.CRE.CAPACITY-POINTS: no rank above the bracket's maximum.

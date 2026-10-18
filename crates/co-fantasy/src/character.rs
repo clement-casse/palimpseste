@@ -4,14 +4,14 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use co_kernel::{
-    Adjustment, Characteristic, Characteristics, DerivedValue, Rank, Subject, ValueId, Violation,
-    ViolationReport, Waiver, adjustment_notice,
+    Adjustment, Characteristic, Characteristics, DerivedValue, Quantity, Rank, Subject, ValueId,
+    Violation, ViolationReport, Waiver, adjustment_notice,
 };
 
 use crate::{
-    Armour, Equipment, Family, InPlay, Item, Money, Peuple, Profil, Quantity, RecoveryDie, Series,
-    Shield, Voie, Weapon, WeaponUse, armour, characteristics, derived, equipment, money, peuple,
-    profil, voie, weapon,
+    Armour, Equipment, Family, InPlay, Item, Money, Peuple, Profil, RecoveryDie, Series, Shield,
+    Voie, Weapon, WeaponUse, armour, characteristics, derived, equipment, money, peuple, profil,
+    voie, weapon,
 };
 
 /// The kind of attack an attack value applies to.

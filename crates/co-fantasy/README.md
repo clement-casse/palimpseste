@@ -19,11 +19,11 @@ complete nain guerrier. Read it first.
 | `profil.rs` | `Family` (4), `Profil` (14), `RecoveryDie`, weapon mastery | COF.CNT.FAMILIES, COF.CNT.PROFILS |
 | `peuple.rs` | `Peuple` (8), its modifiers and voie de peuple | COF.CRE.PEUPLE, COF.CNT.PEUPLES |
 | `characteristics.rs` | `Series` (3), the series assignment, peuple modifiers, bounds, `SERIES_VALUE` | COF.CRE.CARAC-* |
-| `voie.rs` | `Voie` (the 78 reachable at level 1), the checks on the ranks acquired | CO.VOIE.*, COF.PRG.LEVEL-REQ, COF.CRE.MAGE-EXTRA |
+| `voie.rs` | `Voie` (the 78 reachable at level 1), the checks on the ranks acquired | CO.VOIE.* (the kernel's `voie_rank_violations`), COF.PRG.LEVEL-REQ, COF.CRE.MAGE-EXTRA |
 | `derived.rs` | PV, DR, PC, PM, Init, DEF, attacks, with the effects of rank 1-2 capacités (D-22) | COF.DER.* |
 | `armour.rs` | `Armour`, `Shield`, the profil's armour limits | COF.EQP.ARMOUR, COF.DER.ARMOUR-LIMIT |
 | `weapon.rs` | `Weapon`, `WeaponUse`, dice per use, DM, critical range, the checks on the weapons carried | COF.EQP.MELEE, COF.EQP.RANGED, COF.DER.DM, COF.DER.CRIT-RANGE |
-| `equipment.rs` | `Item`, `ItemName`, `Quantity`, the profil's starting equipment (`Gear`, `StartingLine`, `StartingItem`) | COF.CRE.EQUIPMENT |
+| `equipment.rs` | `Item` (a weapon, or free text named by the kernel's `ItemName`), the profil's starting equipment (`Gear`, `StartingLine`, `StartingItem`) | COF.CRE.EQUIPMENT |
 | `money.rs` | `Money` (built from coins: `Money::pa(9)`), `purse_dice()` | COF.EQP.CURRENCY |
 | `step.rs` | `Step` in the book order, and `Step::of(&Violation)` | COF.CRE.STEPS |
 | `label.rs` | `label(id)` and `term_label(rule)`: the French names of the identifiers the engine emits | |

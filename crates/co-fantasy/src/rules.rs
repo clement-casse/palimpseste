@@ -6,10 +6,6 @@
 
 use co_kernel::{Mechanic, RuleId, ValueId};
 
-/// CO.VOIE.STRUCTURE: ranks 1 to 5.
-pub(crate) const VOIE_STRUCTURE: RuleId = RuleId::from_static("CO.VOIE.STRUCTURE");
-/// CO.VOIE.ORDER: lower ranks first, no gaps.
-pub(crate) const VOIE_ORDER: RuleId = RuleId::from_static("CO.VOIE.ORDER");
 /// COF.CRE.PROFIL: a profil, and with it a family.
 pub(crate) const PROFIL: RuleId = RuleId::from_static("COF.CRE.PROFIL");
 /// COF.CRE.PEUPLE: a peuple.

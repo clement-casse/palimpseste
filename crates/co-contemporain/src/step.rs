@@ -4,14 +4,15 @@
 //! Steps guide the editor: the book allows deferring and revisiting every
 //! choice, and so does the engine.
 
-use co_kernel::{ADJUSTMENT_RULE, Category, RuleId, Subject, Violation};
+use co_kernel::{
+    ADJUSTMENT_RULE, Category, RuleId, Subject, VOIE_ORDER, VOIE_STRUCTURE, Violation,
+};
 
 use crate::{
     Value,
     rules::{
         AGE_BRACKET, CAPACITY_POINTS, CARAC_LIMITS, CARAC_LOWERED, CARAC_PHYSICAL, CARAC_POINTS,
-        DOMAINE, DOMAINES, EQUIPMENT, MAX_VOIES, SOCIAL_CLASS, TRAIT_POINTS, TRAITS, VOIE_ORDER,
-        VOIE_STRUCTURE,
+        DOMAINE, DOMAINES, EQUIPMENT, MAX_VOIES, SOCIAL_CLASS, TRAIT_POINTS, TRAITS,
     },
 };
 

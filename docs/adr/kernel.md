@@ -11,11 +11,21 @@ signed value, which is also its modifier (`CharacteristicValue(i32)`).
 Game bounds belong to the engines, which report them as violations.
 `Characteristic::abbreviation()` gives the books' abbreviation (`AGI`).
 
-**KER-VOIE: A voie maps ranks to abilities.** A `Voie` maps each `Rank` to
-one `AbilityId` (`BTreeMap`, CO.VOIE.STRUCTURE). `Rank` wraps a `u8` whose
-width limits storage, not the game: gaps, rank 0 and ranks 4 to 8
-(prestige voies) are representable. The ranks a character acquired stay
-in the engines (ENG-VOIE-RANKS).
+**KER-VOIE: The rank checks of a voie.** `Rank` wraps a `u8` whose width
+limits storage, not the game: gaps, rank 0 and ranks 4 to 8 (prestige
+voies) are representable. `VoieId` and `AbilityId` name a voie and a
+capacité. `voie_rank_violations` checks the ranks acquired in one voie for
+the engine's mechanic: a rank outside 1 to 5 is a `standard` deviation of
+CO.VOIE.STRUCTURE (`VOIE_STRUCTURE`), the ranks missing below the highest
+one `standard` deviation of CO.VOIE.ORDER (`VOIE_ORDER`). The ranks a
+character acquired stay in the engines (ENG-VOIE-RANKS). *Why:* both
+engines apply these two rules, unchanged, to every voie they hold
+(prestige voies, out of scope, would bring their own range); the abilities
+of a voie per rank wait for the capacité names (engines.md, Open).
+
+**KER-ITEMS: Free text items and quantities.** `ItemName` names an item
+no rule reads, and `Quantity(u32)` counts an item carried. Which items are
+content stays in the engines (ADR ENG-ITEMS).
 
 **KER-SOURCES: A closed set of contribution sources.** A `DerivedValue` is
 a list of contributions, each with a `Source`: `Characteristic`,

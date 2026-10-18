@@ -1,10 +1,10 @@
 # co-kernel
 
 The concepts that mean exactly the same thing in every Chroniques Oubliées
-engine: characteristics, the voie skeleton, derived values with their
-breakdown, adjustments, violations, waivers, the violation report, and
-dice. Nothing engine-specific belongs here. No formula, budget, table or
-game content goes in this crate.
+engine: characteristics, voie ranks and their checks, items carried,
+derived values with their breakdown, adjustments, violations, waivers, the
+violation report, and dice. Nothing engine-specific belongs here. No
+formula, budget, table or game content goes in this crate.
 
 It has no dependencies. Like the engines, it has no I/O, no async code and
 no `serde` (ADR APP-BOUNDARIES). Every engine and every application crate
@@ -15,7 +15,8 @@ depends on it.
 | File | Holds | ADR |
 |---|---|---|
 | `characteristic.rs` | `Characteristic` (the seven, with their abbreviations), `CharacteristicValue(i32)`, `Characteristics` (an array indexed by characteristic) | KER-CHARACTERISTICS |
-| `voie.rs` | `Rank`, `VoieId`, `AbilityId`, `Voie` (rank → ability) | KER-VOIE |
+| `voie.rs` | `Rank`, `VoieId`, `AbilityId`, `VOIE_STRUCTURE`, `VOIE_ORDER`, `voie_rank_violations` | KER-VOIE |
+| `item.rs` | `ItemName`, `Quantity` | KER-ITEMS |
 | `derived.rs` | `DerivedValue`, `Contribution`, `Source` | KER-SOURCES, KER-TOTAL |
 | `adjustment.rs` | `Adjustment`, `Author` | KER-ADJUSTMENTS |
 | `violation.rs` | `Violation`, `RuleId`, `Mechanic`, `ValueId`, `Subject`, `Category`, `Severity`, `Parameter`, `ADJUSTMENT_RULE`, `adjustment_notice` | KER-IDS, KER-SUBJECT, KER-SEVERITY |

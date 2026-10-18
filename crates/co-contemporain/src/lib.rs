@@ -59,7 +59,7 @@ pub use age::{Age, AgeBracket};
 pub use character::{AttackMode, Character, Target, Value};
 pub use characteristics::ALLOCATED_POINTS;
 pub use domaine::Domaine;
-pub use equipment::{Item, ItemName, Quantity};
+pub use equipment::Item;
 pub use health::{HEALTH_SCALE_STEPS, HealthState};
 pub use label::{label, term_label};
 pub use play::{Equipment, InPlay};

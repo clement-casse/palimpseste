@@ -4,9 +4,9 @@
 
 use std::collections::BTreeMap;
 
-use co_kernel::{DerivedValue, ViolationReport};
+use co_kernel::{DerivedValue, Quantity, ViolationReport};
 
-use crate::{Armour, Character, Item, Quantity, Shield, Value, armour, weapon};
+use crate::{Armour, Character, Item, Shield, Value, armour, weapon};
 
 /// What a character wears and carries: an armour, a shield and items.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

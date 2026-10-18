@@ -3,14 +3,14 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use co_kernel::{
-    Adjustment, Characteristic, CharacteristicValue, Characteristics, DerivedValue, Dice, Rank,
-    Subject, ValueId, Violation, ViolationReport, Waiver, adjustment_notice,
+    Adjustment, Characteristic, CharacteristicValue, Characteristics, DerivedValue, Dice, Quantity,
+    Rank, Subject, ValueId, Violation, ViolationReport, Waiver, adjustment_notice,
 };
 
 use crate::{
-    Age, AgeBracket, Domaine, Equipment, InPlay, Item, Protection, Quantity, SocialClass, Trait,
-    TraitPoints, Voie, Weapon, age, characteristics, domaine, equipment, protection, secondary,
-    traits, voie, weapon,
+    Age, AgeBracket, Domaine, Equipment, InPlay, Item, Protection, SocialClass, Trait, TraitPoints,
+    Voie, Weapon, age, characteristics, domaine, equipment, protection, secondary, traits, voie,
+    weapon,
 };
 
 /// The weapon category an attack value applies to.
