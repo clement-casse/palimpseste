@@ -1,0 +1,54 @@
+# Coverage of the Rust workspace, from `mise run coverage` in CI. The front end
+# has no coverage report yet.
+#
+# Two tiers, after the layout (ADR APP-LAYOUT): the rules under crates/ are
+# pure functions held to a high bar; the applications under app/ also hold
+# I/O, async and OIDC glue, so they get some slack.
+
+coverage:
+  precision: 2
+  round: down
+  range: "80...100"
+  status:
+    project:
+      rules:
+        paths: ["crates/"]
+        target: auto
+        threshold: 0.5%
+      app:
+        paths: ["app/"]
+        target: auto
+        threshold: 1%
+    patch:
+      rules:
+        paths: ["crates/"]
+        target: 95%
+      app:
+        paths: ["app/"]
+        target: 80%
+
+# One component per crate: a breakdown in the pull request comment and the
+# Codecov UI, without statuses of their own.
+component_management:
+  individual_components:
+    - component_id: co-kernel
+      paths: ["crates/co-kernel/"]
+    - component_id: co-contemporain
+      paths: ["crates/co-contemporain/"]
+    - component_id: co-fantasy
+      paths: ["crates/co-fantasy/"]
+    - component_id: palimpseste-document
+      paths: ["app/document/"]
+    - component_id: palimpseste-wasm
+      paths: ["app/wasm/"]
+    - component_id: palimpseste-backend
+      paths: ["app/backend/"]
+
+comment:
+  layout: "condensed_header, diff, components, condensed_files"
+
+# Entry points no Rust test can reach: the server's wiring and configuration
+# (ADR BE-LAYOUT), and the wasm-bindgen exports, called only from JavaScript.
+ignore:
+  - "app/backend/src/main.rs"
+  - "app/wasm/src/lib.rs"

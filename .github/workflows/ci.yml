@@ -1,0 +1,83 @@
+# The checks AGENTS.md asks for before finishing a task, through the mise tasks:
+# `check` (fmt, lint, test, doc-test) and the front end (wasm:build,
+# frontend:test, frontend:build, which runs frontend:check's svelte-check).
+# `coverage` stands in for `test`: tarpaulin runs the same tests and fails on
+# a failing one, so the suite is built and run once, and its report goes to
+# Codecov.
+#
+# One job: the repository is private, so minutes are counted, and each job pays
+# its own setup and is rounded up to the minute.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**/*.md", "docs/**", ".claude/**"]
+  pull_request:
+    paths-ignore: ["**/*.md", "docs/**", ".claude/**"]
+  workflow_dispatch:
+
+# A new push to a pull request cancels its running checks; runs on main always
+# finish, since they save the caches pull requests restore.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Smaller target directory to cache and faster links; backtraces keep their
+  # line numbers.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  # Install only the tools the job lists, never the rest of mise.toml
+  # (tarpaulin, llvm-cov, flyctl, ...) when a task runs.
+  MISE_AUTO_INSTALL: "false"
+  # Download prebuilt binaries for the cargo: tools instead of compiling them.
+  MISE_CARGO_BINSTALL_NATIVE: "true"
+
+jobs:
+  check:
+    name: Check (Rust and front end)
+    runs-on: ubuntu-latest
+    # Room for a cold build on two cores: a cold run that times out saves no
+    # cache, and every later run would start cold again.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      # The Rust toolchain lives in mise's data directory, so mise-action caches
+      # it with the tools that point to it.
+      - run: echo "MISE_RUSTUP_HOME=$HOME/.local/share/mise/rustup" >> "$GITHUB_ENV"
+      # Versions, URLs and checksums come from mise.lock only: a tool missing
+      # from it fails here. The cache key hashes mise.lock, so the tools are
+      # reinstalled only when it changes.
+      - uses: jdx/mise-action@v5
+        with:
+          install_args: --locked rust mr-boxington cargo:cargo-tarpaulin cargo:wasm-bindgen-cli node pnpm
+      - run: mise run fmt -- --check
+      # Restores the target directory and Cargo registry saved by the last
+      # successful push to main; saves a new entry after one.
+      - uses: jdx/mr-boxington-action@v1
+      - id: pnpm-store
+        working-directory: app/frontend
+        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('app/frontend/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: mise run lint
+      - run: mise run coverage
+      - uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: target/coverage/cobertura.xml
+          disable_search: true
+          fail_ci_if_error: true
+      - run: mise run doc-test
+      - name: Cargo.lock is up to date
+        run: git diff --exit-code -- Cargo.lock
+      - run: mise run wasm:build
+      - run: mise run frontend:test
+      - run: mise run frontend:build
