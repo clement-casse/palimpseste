@@ -63,7 +63,9 @@ only: a waiver matching nothing is reported as unused, never rejected.
 
 **APP-DOCUMENT-CRATE: One reader for browser and server.**
 `palimpseste-document` holds the document types and their conversion, and
-is shared by `app/wasm` and `app/backend`. Its `tsify` derives sit behind
+is shared by `app/wasm` and `app/backend`. It also reads the equipment in
+play (`Equipment`, ADR ENG-IN-PLAY), which only the browser keeps; the
+backend never stores it. Its `tsify` derives sit behind
 the `ts` feature, which only `palimpseste-wasm` enables, so the backend
 does not link `wasm-bindgen`.
 

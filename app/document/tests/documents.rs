@@ -5,8 +5,8 @@ use co_kernel::{
     Adjustment, Author, Characteristic as C, RuleId, Subject as KernelSubject, Waiver,
 };
 use palimpseste_document::{
-    AdjustmentEntry, Characteristic, ContemporainDocument, Document, Engine, Error,
-    FantasyDocument, ItemEntry, Subject, Target, WaiverEntry,
+    AdjustmentEntry, Characteristic, ContemporainDocument, ContemporainEquipment, Document, Engine,
+    Equipment, Error, FantasyDocument, FantasyEquipment, ItemEntry, Subject, Target, WaiverEntry,
 };
 
 /// Fixture helpers; a test module, so they may unwrap.
@@ -221,4 +221,44 @@ fn json_names_follow_the_typescript_conventions() {
         serde_json::json!({"kind": "characteristic", "id": "AGI"})
     );
     assert!(serde_json::from_str::<Document>(r#"{"engine": "fantasy"}"#).is_err());
+}
+
+#[test]
+fn equipment_in_play_converts_and_says_why_it_cannot() {
+    let equipment: Equipment = serde_json::from_str(
+        r#"{"engine": "fantasy", "armour": "cof.armour.cuir-renforce",
+            "items": [{"kind": "weapon", "id": "cof.weapon.arc-long", "quantity": 1}]}"#,
+    )
+    .unwrap();
+    let Equipment::Fantasy(equipment) = equipment else {
+        panic!("fantasy equipment expected");
+    };
+    let played = fantasy(&fixture("lhagva")).in_play(equipment.to_equipment().unwrap());
+    let defence = played.value(co_fantasy::Value::Defence).unwrap();
+    assert!(
+        defence
+            .contributions()
+            .iter()
+            .any(|c| c.source() == &co_kernel::Source::Value(co_fantasy::Armour::CuirRenforce.id()))
+    );
+
+    let unknown = FantasyEquipment {
+        shield: Some("cof.shield.pavois".into()),
+        ..FantasyEquipment::default()
+    };
+    assert_eq!(
+        unknown.to_equipment(),
+        Err(Error::UnknownContent {
+            kind: "shield",
+            id: "cof.shield.pavois".into()
+        })
+    );
+    let blank = ContemporainEquipment {
+        items: vec![ItemEntry::Other {
+            name: String::new(),
+            quantity: 1,
+        }],
+        ..ContemporainEquipment::default()
+    };
+    assert_eq!(blank.to_equipment(), Err(Error::Empty("item name")));
 }

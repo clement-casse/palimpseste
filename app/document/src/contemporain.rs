@@ -1,7 +1,7 @@
 //! The choices of a COC2 character at creation.
 
 use co_contemporain::{
-    Character, Domaine, Protection, Target as EngineTarget, Trait, Value, Voie, Weapon,
+    Character, Domaine, Equipment, Protection, Target as EngineTarget, Trait, Value, Voie, Weapon,
 };
 use co_kernel::Characteristic as KernelCharacteristic;
 use serde::{Deserialize, Serialize};
@@ -107,19 +107,7 @@ impl ContemporainDocument {
                 character = character.with_carac_points(characteristic, points);
             }
         }
-        for item in &self.items {
-            character = match item {
-                ItemEntry::Weapon { id, quantity } => {
-                    character.with_item(content("weapon", id, Weapon::from_id)?, *quantity)
-                }
-                ItemEntry::Other { name, quantity } => {
-                    character.with_item(filled("item name", name)?, *quantity)
-                }
-            };
-        }
-        for id in &self.protections {
-            character = character.with_protection(content("protection", id, Protection::from_id)?);
-        }
+        character = character.with_equipment(equipment(&self.protections, &self.items)?);
         for entry in &self.adjustments {
             let target = match &entry.target {
                 Target::Characteristic(c) => EngineTarget::Characteristic((*c).into()),
@@ -132,4 +120,51 @@ impl ContemporainDocument {
         }
         Ok(character)
     }
+}
+
+/// What a COC2 character wears and carries in play, in place of its
+/// creation equipment (ADR ENG-IN-PLAY). The browser keeps it; the backend
+/// never stores it.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct ContemporainEquipment {
+    /// The identifiers of the protections worn.
+    #[serde(default)]
+    pub protections: Vec<String>,
+    /// The items carried.
+    #[serde(default)]
+    pub items: Vec<ItemEntry>,
+}
+
+impl ContemporainEquipment {
+    /// Converts the equipment to the engine's.
+    ///
+    /// # Errors
+    ///
+    /// Returns why the equipment cannot be read: an unknown identifier, a
+    /// blank item name.
+    pub fn to_equipment(&self) -> Result<Equipment, Error> {
+        equipment(&self.protections, &self.items)
+    }
+}
+
+/// The engine's equipment for protections and items, from a document or an
+/// equipment in play.
+fn equipment(protections: &[String], items: &[ItemEntry]) -> Result<Equipment, Error> {
+    let mut equipment = Equipment::new();
+    for item in items {
+        equipment = match item {
+            ItemEntry::Weapon { id, quantity } => {
+                equipment.with_item(content("weapon", id, Weapon::from_id)?, *quantity)
+            }
+            ItemEntry::Other { name, quantity } => {
+                equipment.with_item(filled("item name", name)?, *quantity)
+            }
+        };
+    }
+    for id in protections {
+        equipment = equipment.with_protection(content("protection", id, Protection::from_id)?);
+    }
+    Ok(equipment)
 }

@@ -26,8 +26,8 @@ mod contemporain;
 mod fantasy;
 
 use co_kernel::{AbilityId, Adjustment, Author, RuleId, ValueId, VoieId, Waiver};
-pub use contemporain::{ContemporainDocument, TraitEntry};
-pub use fantasy::FantasyDocument;
+pub use contemporain::{ContemporainDocument, ContemporainEquipment, TraitEntry};
+pub use fantasy::{FantasyDocument, FantasyEquipment};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ts")]
 use tsify::Tsify;
@@ -35,7 +35,8 @@ use tsify::Tsify;
 /// The document version this crate reads and writes.
 pub const VERSION: u32 = 1;
 
-/// Why a document cannot be read. A rule broken is never one of them.
+/// Why a document, or an equipment in play, cannot be read. A rule broken is
+/// never one of them.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum Error {
     /// The document's version is not [`VERSION`].
@@ -53,6 +54,9 @@ pub enum Error {
     /// a subject, an item name.
     #[error("empty {0}")]
     Empty(&'static str),
+    /// An equipment in play given with a document of another engine.
+    #[error("equipment of another engine than the document's")]
+    OtherEngine,
 }
 
 /// The engine a character is built with.
@@ -108,6 +112,19 @@ impl Document {
             Self::Fantasy(document) => document.to_character().map(|_| ()),
         }
     }
+}
+
+/// What a character wears and carries in play, for its engine, in place of
+/// the equipment of its document (ADR ENG-IN-PLAY). The browser keeps it;
+/// the backend never stores it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(Tsify))]
+#[serde(tag = "engine", rename_all = "lowercase")]
+pub enum Equipment {
+    /// The equipment of a COC2 character.
+    Contemporain(ContemporainEquipment),
+    /// The equipment of a COF2 character.
+    Fantasy(FantasyEquipment),
 }
 
 /// One of the seven characteristics, by its abbreviation (`AGI`, ...).
