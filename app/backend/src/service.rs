@@ -149,6 +149,10 @@ fn sign_in_failed(linking: bool, error: Error) -> Error {
 impl<R: PalimpsesteRepository, P: IdentityProviders> PalimpsesteService
     for PalimpsesteServiceImpl<R, P>
 {
+    async fn health(&self) -> Result<(), Error> {
+        self.repo.ping().await
+    }
+
     fn providers(&self) -> Vec<ProviderSummary> {
         self.providers.list()
     }
@@ -409,6 +413,22 @@ mod tests {
             nickname: Nickname::parse("Ana").unwrap(),
             profile: Profile::default(),
         }
+    }
+
+    #[tokio::test]
+    async fn healthy_while_the_database_answers() {
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_ping().times(1).returning(|| Ok(()));
+        service(repo, MockIdentityProviders::new())
+            .health()
+            .await
+            .unwrap();
+
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_ping()
+            .returning(|| Err(anyhow!("disk I/O error").into()));
+        let result = service(repo, MockIdentityProviders::new()).health().await;
+        assert!(matches!(result, Err(Error::Underlying(_))));
     }
 
     #[tokio::test]

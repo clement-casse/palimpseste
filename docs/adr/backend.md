@@ -61,7 +61,7 @@ alias.
 
 ## API
 
-**BE-API: The routes.** Every route but `/api/auth/*` answers `401`
+**BE-API: The routes.** Every route but `/api/auth/*` and `/healthz` answers `401`
 without a live session; another user's character is `404`, as if it did
 not exist; an unknown path under `/api` is `404`.
 
@@ -84,6 +84,17 @@ not exist; an unknown path under `/api` is `404`.
 | `PATCH` | `/api/characters/{id}` `{name}` | the renamed character |
 | `DELETE` | `/api/characters/{id}` | `204` |
 | `PUT` | `/api/characters/{id}/document` | `204`, the new version in `ETag` |
+| `GET` | `/healthz` | `200` `ok` while the database answers, else `503` with no body; `no-store` (BE-HEALTH) |
+
+**BE-HEALTH: A cheap health check.** `/healthz` is what the hosting
+platform probes: it reads the database through the shared connection
+(`SELECT count(*) FROM sqlite_schema`), which fails on a lost volume or a
+stuck connection, and nothing else. *Why:* a failing check takes the
+machine out of routing and stops a deploy, so it must fail only when this
+server cannot serve: it never calls an identity provider (an outage there
+would take the app down) nor scans the database (its cost would grow with
+it). It answers exactly `200` when healthy, never redirects nor needs a
+session, as Fly.io's checks require.
 
 **BE-CHECKS: What the backend rejects.** Nothing else: bounds, broken
 rules and missing choices are stored as sent, and the backend never
@@ -214,7 +225,8 @@ Vite's origin and register that redirect URI.
 events).
 
 - tower-http's `TraceLayer`: each request with its method, URI, status
-  and latency at `info`, server errors at `error`.
+  and latency at `info`, server errors at `error`; not `/healthz`, probed
+  every few seconds.
 - `main.rs`: the providers, the database and the address at startup, a
   warning when the front end directory has no `index.html`.
 - The service: each domain event at `info` (registration started and
@@ -223,12 +235,12 @@ events).
   deleted, document stored with its version).
 - The HTTP adapter: conflicts and stale versions at `info`; unprocessable
   requests with why, a missing `If-Match` and failed sign-ins at `warn`;
-  internal errors at `error`.
+  internal errors and a failed health check at `error`.
 
 Ids are logged, never documents, tokens or claims.
 
 **BE-FRONTEND: The same router serves the front end.** Every path outside
-`/api` is a file of the front end directory, falling back to `index.html`
+`/api` and `/healthz` is a file of the front end directory, falling back to `index.html`
 so the PWA routes itself. Files under `/assets/` are named after their
 content and cached `immutable` for a year; a missing one is `404`, so a
 stale path is never cached as the app shell. Every other file

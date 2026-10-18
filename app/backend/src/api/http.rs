@@ -1,5 +1,5 @@
-//! The HTTP adapter: the JSON API under `/api`, the front end everywhere
-//! else.
+//! The HTTP adapter: the JSON API under `/api`, the health check at
+//! `/healthz`, the front end everywhere else.
 //!
 //! The API serves, checks and stores (ADR BE-CHECKS): it rejects a request
 //! it cannot read, never a character breaking a rule. Signing in is under
@@ -57,8 +57,9 @@ impl HttpApi {
         }
     }
 
-    /// The router. Paths outside `/api` are the front end's. Unknown paths
-    /// under `/api` are not found. Every request is traced.
+    /// The router. `/healthz` is the health check; other paths outside
+    /// `/api` are the front end's. Unknown paths under `/api` are not found.
+    /// Every request but the health check is traced.
     pub fn router(&self) -> Router {
         let not_found = || async { StatusCode::NOT_FOUND };
         let state = AppState {
@@ -81,7 +82,7 @@ impl HttpApi {
             )
             .route("/characters/{character_id}/document", put(put_document))
             .fallback(not_found)
-            .with_state(state);
+            .with_state(state.clone());
         Router::new()
             .nest("/api", api)
             // `nest` leaves the bare trailing slash to the front end.
@@ -92,6 +93,9 @@ impl HttpApi {
                     .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
                     .on_response(DefaultOnResponse::new().level(Level::INFO)),
             )
+            // After the trace layer: probed every few seconds, it would
+            // flood the logs.
+            .route("/healthz", get(healthz).with_state(state))
     }
 }
 
@@ -285,6 +289,19 @@ fn if_match(headers: &HeaderMap) -> Result<Version, Rejection> {
         .and_then(|version| version.parse().ok())
         .unwrap_or(0);
     Ok(Version::from(version))
+}
+
+/// The health check of the hosting platform: `200 ok` while the server can
+/// serve, else `503`, never cached.
+async fn healthz(State(state): State<AppState>) -> Response {
+    let no_store = [(header::CACHE_CONTROL, "no-store")];
+    match state.service.health().await {
+        Ok(()) => (no_store, "ok").into_response(),
+        Err(error) => {
+            tracing::error!(error = format!("{error:#}"), "unhealthy");
+            (StatusCode::SERVICE_UNAVAILABLE, no_store).into_response()
+        }
+    }
 }
 
 async fn me(SignedIn(user): SignedIn) -> Json<UserView> {
@@ -972,6 +989,37 @@ mod tests {
             assert_eq!(status, StatusCode::NOT_FOUND, "{uri}");
             assert!(body.is_empty(), "{uri}");
         }
+    }
+
+    #[tokio::test]
+    async fn healthy_without_a_session() {
+        let app = app("healthz").await;
+        let (status, headers, body) = app.anonymous(Method::GET, "/healthz").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+        assert_eq!(body, b"ok");
+        let (status, _, body) = app.anonymous(Method::HEAD, "/healthz").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, b"");
+    }
+
+    #[tokio::test]
+    async fn unhealthy_is_unavailable_without_detail() {
+        let mut service = MockPalimpsesteService::new();
+        service
+            .expect_health()
+            .returning(|| Err(anyhow!("disk I/O error").into()));
+        let router = HttpApi::new(
+            Arc::new(service),
+            &frontend_dir("unhealthy"),
+            "http://localhost:3000",
+        )
+        .router();
+        let (status, headers, body) =
+            send_with(&router, None, Method::GET, "/healthz", &[], None).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+        assert_eq!(body, b"");
     }
 
     #[tokio::test]

@@ -524,6 +524,14 @@ impl PalimpsesteRepository for SqliteRepo {
         .await
     }
 
+    async fn ping(&self) -> Result<(), Error> {
+        // Reads the schema page of the file, through the shared connection.
+        self.call("checking the database", |connection| {
+            connection.query_row("SELECT count(*) FROM sqlite_schema", [], |_| Ok(()))
+        })
+        .await
+    }
+
     async fn create_character(
         &self,
         owner: UserId,
@@ -791,6 +799,11 @@ mod tests {
 
     fn nickname(value: &str) -> Nickname {
         Nickname::parse(value).unwrap()
+    }
+
+    #[tokio::test]
+    async fn an_open_database_answers() {
+        SqliteRepo::in_memory().ping().await.unwrap();
     }
 
     #[tokio::test]

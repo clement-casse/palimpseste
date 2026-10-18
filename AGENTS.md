@@ -82,6 +82,7 @@ In scope:
 - **Characters**: a list per user, reachable by their owner only, each with a name, its engine (`contemporain`, `fantasy`) and its choices document; read, renamed, deleted, and the document replaced with `If-Match`.
 - **Checks**: that requests are well formed and a document is readable by `palimpseste-document` (ADR BE-CHECKS). Never violations: a rule-breaking character is stored as sent.
 - **Persistence**: SQLite through `rusqlite`, called from `spawn_blocking`.
+- **Health check** (ADR BE-HEALTH): `/healthz`, without a session, `200` while the database answers, else `503`.
 - **Front end**: the built PWA served by the same router, falling back to `index.html`; hashed files under `/assets/` cached as immutable, every other file revalidated (ADR BE-FRONTEND).
 
 - **Structure** (ADR BE-LAYOUT): one bounded context in a lib + bin crate; the model, the use cases (`PalimpsesteService`) and `Error` in `lib.rs` and concept-named files, adapters in `repo/`, `provider/` and `api/`, wiring and clap configuration in `main.rs` only. Follow `.claude/skills/backend-structure/SKILL.md`.

@@ -113,6 +113,9 @@ pub trait PalimpsesteRepository: Send + Sync + 'static {
     /// Removes the expired sessions, sign-ins and registrations.
     async fn purge_expired(&self) -> Result<(), Error>;
 
+    /// Whether the database answers, by a trivial read.
+    async fn ping(&self) -> Result<(), Error>;
+
     /// Creates a character of `owner` at [`Version::FIRST`].
     async fn create_character(
         &self,

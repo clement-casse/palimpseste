@@ -52,6 +52,9 @@ pub struct ActionContext {
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait PalimpsesteService: Send + Sync + 'static {
+    /// Whether the server can serve: its database answers.
+    async fn health(&self) -> Result<(), Error>;
+
     /// The configured providers, in their configured order.
     fn providers(&self) -> Vec<ProviderSummary>;
 
