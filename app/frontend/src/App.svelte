@@ -9,6 +9,7 @@
   import Register from "./Register.svelte";
   import { LOGIN, match, navigate, route } from "./router.svelte";
   import { session, signedIn, signedOut } from "./session.svelte";
+  import SheetPage from "./sheet/SheetPage.svelte";
   import SignIn from "./SignIn.svelte";
   import StatusBanner from "./StatusBanner.svelte";
 
@@ -28,6 +29,7 @@
   }
 
   const page = $derived(match(route.path));
+  const wide = $derived(page.name === "character" || page.name === "character-sheet");
 
   // Signed out, only the sign-in page and creating an account; signed in,
   // never the sign-in page.
@@ -38,7 +40,7 @@
   });
 </script>
 
-<main class={{ wide: page.name === "character" }}>
+<main class={{ wide }}>
   <h1>Palimpseste</h1>
   <StatusBanner />
   {#if failure}
@@ -52,6 +54,8 @@
   {:else if session.user && page.name !== "login"}
     {#if page.name === "character"}
       <CharacterPage id={page.id} />
+    {:else if page.name === "character-sheet"}
+      <SheetPage id={page.id} />
     {:else if page.name === "profile"}
       <ProfilePage user={session.user} />
     {:else if page.name === "characters"}
@@ -61,4 +65,4 @@
     {/if}
   {/if}
 </main>
-<Disclaimer wide={page.name === "character"} />
+<Disclaimer {wide} />

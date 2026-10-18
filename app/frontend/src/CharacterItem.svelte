@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Character } from "./api";
-  import { ENGINES } from "./engines";
-  import { characterPath, follow } from "./router.svelte";
+  import { ENGINES, unsettled } from "./engines";
+  import { characterPath, characterSheetPath, follow } from "./router.svelte";
   import { evaluate } from "./wasm/palimpseste_wasm";
 
   let { character }: { character: Character } = $props();
@@ -9,10 +9,7 @@
   // Computed in the browser by the engine compiled to WebAssembly.
   const open = $derived.by(() => {
     try {
-      return evaluate(character.document).steps.reduce(
-        (sum, step) => sum + step.incomplete + step.deviations,
-        0,
-      );
+      return unsettled(evaluate(character.document).steps);
     } catch {
       return null;
     }
@@ -31,6 +28,7 @@
   {:else}
     {open} point{open > 1 ? "s" : ""} à régler
   {/if}
+  · <a href={characterSheetPath(character.id)} onclick={follow}>Fiche</a>
 </li>
 
 <style>

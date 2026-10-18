@@ -33,11 +33,16 @@ export function stubBackend(handle: Handler): Sent[] {
   return sent;
 }
 
-/** The choices of Lhagva, the book's worked COF2 character. */
-export function lhagva(): Document {
-  const path = join(import.meta.dirname, "../../../document/tests/fixtures/lhagva.json");
+function fixture(name: string): Document {
+  const path = join(import.meta.dirname, `../../../document/tests/fixtures/${name}.json`);
   return JSON.parse(readFileSync(path, "utf8")) as Document;
 }
+
+/** The choices of Lhagva, the book's worked COF2 character. */
+export const lhagva = () => fixture("lhagva");
+
+/** The choices of Amelia Steele, the book's worked COC2 character. */
+export const amelia = () => fixture("amelia-steele");
 
 export function character(document: Document, name = "Lhagva"): Character {
   return { id: 1, name, engine: document.engine, document, version: 1 };

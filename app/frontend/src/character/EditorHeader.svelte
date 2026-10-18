@@ -5,7 +5,7 @@
   import { ENGINES } from "../engines";
   import ErrorMessage from "../ErrorMessage.svelte";
   import { detail } from "../errors";
-  import { follow } from "../router.svelte";
+  import { characterSheetPath, follow } from "../router.svelte";
   import type { DocumentSaver } from "./saver.svelte";
 
   let {
@@ -61,6 +61,7 @@
   <a href="/" onclick={follow}>← Personnages</a>
   <input class="name" aria-label="Nom du personnage" bind:value={name} onchange={rename} />
   <span class="engine">{ENGINES[character.engine]}</span>
+  <a href={characterSheetPath(character.id)} onclick={follow}>Fiche</a>
   <span
     class={["status", saver.status]}
     title={saver.failure === null ? undefined : detail(saver.failure)}
