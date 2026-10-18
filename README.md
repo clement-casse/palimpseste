@@ -74,8 +74,10 @@ else:
 
 - **Characteristics**: `AGI`, `CON`, `FOR`, `PER`, `CHA`, `INT`, `VOL`,
   their abbreviations, values and modifiers.
-- **Voie skeleton**: voies, their ranks and the abilities attached to them.
-  Structure only, with no cost or budget rule.
+- **Voies**: ranks, voie and ability identifiers, and the checks every
+  voie shares on the ranks acquired in it. Structure only, with no cost or
+  budget rule.
+- **Items**: the name of a free text item and a quantity carried.
 - **Derived values** (`DerivedValue`): a total together with the
   contributions that produced it.
 - **Adjustments**: manual contributions, attributed to an author.

@@ -17,13 +17,13 @@ builds a complete character. Read it first.
 | `rules.rs` | every `RuleId`, `Mechanic` and engine `ValueId` constant | |
 | `age.rs` | `Age`, `AgeBracket`, the limits of each bracket | COC.CRE.AGE-BRACKET |
 | `domaine.rs` | `Domaine` (18), its voie slots and social class requirements | COC.CRE.DOMAINE, COC.CNT.DOMAINES |
-| `voie.rs` | `Voie` (18), the checks on the ranks acquired | CO.VOIE.*, COC.CRE.CAPACITY-POINTS, COC.CRE.MAX-VOIES |
+| `voie.rs` | `Voie` (18), the checks on the ranks acquired | CO.VOIE.* (the kernel's `voie_rank_violations`), COC.CRE.CAPACITY-POINTS, COC.CRE.MAX-VOIES |
 | `traits.rs` | `Trait`, `Sequel`, `TraitPoints`, `SocialClass` | COC.CRE.TRAITS, COC.CNT.TRAITS, COC.CRE.SOCIAL-CLASS |
 | `characteristics.rs` | the characteristic points allocated, `ALLOCATED_POINTS` | COC.CRE.CARAC-* |
 | `secondary.rs` | Init, DEF, ATC/ATD, CG, health scale | COC.DER.* |
 | `weapon.rs` | `Weapon` (one variant per table row, `MainsNues` included), damage dice and DM, bonus critique, critical range | COC.EQP.MELEE, COC.EQP.RANGED, COC.DER.DM-BONUS, COC.DER.CRIT-* |
 | `protection.rs` | `Protection`: RD and malus, never DEF | COC.EQP.PROTECTIONS |
-| `equipment.rs` | `Item`, `ItemName`, `Quantity`, the starting equipment of the voies | COC.CRE.EQUIPMENT |
+| `equipment.rs` | `Item` (a weapon, or free text named by the kernel's `ItemName`), the starting equipment of the voies | COC.CRE.EQUIPMENT |
 | `step.rs` | `Step` in the book order, and `Step::of(&Violation)` | COC.CRE.STEPS |
 | `label.rs` | `label(id)` and `term_label(rule)`: the French names of the identifiers the engine emits | |
 

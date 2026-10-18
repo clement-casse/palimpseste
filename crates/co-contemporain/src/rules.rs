@@ -6,10 +6,6 @@
 
 use co_kernel::{Mechanic, RuleId, ValueId};
 
-/// CO.VOIE.STRUCTURE: ranks 1 to 5.
-pub(crate) const VOIE_STRUCTURE: RuleId = RuleId::from_static("CO.VOIE.STRUCTURE");
-/// CO.VOIE.ORDER: lower ranks first, no gaps.
-pub(crate) const VOIE_ORDER: RuleId = RuleId::from_static("CO.VOIE.ORDER");
 /// COC.CRE.AGE-BRACKET: limits by age bracket.
 pub(crate) const AGE_BRACKET: RuleId = RuleId::from_static("COC.CRE.AGE-BRACKET");
 /// COC.CRE.DOMAINE: voies retained from the domaine.

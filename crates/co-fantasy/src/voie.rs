@@ -1,15 +1,12 @@
 //! Voies (COF.CNT.PROFILS, COF.CNT.PEUPLES) and the checks on the ranks
 //! acquired at level 1.
 
-use std::collections::BTreeSet;
-
-use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId};
+use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId, voie_rank_violations};
 
 use crate::{
     Character, Family, Profil,
     rules::{
-        LEVEL, LEVEL_REQ, MAGE_EXTRA, PEUPLE_VOIE, PROFIL_VOIES, VOIE_DU_MAGE, VOIE_MECHANIC,
-        VOIE_ORDER, VOIE_STRUCTURE, VOIES,
+        LEVEL, LEVEL_REQ, MAGE_EXTRA, PEUPLE_VOIE, PROFIL_VOIES, VOIE_DU_MAGE, VOIE_MECHANIC, VOIES,
     },
 };
 
@@ -479,9 +476,6 @@ impl Voie {
     }
 }
 
-/// Lowest and highest rank of a voie (CO.VOIE.STRUCTURE).
-const RANKS: std::ops::RangeInclusive<u8> = 1..=5;
-
 /// Voies chosen at level 1 besides the voie de peuple (COF.CRE.VOIES).
 const PROFIL_VOIE_COUNT: i32 = 2;
 
@@ -501,38 +495,15 @@ const fn required_level(rank: u8) -> Option<i32> {
     }
 }
 
-/// Checks the acquired ranks against the voie structure and the level-1
-/// choices.
+/// Checks the acquired ranks against the voie structure (ADR KER-VOIE) and
+/// the level-1 choices.
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     for (voie, ranks) in character.voies() {
-        check_structure(voie, ranks, violations);
+        violations.extend(voie_rank_violations(&voie.id(), ranks, VOIE_MECHANIC));
     }
     check_slots(character, violations);
     check_level(character, violations);
     check_mage_extra(character, violations);
-}
-
-/// CO.VOIE.STRUCTURE and CO.VOIE.ORDER for one voie.
-fn check_structure(voie: Voie, ranks: &BTreeSet<Rank>, violations: &mut Vec<Violation>) {
-    let subject = || Subject::Voie(voie.id());
-    for rank in ranks.iter().filter(|rank| !RANKS.contains(&rank.get())) {
-        violations.push(
-            Violation::deviation(VOIE_STRUCTURE, VOIE_MECHANIC, subject(), Severity::Standard)
-                .with_parameter("rank", i32::from(rank.get())),
-        );
-    }
-    let highest = ranks.last().map_or(0, |rank| rank.get());
-    let mut missing = (1..highest)
-        .filter(|r| !ranks.contains(&Rank::new(*r)))
-        .peekable();
-    if let Some(&first) = missing.peek() {
-        let count = missing.fold(0_i32, |count, _| count + 1);
-        violations.push(
-            Violation::deviation(VOIE_ORDER, VOIE_MECHANIC, subject(), Severity::Standard)
-                .with_parameter("first_missing", i32::from(first))
-                .with_parameter("missing", count),
-        );
-    }
 }
 
 /// COF.CRE.VOIES and COF.CRE.VOIE-DU-MAGE: two chosen voies, one voie de

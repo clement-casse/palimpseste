@@ -81,9 +81,10 @@ one. Every step can be opened at any time.
 
 **ENG-VOIE-RANKS: Acquired ranks are a set.** The ranks acquired per voie
 are a `BTreeSet<Rank>`, so a gap is representable and reported
-(CO.VOIE.ORDER). The set, the CO.VOIE.STRUCTURE and CO.VOIE.ORDER checks,
-and `Item`, `ItemName` and `Quantity` are duplicated in both engines (see
-Open).
+(CO.VOIE.ORDER). Each engine keeps the set, keyed by its own `Voie`; the
+CO.VOIE.STRUCTURE and CO.VOIE.ORDER checks are the kernel's
+(ADR KER-VOIE). *Why not a generic set in the kernel:* a few short methods
+per engine do not pay for a type parameter.
 
 ## Equipment and money
 
@@ -93,7 +94,8 @@ tables. Any other item is free text (`Item::Other(ItemName)`), never
 checked; an item becomes an enum when a rule reading it lands.
 `with_item(item, quantity)` records what is carried, and a quantity of 0
 gives it up. Armour and shield (COF2) and protections (COC2) are worn
-slots, and count as possessed.
+slots, and count as possessed. Each engine keeps its `Item`, naming its
+own `Weapon`; `ItemName` and `Quantity` are the kernel's (ADR KER-ITEMS).
 
 **ENG-IN-PLAY: A character in play wears another equipment.** `Equipment`
 groups what a character wears and carries (COF2 armour, shield and items;
@@ -230,8 +232,6 @@ and displays with the fewest coins (COF.EQP.CURRENCY). The purse is the
 
 ## Open
 
-- Moving the acquired ranks and the voie checks, and `Item`, `ItemName`
-  and `Quantity`, into the kernel.
 - Spending, at campaign initialization (D-25): prices, purchases, the COC2
   era and the availability it decides, a negative balance; and where the
   campaign concept lives.

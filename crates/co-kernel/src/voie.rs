@@ -1,6 +1,9 @@
-//! Voie skeleton: a voie, its ranks and the ability at each rank.
+//! Voies: ranks, voie and ability identifiers, and the checks on the ranks
+//! acquired in a voie.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeSet, ops::RangeInclusive};
+
+use crate::{Mechanic, RuleId, Severity, Subject, Violation};
 
 /// The rank of an ability within a voie.
 ///
@@ -77,92 +80,129 @@ impl From<String> for AbilityId {
     }
 }
 
-/// A voie: one ability per rank (CO.VOIE.STRUCTURE).
-///
-/// Structure only. Gaps, unusual ranks and any number of ranks are
-/// representable; costs and acquisition order are engine rules.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Voie {
-    id: VoieId,
-    abilities: BTreeMap<Rank, AbilityId>,
-}
+/// CO.VOIE.STRUCTURE: the ranks of a voie run from 1 to 5.
+pub const VOIE_STRUCTURE: RuleId = RuleId::from_static("CO.VOIE.STRUCTURE");
 
-impl Voie {
-    /// Creates a voie with no ability.
-    #[must_use]
-    pub fn new(id: VoieId) -> Self {
-        Self {
-            id,
-            abilities: BTreeMap::new(),
-        }
-    }
+/// CO.VOIE.ORDER: the lower ranks of a voie are acquired first, with no gap.
+pub const VOIE_ORDER: RuleId = RuleId::from_static("CO.VOIE.ORDER");
 
-    /// Attaches `ability` to `rank`, replacing any ability already there.
-    #[must_use]
-    pub fn with_ability(mut self, rank: impl Into<Rank>, ability: impl Into<AbilityId>) -> Self {
-        self.abilities.insert(rank.into(), ability.into());
-        self
-    }
+/// Lowest and highest rank of a voie (CO.VOIE.STRUCTURE).
+const RANKS: RangeInclusive<u8> = 1..=5;
 
-    /// Returns the identifier of the voie.
-    #[must_use]
-    pub fn id(&self) -> &VoieId {
-        &self.id
+/// Checks the `ranks` acquired in `voie`, for `mechanic`: a `standard`
+/// deviation of [`VOIE_STRUCTURE`] for each rank outside 1 to 5, and one of
+/// [`VOIE_ORDER`] when ranks are missing below the highest, with the first
+/// missing rank and their count.
+#[must_use]
+pub fn voie_rank_violations(
+    voie: &VoieId,
+    ranks: &BTreeSet<Rank>,
+    mechanic: Mechanic,
+) -> Vec<Violation> {
+    let subject = Subject::Voie(voie.clone());
+    let mut violations: Vec<Violation> = ranks
+        .iter()
+        .filter(|rank| !RANKS.contains(&rank.get()))
+        .map(|rank| {
+            Violation::deviation(
+                VOIE_STRUCTURE,
+                mechanic,
+                subject.clone(),
+                Severity::Standard,
+            )
+            .with_parameter("rank", i32::from(rank.get()))
+        })
+        .collect();
+    let highest = ranks.last().map_or(0, |rank| rank.get());
+    let mut missing = (1..highest)
+        .filter(|r| !ranks.contains(&Rank::new(*r)))
+        .peekable();
+    if let Some(&first) = missing.peek() {
+        let count = missing.fold(0_i32, |count, _| count + 1);
+        violations.push(
+            Violation::deviation(VOIE_ORDER, mechanic, subject.clone(), Severity::Standard)
+                .with_parameter("first_missing", i32::from(first))
+                .with_parameter("missing", count),
+        );
     }
-
-    /// Returns the ability at `rank`, if any.
-    #[must_use]
-    pub fn ability_at(&self, rank: Rank) -> Option<&AbilityId> {
-        self.abilities.get(&rank)
-    }
-
-    /// Iterates over the abilities in increasing rank order.
-    pub fn abilities(&self) -> impl Iterator<Item = (Rank, &AbilityId)> {
-        self.abilities
-            .iter()
-            .map(|(rank, ability)| (*rank, ability))
-    }
+    violations
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Category, ParameterValue};
 
-    fn ranks(voie: &Voie) -> Vec<u8> {
-        voie.abilities().map(|(rank, _)| rank.get()).collect()
+    const MECHANIC: Mechanic = Mechanic::new("test-mechanic");
+
+    fn subject() -> Subject {
+        Subject::Voie(VoieId::new("test-voie"))
+    }
+
+    fn check(ranks: &[u8]) -> Vec<Violation> {
+        let ranks: BTreeSet<Rank> = ranks.iter().copied().map(Rank::new).collect();
+        voie_rank_violations(&VoieId::new("test-voie"), &ranks, MECHANIC)
+    }
+
+    fn parameters(violation: &Violation) -> Vec<(&str, &ParameterValue)> {
+        violation
+            .parameters()
+            .iter()
+            .map(|p| (p.name(), p.value()))
+            .collect()
     }
 
     #[test]
-    fn abilities_come_back_in_rank_order() {
-        let voie = Voie::new(VoieId::new("test-voie"))
-            .with_ability(3, "c")
-            .with_ability(1, "a")
-            .with_ability(2, "b");
-        assert_eq!(voie.id().as_str(), "test-voie");
-        let ids: Vec<_> = voie.abilities().map(|(_, a)| a.as_str()).collect();
-        assert_eq!(ids, ["a", "b", "c"]);
+    fn ranks_acquired_in_order_are_clean() {
+        assert_eq!(check(&[]), []);
+        assert_eq!(check(&[1]), []);
+        assert_eq!(check(&[1, 2, 3, 4, 5]), []);
     }
 
     #[test]
-    fn unusual_ranks_and_gaps_are_representable() {
-        let gaps = Voie::new(VoieId::new("gaps"))
-            .with_ability(0, "zero")
-            .with_ability(3, "three");
-        assert_eq!(ranks(&gaps), [0, 3]);
-
-        let high = (4..=8).fold(Voie::new(VoieId::new("high")), |voie, rank| {
-            voie.with_ability(rank, format!("r{rank}"))
-        });
-        assert_eq!(ranks(&high), [4, 5, 6, 7, 8]);
+    fn each_rank_outside_the_structure_deviates() {
+        let violations = check(&[0, 1, 2, 3, 4, 5, 6]);
+        let ranks: Vec<_> = violations
+            .iter()
+            .map(|v| {
+                assert_eq!(v.rule(), &VOIE_STRUCTURE);
+                parameters(v)
+            })
+            .collect();
+        assert_eq!(
+            ranks,
+            [
+                [("rank", &ParameterValue::Integer(0))],
+                [("rank", &ParameterValue::Integer(6))]
+            ]
+        );
     }
 
     #[test]
-    fn same_rank_replaces_the_ability() {
-        let voie = Voie::new(VoieId::new("test-voie"))
-            .with_ability(1, "old")
-            .with_ability(1, "new");
-        assert_eq!(voie.ability_at(Rank::new(1)), Some(&AbilityId::new("new")));
-        assert_eq!(ranks(&voie), [1]);
+    fn gaps_make_one_order_deviation() {
+        let violations = check(&[2, 5]);
+        assert_eq!(violations.len(), 1);
+        let order = &violations[0];
+        assert_eq!(order.rule(), &VOIE_ORDER);
+        assert_eq!(order.category(), Category::Deviation(Severity::Standard));
+        assert_eq!(order.mechanic(), MECHANIC);
+        assert_eq!(order.subject(), &subject());
+        assert_eq!(
+            parameters(order),
+            [
+                ("first_missing", &ParameterValue::Integer(1)),
+                ("missing", &ParameterValue::Integer(3))
+            ]
+        );
+    }
+
+    #[test]
+    fn a_rank_far_out_deviates_twice() {
+        let rules: Vec<_> = check(&[200])
+            .iter()
+            .map(|v| v.rule().as_str().to_owned())
+            .collect();
+        assert_eq!(rules, ["CO.VOIE.STRUCTURE", "CO.VOIE.ORDER"]);
     }
 
     #[test]
@@ -170,14 +210,6 @@ mod tests {
         assert_eq!(Rank::from(3), Rank::new(3));
         assert_eq!(AbilityId::from("a"), AbilityId::new("a"));
         assert_eq!(AbilityId::from("b".to_owned()), AbilityId::new("b"));
-        let voie =
-            Voie::new(VoieId::new("test-voie")).with_ability(Rank::new(2), AbilityId::new("b"));
-        assert_eq!(voie.ability_at(2.into()), Some(&"b".into()));
-    }
-
-    #[test]
-    fn missing_rank_has_no_ability() {
-        let voie = Voie::new(VoieId::new("test-voie")).with_ability(1, "a");
-        assert_eq!(voie.ability_at(Rank::new(2)), None);
+        assert_eq!(VoieId::new("test-voie").as_str(), "test-voie");
     }
 }

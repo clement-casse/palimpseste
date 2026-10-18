@@ -3,14 +3,13 @@
 //!
 //! Steps guide the editor: every choice can still be made in any order.
 
-use co_kernel::{ADJUSTMENT_RULE, RuleId, Subject, Violation};
+use co_kernel::{ADJUSTMENT_RULE, RuleId, Subject, VOIE_ORDER, VOIE_STRUCTURE, Violation};
 
 use crate::{
     Value,
     rules::{
         ARMOUR_LIMIT, CARAC_BOUNDS, CARAC_KEY, CARAC_MAGIC, CARAC_PEUPLE, CARAC_SERIES, EQUIPMENT,
-        LEVEL_REQ, MAGE_EXTRA, PEUPLE, PEUPLES, PM, PROFIL, RANGED, VOIE_DU_MAGE, VOIE_ORDER,
-        VOIE_STRUCTURE, VOIES,
+        LEVEL_REQ, MAGE_EXTRA, PEUPLE, PEUPLES, PM, PROFIL, RANGED, VOIE_DU_MAGE, VOIES,
     },
 };
 

@@ -17,7 +17,8 @@ The kernel holds the concepts that mean exactly the same thing in every engine. 
 In scope:
 
 - **Characteristics**: the seven characteristics `AGI`, `CON`, `FOR`, `PER`, `CHA`, `INT`, `VOL`, their abbreviations, values and modifiers.
-- **Voie skeleton**: a voie, its ranks, the abilities attached to ranks. Structure only, no rule about costs or budgets.
+- **Voies**: ranks, voie and ability identifiers, and the checks on the ranks acquired in a voie (CO.VOIE.STRUCTURE, CO.VOIE.ORDER). Structure only, no rule about costs or budgets.
+- **Items**: the name of a free text item and a quantity carried (ADR KER-ITEMS).
 - **Derived values with breakdown**: a computed value together with the list of contributions that produced it (source, amount).
 - **Manual adjustments**: attributed contributions added by a user to a derived value or a budget.
 - **Violations**: computed findings about a character, with a stable rule identifier, the emitting mechanic, a subject, parameters, and a category (`Incomplete`, `Deviation` with its severity, `Uncomputable`, `Notice`).
