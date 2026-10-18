@@ -1,8 +1,8 @@
 //! The choices of a COF2 character at level 1.
 
 use co_fantasy::{
-    Armour, Character, Money, Peuple, Profil, Series, Shield, Target as EngineTarget, Value, Voie,
-    Weapon,
+    Armour, Character, Equipment, Money, Peuple, Profil, Series, Shield, Target as EngineTarget,
+    Value, Voie, Weapon,
 };
 use co_kernel::Characteristic as KernelCharacteristic;
 use serde::{Deserialize, Serialize};
@@ -119,22 +119,11 @@ impl FantasyDocument {
                 character = character.with_rank(voie, *rank);
             }
         }
-        if let Some(id) = &self.armour {
-            character = character.with_armour(content("armour", id, Armour::from_id)?);
-        }
-        if let Some(id) = &self.shield {
-            character = character.with_shield(content("shield", id, Shield::from_id)?);
-        }
-        for item in &self.items {
-            character = match item {
-                ItemEntry::Weapon { id, quantity } => {
-                    character.with_item(content("weapon", id, Weapon::from_id)?, *quantity)
-                }
-                ItemEntry::Other { name, quantity } => {
-                    character.with_item(filled("item name", name)?, *quantity)
-                }
-            };
-        }
+        character = character.with_equipment(equipment(
+            self.armour.as_deref(),
+            self.shield.as_deref(),
+            &self.items,
+        )?);
         if let Some(purse) = self.purse {
             character = character.with_purse(Money::pc(purse));
         }
@@ -150,4 +139,61 @@ impl FantasyDocument {
         }
         Ok(character)
     }
+}
+
+/// What a COF2 character wears and carries in play, in place of its
+/// creation equipment (ADR ENG-IN-PLAY). The browser keeps it; the backend
+/// never stores it.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct FantasyEquipment {
+    /// The armour worn.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub armour: Option<String>,
+    /// The shield held.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shield: Option<String>,
+    /// The items carried.
+    #[serde(default)]
+    pub items: Vec<ItemEntry>,
+}
+
+impl FantasyEquipment {
+    /// Converts the equipment to the engine's.
+    ///
+    /// # Errors
+    ///
+    /// Returns why the equipment cannot be read: an unknown identifier, a
+    /// blank item name.
+    pub fn to_equipment(&self) -> Result<Equipment, Error> {
+        equipment(self.armour.as_deref(), self.shield.as_deref(), &self.items)
+    }
+}
+
+/// The engine's equipment for an armour, a shield and items, from a
+/// document or an equipment in play.
+fn equipment(
+    armour: Option<&str>,
+    shield: Option<&str>,
+    items: &[ItemEntry],
+) -> Result<Equipment, Error> {
+    let mut equipment = Equipment::new();
+    if let Some(id) = armour {
+        equipment = equipment.with_armour(content("armour", id, Armour::from_id)?);
+    }
+    if let Some(id) = shield {
+        equipment = equipment.with_shield(content("shield", id, Shield::from_id)?);
+    }
+    for item in items {
+        equipment = match item {
+            ItemEntry::Weapon { id, quantity } => {
+                equipment.with_item(content("weapon", id, Weapon::from_id)?, *quantity)
+            }
+            ItemEntry::Other { name, quantity } => {
+                equipment.with_item(filled("item name", name)?, *quantity)
+            }
+        };
+    }
+    Ok(equipment)
 }
