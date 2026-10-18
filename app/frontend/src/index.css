@@ -1,24 +1,63 @@
 /* Design tokens, element defaults and the utilities several components
    share. Anything else is styled in its component. */
 
+/* Themes (ADR FE-THEMES): light by default, dark when the system asks for
+   it, or the one chosen on this device (`data-theme`, `theme.svelte.ts`).
+   OLED keeps the page black and the ink a little dimmed; nothing may paint
+   a lighter surface behind content. Printing is always light. */
+
 :root {
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+:root,
+:root[data-theme="light"] {
   --ink: #2b2620;
   --page: #efe6d2;
   --accent: #5c3a21;
   --muted: #8a7a62;
   --error: #9b2c2c;
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
-  line-height: 1.5;
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --ink: #efe6d2;
     --page: #2b2620;
     --accent: #d6b98c;
     --muted: #a8977c;
     --error: #e08080;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ink: #efe6d2;
+  --page: #2b2620;
+  --accent: #d6b98c;
+  --muted: #a8977c;
+  --error: #e08080;
+  color-scheme: dark;
+}
+
+:root[data-theme="oled"] {
+  --ink: #d9cfbd;
+  --page: #000;
+  --accent: #c9ab7c;
+  --muted: #8f826d;
+  --error: #e08080;
+  color-scheme: dark;
+}
+
+@media print {
+  :root:root {
+    --ink: #000;
+    --page: #fff;
+    --accent: #5c3a21;
+    --muted: #6b5e4a;
+    --error: #9b2c2c;
+    color-scheme: light;
   }
 }
 

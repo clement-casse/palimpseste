@@ -4,6 +4,8 @@ import { registerSW } from "virtual:pwa-register";
 import App from "./App.svelte";
 import "./index.css";
 import { newVersion } from "./pwa.svelte";
+// Applies the theme chosen on this device before the app shows.
+import "./theme.svelte";
 import init from "./wasm/palimpseste_wasm";
 
 /** How often an open app asks for a new version, in milliseconds. */

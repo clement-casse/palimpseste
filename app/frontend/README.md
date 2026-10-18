@@ -49,13 +49,14 @@ src/
 ├── router.svelte.ts            the URL (History API): the only module that reads or changes it
 ├── session.svelte.ts           the signed-in user
 ├── pwa.svelte.ts               new version and offline status
+├── theme.svelte.ts             the theme chosen on this device (Système, Clair, Sombre, OLED)
 ├── api.ts                      the REST client: types and calls; a 401 signs out
 ├── errors.ts                   describe(): what an error means, in French
 ├── messages.ts                 French violation messages, keyed by rule identifier
 ├── engines.ts                  engine display names
 ├── index.css                   design tokens, element defaults, shared utilities
 ├── SignIn, Register, ProfilePage, ProfileFields, Characters, CharacterItem,
-│   NotFound, StatusBanner, ErrorMessage (.svelte)
+│   NotFound, StatusBanner, ErrorMessage, ThemePicker (.svelte)
 ├── character/                  the character editor, /characters/{id}
 │   ├── CharacterPage.svelte    loads the character
 │   ├── CharacterEditor.svelte  the document as state, evaluate() derived from it, steps in the hash

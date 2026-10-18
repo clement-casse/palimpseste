@@ -5,6 +5,7 @@
   import ProfileFields from "./ProfileFields.svelte";
   import { follow, takeQuery } from "./router.svelte";
   import { signedIn } from "./session.svelte";
+  import ThemePicker from "./ThemePicker.svelte";
 
   let { user }: { user: User } = $props();
 
@@ -97,6 +98,10 @@
   {:catch error}
     <ErrorMessage {error} />
   {/await}
+
+  <h3>Apparence</h3>
+  <p class="hint">Choisie pour cet appareil seulement. OLED garde l’écran noir, ce qui économise la batterie.</p>
+  <ThemePicker />
 </section>
 
 <style>
