@@ -68,6 +68,19 @@
     return marksAt(notes, { kind: "value", id });
   }
 
+  const COMBAT = [
+    { id: "coc.initiative", label: "Init", title: "Initiative", signed: false },
+    { id: "coc.defence", label: "DEF", title: "Défense", signed: false },
+    { id: "coc.damage-reduction", label: "RD", title: "Réduction des dommages", signed: false },
+    {
+      id: "coc.healing-capacity",
+      label: "CG / sem.",
+      title: "Capacité de guérison : DM soignés par semaine",
+      signed: false,
+    },
+    { id: "coc.contact-damage-bonus", label: "DM contact", title: "Bonus aux DM au contact", signed: true },
+  ];
+
   // Bare hands, then the weapons carried, from the engine's damage lines
   // (`coc.damage.<weapon>`), each rolled against its attack value.
   const weapons = $derived(
@@ -117,37 +130,34 @@
   <section class="block">
     <h3>Combat<Marks notes={marksAt(notes, ...steps("secondary"))} /></h3>
     <ul class="tiles">
-      <Tile label="Init" value={shown(line("coc.initiative"))} notes={valueMarks("coc.initiative")} />
-      <Tile label="DEF" value={shown(line("coc.defence"))} notes={valueMarks("coc.defence")} />
-      <Tile
-        label="RD"
-        title="Réduction des dommages"
-        value={shown(line("coc.damage-reduction"))}
-        notes={valueMarks("coc.damage-reduction")}
-      />
-      <Tile
-        label="CG / sem."
-        title="Capacité de guérison : DM soignés par semaine"
-        value={shown(line("coc.healing-capacity"))}
-        notes={valueMarks("coc.healing-capacity")}
-      />
-      <Tile
-        label="DM contact"
-        title="Bonus aux DM au contact"
-        value={shown(line("coc.contact-damage-bonus"), true)}
-        notes={valueMarks("coc.contact-damage-bonus")}
-      />
+      {#each COMBAT as tile (tile.id)}
+        {@const value = line(tile.id)}
+        <Tile
+          label={tile.label}
+          title={tile.title}
+          value={shown(value, tile.signed)}
+          notes={valueMarks(tile.id)}
+          contributions={value?.contributions}
+        />
+      {/each}
       {#if line("coc.agi-test-modifier")?.total}
+        {@const agi = line("coc.agi-test-modifier")}
         <Tile
           label="Tests d'AGI"
-          value={shown(line("coc.agi-test-modifier"), true)}
+          value={shown(agi, true)}
           notes={valueMarks("coc.agi-test-modifier")}
+          contributions={agi?.contributions}
         />
       {/if}
       {#each ATTACKS as mode (mode)}
         {@const attack = line(`coc.attack.${mode}`)}
         {#if attack}
-          <Tile label={attack.label} value={shown(attack, true)} notes={valueMarks(attack.id)} />
+          <Tile
+            label={attack.label}
+            value={shown(attack, true)}
+            notes={valueMarks(attack.id)}
+            contributions={attack.contributions}
+          />
         {/if}
       {/each}
     </ul>
