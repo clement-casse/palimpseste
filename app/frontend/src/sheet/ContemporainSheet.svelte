@@ -1,16 +1,18 @@
 <script lang="ts">
   // A COC2 character at the table: the échelle de santé counted in the bar,
-  // then what the player reads during a session. Every number comes from
-  // the engine.
+  // then what the player reads during a session, with the equipment in
+  // play. Every number comes from the engine.
   import { namesOf, signed } from "../character/edits";
   import type {
     ContemporainCatalog,
     ContemporainDetails,
     ContemporainDocument,
+    ContemporainEquipment,
     Sheet,
     ValueLine,
   } from "../wasm/palimpseste_wasm";
   import Characteristics from "./Characteristics.svelte";
+  import EquipmentSection from "./EquipmentSection.svelte";
   import HealthTrack from "./HealthTrack.svelte";
   import Marks from "./Marks.svelte";
   import NoteList from "./NoteList.svelte";
@@ -28,6 +30,7 @@
     details,
     play,
     notes,
+    equipment,
   }: {
     choices: ContemporainDocument;
     catalog: ContemporainCatalog;
@@ -35,6 +38,8 @@
     details: ContemporainDetails;
     play: PlayState;
     notes: Note[];
+    /** The equipment in play, or the creation one. */
+    equipment: ContemporainEquipment;
   } = $props();
 
   const HEALTH = "coc.health-scale";
@@ -42,7 +47,6 @@
 
   const domaine = $derived(catalog.domaines.find((d) => d.id === choices.domaine));
   const health = $derived(line(HEALTH)?.total);
-  const others = $derived((choices.items ?? []).filter((item) => item.kind === "other"));
   const identity = $derived(
     [
       choices.age === undefined
@@ -68,6 +72,16 @@
     return marksAt(notes, { kind: "value", id });
   }
 
+  /** Wears and carries `change` in play, the rest of the equipment kept. */
+  function equip(change: Partial<ContemporainEquipment>) {
+    play.equip({ engine: "contemporain", ...equipment, ...change });
+  }
+
+  function wear(id: string, worn: boolean) {
+    const others = (equipment.protections ?? []).filter((p) => p !== id);
+    equip({ protections: worn ? [...others, id] : others });
+  }
+
   const COMBAT = [
     { id: "coc.initiative", label: "Init", title: "Initiative", signed: false },
     { id: "coc.defence", label: "DEF", title: "Défense", signed: false },
@@ -87,7 +101,7 @@
     weaponSlugs(sheet.values, "coc.damage").flatMap((slug) => {
       const weapon = catalog.weapons.find((w) => w.id === `coc.weapon.${slug}`);
       if (!weapon) return [];
-      const quantity = (choices.items ?? [])
+      const quantity = (equipment.items ?? [])
         .filter((item) => item.kind === "weapon" && item.id === weapon.id)
         .reduce((sum, item) => sum + item.quantity, 0);
       return [
@@ -207,18 +221,39 @@
     {/each}
   </section>
 
-  <section class="block">
-    <h3>Équipement<Marks notes={marksAt(notes, ...steps("equipment"))} /></h3>
-    <ul class="listing">
-      <li>
-        Protections :
-        {(choices.protections ?? []).map((id) => protections.get(id) ?? id).join(", ") || "aucune"}
-      </li>
-      {#each others as item, i (i)}
-        <li>{item.name}{#if item.quantity > 1}{` ×${item.quantity}`}{/if}</li>
-      {/each}
-    </ul>
-  </section>
+  <EquipmentSection
+    notes={marksAt(notes, ...steps("equipment"))}
+    items={equipment.items ?? []}
+    weapons={catalog.weapons.filter((w) => w.attackMode.id !== "unarmed")}
+    findings={sheet.inPlay}
+    kept={play.equipment !== null}
+    onitems={(items) => equip({ items })}
+    onforget={() => play.forgetEquipment()}
+  >
+    {#snippet worn(editing: boolean)}
+      {#if editing}
+        <fieldset class="field">
+          <legend>Protections</legend>
+          {#each catalog.protections as protection (protection.id)}
+            <label>
+              <input
+                type="checkbox"
+                checked={equipment.protections?.includes(protection.id) ?? false}
+                onchange={(e) =>
+                  wear(protection.id, e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked)}
+              />
+              {protection.name}
+            </label>
+          {/each}
+        </fieldset>
+      {:else}
+        <li>
+          Protections :
+          {(equipment.protections ?? []).map((id) => protections.get(id) ?? id).join(", ") || "aucune"}
+        </li>
+      {/if}
+    {/snippet}
+  </EquipmentSection>
 
   <NoteList {notes} />
 </div>

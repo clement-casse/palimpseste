@@ -70,10 +70,12 @@ src/
 │   └── edits.ts                helpers to read and change a document
 ├── sheet/                      the character sheet, /characters/{id}/sheet
 │   ├── SheetPage.svelte        loads the character
-│   ├── CharacterSheet.svelte   evaluates once, header, unfinished banner, the screen kept on
+│   ├── CharacterSheet.svelte   evaluateInPlay(), header, unfinished banner, the screen kept on
 │   ├── FantasySheet.svelte, ContemporainSheet.svelte   per-engine resource bar and sections
 │   ├── Counter, HealthTrack, Restore (.svelte)          resources counted during a session
-│   ├── play.svelte.ts          PlayState: what was used, per character, in localStorage
+│   ├── EquipmentSection, Inventory (.svelte)            the equipment in play, worn, counted, edited
+│   ├── equipment.ts            equipmentOf(): the creation equipment, as an equipment in play
+│   ├── play.svelte.ts          PlayState: resources used and equipment in play, per character, in localStorage
 │   ├── notes.ts, Marks.svelte, NoteList.svelte          waivers and adjustments, numbered and placed
 │   ├── Tile, Characteristics, VoieRanks (.svelte)
 │   └── values.ts               how values, damage and critical ranges are written

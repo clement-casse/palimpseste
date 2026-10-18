@@ -88,20 +88,26 @@ holds them in French, keyed by rule identifier and filled with the
 violation's parameters; a rule without a message shows its identifier.
 
 **FE-SHEET: The sheet, for play.** `/characters/{id}/sheet` shows a
-character on one page, read only, its values from `evaluate()`: a resource
-bar kept in reach (COF2 PV, PM for a character who knows a spell, PC and
-DR; COC2 the échelle de santé, its states from the catalogue, ADR
-ENG-HEALTH-STATES), then characteristics, combat and weapons, voies,
-traits and equipment in columns; a value opens its breakdown. Each waiver and adjustment gets a
+character on one page, its creation read only: a resource bar kept in
+reach (COF2 PV, PM for a character who knows a spell, PC and DR; COC2 the
+échelle de santé, its states from the catalogue, ADR ENG-HEALTH-STATES),
+then characteristics, combat and weapons, voies, traits and equipment in
+columns; a value opens its breakdown. Each waiver and adjustment gets a
 numbered mark where it applies (the characteristic, the voie, the value,
 or the section of the violation's step) that opens its note, and every
-note is listed at the end. The resources are counted on the device only:
-`PlayState` keeps what was used, by value identifier, in `localStorage`
-under `palimpseste.play.{id}`, and nothing is sent to the backend. The
-screen is kept on through the Screen Wake Lock API while the sheet shows,
-with a toggle. An unfinished character still shows, under a banner that
-leads back to the editor. *Why the amounts used:* a maximum changed in
-the editor keeps the count sensible.
+note is listed at the end. What the player changes stays on the device,
+and nothing is sent to the backend: `PlayState` keeps the resources used,
+by value identifier, under `palimpseste.play.{id}`, and the equipment in
+play under `palimpseste.play.{id}.equipment`, both in `localStorage`. The
+equipment starts as the creation one; it is worn, carried, counted down
+and edited as in the editor, and "Reprendre l'équipement de création"
+forgets it. One `evaluateInPlay` call gives the creation status (banner,
+notes) and the values with the equipment in play, and the sheet shows the
+findings of the rules that hold in play (`inPlay`) under "À savoir"
+(ADR ENG-IN-PLAY). The screen is kept on through the Screen Wake Lock API
+while the sheet shows, with a toggle. An unfinished character still
+shows, under a banner that leads back to the editor. *Why the amounts
+used:* a maximum changed in the editor keeps the count sensible.
 
 ## PWA
 
