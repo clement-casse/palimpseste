@@ -3,6 +3,7 @@
   import ErrorMessage from "./ErrorMessage.svelte";
   import CharacterPage from "./character/CharacterPage.svelte";
   import Characters from "./Characters.svelte";
+  import Disclaimer from "./Disclaimer.svelte";
   import NotFound from "./NotFound.svelte";
   import ProfilePage from "./ProfilePage.svelte";
   import Register from "./Register.svelte";
@@ -60,3 +61,4 @@
     {/if}
   {/if}
 </main>
+<Disclaimer wide={page.name === "character"} />

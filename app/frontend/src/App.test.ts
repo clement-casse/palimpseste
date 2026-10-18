@@ -8,6 +8,26 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("the disclaimer", () => {
+  it("is shown before signing in: a fan project, unfinished, with its source", async () => {
+    stubBackend(({ url }) => {
+      if (url === "/api/auth/providers") return Response.json([{ id: "dex", name: "Dex" }]);
+      return new Response(null, { status: 401 });
+    });
+    render(App);
+    expect(await screen.findByRole("heading", { name: "Connexion" })).toBeTruthy();
+
+    const footer = screen.getByRole("contentinfo");
+    expect(footer.textContent).toMatch(/projet de fan, non officiel/);
+    expect(footer.textContent).toMatch(/pas affilié à\s+Black Book Éditions/);
+    expect(footer.textContent).toMatch(/sans aucune garantie/);
+    expect(footer.textContent).toMatch(/données peuvent être effacées et les inscriptions fermées/);
+    expect(screen.getByRole("link", { name: "Code source" }).getAttribute("href")).toBe(
+      "https://github.com/clement-casse/palimpseste",
+    );
+  });
+});
+
 describe("signing out", () => {
   it("ends the session and shows the sign-in page", async () => {
     const sent = stubBackend(({ method, url }) => {
