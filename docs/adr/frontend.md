@@ -92,7 +92,7 @@ character on one page, read only, its values from `evaluate()`: a resource
 bar kept in reach (COF2 PV, PM for a character who knows a spell, PC and
 DR; COC2 the échelle de santé, its states from the catalogue, ADR
 ENG-HEALTH-STATES), then characteristics, combat and weapons, voies,
-traits and equipment in columns. Each waiver and adjustment gets a
+traits and equipment in columns; a value opens its breakdown. Each waiver and adjustment gets a
 numbered mark where it applies (the characteristic, the voie, the value,
 or the section of the violation's step) that opens its note, and every
 note is listed at the end. The resources are counted on the device only:

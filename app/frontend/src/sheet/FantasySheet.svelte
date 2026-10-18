@@ -58,6 +58,14 @@
     return marksAt(notes, { kind: "value", id });
   }
 
+  const COMBAT = [
+    { id: "cof.initiative", label: "Init", title: "Initiative", signed: false },
+    { id: "cof.defence", label: "DEF", title: "Défense", signed: false },
+    { id: "cof.attack.contact", label: "Contact", title: "Attaque au contact", signed: true },
+    { id: "cof.attack.ranged", label: "Distance", title: "Attaque à distance", signed: true },
+    { id: "cof.attack.magic", label: "Magique", title: "Attaque magique", signed: true },
+  ];
+
   // The resources, each counted against its computed maximum; PM only for a
   // character who knows a spell (COF.DER.PM).
   const resources = $derived(
@@ -117,26 +125,16 @@
   <section class="block">
     <h3>Combat<Marks notes={marksAt(notes, ...steps("derived"))} /></h3>
     <ul class="tiles">
-      <Tile label="Init" value={shown(line("cof.initiative"))} notes={valueMarks("cof.initiative")} />
-      <Tile label="DEF" value={shown(line("cof.defence"))} notes={valueMarks("cof.defence")} />
-      <Tile
-        label="Contact"
-        title="Attaque au contact"
-        value={shown(line("cof.attack.contact"), true)}
-        notes={valueMarks("cof.attack.contact")}
-      />
-      <Tile
-        label="Distance"
-        title="Attaque à distance"
-        value={shown(line("cof.attack.ranged"), true)}
-        notes={valueMarks("cof.attack.ranged")}
-      />
-      <Tile
-        label="Magique"
-        title="Attaque magique"
-        value={shown(line("cof.attack.magic"), true)}
-        notes={valueMarks("cof.attack.magic")}
-      />
+      {#each COMBAT as tile (tile.id)}
+        {@const value = line(tile.id)}
+        <Tile
+          label={tile.label}
+          title={tile.title}
+          value={shown(value, tile.signed)}
+          notes={valueMarks(tile.id)}
+          contributions={value?.contributions}
+        />
+      {/each}
     </ul>
     {#if weapons.length > 0}
       <table class="weapons">
