@@ -8,8 +8,9 @@ use co_kernel::{
 };
 
 use crate::{
-    Age, AgeBracket, Domaine, Item, Protection, Quantity, SocialClass, Trait, TraitPoints, Voie,
-    Weapon, age, characteristics, domaine, equipment, protection, secondary, traits, voie, weapon,
+    Age, AgeBracket, Domaine, Equipment, InPlay, Item, Protection, Quantity, SocialClass, Trait,
+    TraitPoints, Voie, Weapon, age, characteristics, domaine, equipment, protection, secondary,
+    traits, voie, weapon,
 };
 
 /// The weapon category an attack value applies to.
@@ -155,8 +156,7 @@ pub struct Character {
     voies: BTreeMap<Voie, BTreeSet<Rank>>,
     traits: BTreeMap<Trait, TraitPoints>,
     allocated: Characteristics,
-    items: BTreeMap<Item, Quantity>,
-    protections: BTreeSet<Protection>,
+    equipment: Equipment,
     adjustments: Vec<(Target, Adjustment)>,
     waivers: Vec<Waiver>,
 }
@@ -228,34 +228,35 @@ impl Character {
     /// a quantity of 0 gives the item up.
     #[must_use]
     pub fn with_item(mut self, item: impl Into<Item>, quantity: impl Into<Quantity>) -> Self {
-        let item = item.into();
-        let quantity = quantity.into();
-        if quantity.get() == 0 {
-            self.items.remove(&item);
-        } else {
-            self.items.insert(item, quantity);
-        }
+        self.equipment = self.equipment.with_item(item, quantity);
         self
     }
 
     /// Gives up `item`.
     #[must_use]
     pub fn without_item(mut self, item: impl Into<Item>) -> Self {
-        self.items.remove(&item.into());
+        self.equipment.items.remove(&item.into());
         self
     }
 
     /// Puts on `protection`; a helmet is worn with any other protection.
     #[must_use]
     pub fn with_protection(mut self, protection: Protection) -> Self {
-        self.protections.insert(protection);
+        self.equipment = self.equipment.with_protection(protection);
         self
     }
 
     /// Takes off `protection`.
     #[must_use]
     pub fn without_protection(mut self, protection: Protection) -> Self {
-        self.protections.remove(&protection);
+        self.equipment.protections.remove(&protection);
+        self
+    }
+
+    /// Wears and carries `equipment`, replacing every protection and item.
+    #[must_use]
+    pub fn with_equipment(mut self, equipment: Equipment) -> Self {
+        self.equipment = equipment;
         self
     }
 
@@ -396,6 +397,14 @@ impl Character {
         ViolationReport::new(self.violations(), &self.waivers)
     }
 
+    /// Returns the character in play, wearing and carrying `equipment`
+    /// instead of the equipment chosen at creation (ADR ENG-IN-PLAY). Its
+    /// adjustments and waivers still apply.
+    #[must_use]
+    pub fn in_play(&self, equipment: Equipment) -> InPlay {
+        InPlay::new(self.clone().with_equipment(equipment))
+    }
+
     pub(crate) const fn age(&self) -> Option<Age> {
         self.age
     }
@@ -442,15 +451,18 @@ impl Character {
 
     /// The weapons carried, with their quantity, in weapon order.
     pub(crate) fn weapons_carried(&self) -> impl Iterator<Item = (Weapon, Quantity)> + '_ {
-        self.items.iter().filter_map(|(item, quantity)| match item {
-            Item::Weapon(weapon) => Some((*weapon, *quantity)),
-            Item::Other(_) => None,
-        })
+        self.equipment
+            .items
+            .iter()
+            .filter_map(|(item, quantity)| match item {
+                Item::Weapon(weapon) => Some((*weapon, *quantity)),
+                Item::Other(_) => None,
+            })
     }
 
     /// The protections worn, in protection order.
     pub(crate) fn protections(&self) -> impl Iterator<Item = Protection> + '_ {
-        self.protections.iter().copied()
+        self.equipment.protections.iter().copied()
     }
 
     fn trait_values(&self) -> impl Iterator<Item = i32> + '_ {

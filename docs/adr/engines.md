@@ -88,6 +88,24 @@ checked; an item becomes an enum when a rule reading it lands.
 gives it up. Armour and shield (COF2) and protections (COC2) are worn
 slots, and count as possessed.
 
+**ENG-IN-PLAY: A character in play wears another equipment.** `Equipment`
+groups what a character wears and carries (COF2 armour, shield and items;
+COC2 protections and items); `Character` holds the one chosen at creation,
+which `with_equipment` sets whole. `Character::in_play(equipment)` gives an
+`InPlay`: the creation choices, adjustments and waivers with `equipment` in
+place of the creation one. Its values follow that equipment, every
+contribution attributed to its item as at creation. COF2's
+`InPlay::report` checks only the rules that hold whatever was chosen at
+creation: an armour or shield beyond the profil's limit
+(COF.DER.ARMOUR-LIMIT, D-24), the arc long's FOR (COF.EQP.RANGED) and
+Petite taille (COF.CNT.PEUPLES, D-29); the starting equipment and the
+purse are creation rules, never checked in play. COC2 has no rule about
+equipment in play, so its `InPlay` has no report. Nothing is stored: the
+engine computes from the equipment it is given. *Why not waivers or
+adjustments:* an equipment's effects are formulas (the AGI cap, several
+values at once, new damage lines), not amounts, and a waiver accepts a
+deviation without changing a value.
+
 **ENG-EQUIPMENT: Starting equipment is checked, never imposed (D-26).**
 Each line of the profil's (COF2) or the voies' (COC2) starting equipment
 covers what it gives: an exact weapon, one of a few, a weapon matching a
