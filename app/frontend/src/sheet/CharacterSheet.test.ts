@@ -4,8 +4,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { unsettled } from "../engines";
 import { amelia, character, lhagva, stubBackend } from "../test/backend";
 import { setTheme } from "../theme.svelte";
-import { type Document, catalog, emptyDocument, evaluate } from "../wasm/palimpseste_wasm";
+import {
+  type Document,
+  type Equipment,
+  catalog,
+  emptyDocument,
+  evaluate,
+  evaluateInPlay,
+} from "../wasm/palimpseste_wasm";
 import CharacterSheet from "./CharacterSheet.svelte";
+import { equipmentOf } from "./equipment";
 import HealthTrack from "./HealthTrack.svelte";
 import SheetPage from "./SheetPage.svelte";
 
@@ -197,3 +205,99 @@ describe("the sheet page", () => {
     expect((await screen.findByRole("heading", { level: 2 })).textContent).toBe("Lhagva");
   });
 });
+
+describe("the equipment in play", () => {
+  /** The value of the combat tile named `title`, which opens its breakdown. */
+  const tile = (title: string) => screen.getByRole("button", { name: new RegExp(`^${title} -?\\d+, détail$`) });
+
+  function engineValue(document: Document, equipment: Equipment, id: string) {
+    return evaluateInPlay(document, equipment).values.find((line) => line.id === id)?.total;
+  }
+
+  async function edit() {
+    await fireEvent.click(screen.getByRole("button", { name: "Modifier l’équipement" }));
+  }
+
+  async function choose(name: string, value: string) {
+    await fireEvent.change(screen.getByRole("combobox", { name }), { target: { value } });
+  }
+
+  it("follows the armour and the shield, without touching the creation", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const document = lhagva();
+    const before = structuredClone(document);
+    const finished = unsettled(evaluate(document).steps) === 0;
+    render(CharacterSheet, { character: character(document) });
+
+    await edit();
+    await choose("Armure", "cof.armour.cuir-renforce");
+    const worn = { ...equipmentOf(lhagva()), armour: "cof.armour.cuir-renforce" };
+    expect(tile("Défense").textContent).toBe(String(engineValue(lhagva(), worn, "cof.defence")));
+    const breakdown = document_(tile("Défense").getAttribute("popovertarget"));
+    expect(within(breakdown).getByText(/^Cuir renforcé/)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "À savoir" })).toBeNull();
+    expect(screen.queryByRole("note") === null).toBe(finished);
+
+    const shielded = Number(tile("Défense").textContent);
+    await choose("Bouclier", "");
+    expect(Number(tile("Défense").textContent)).toBe(shielded - 2);
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(document).toEqual(before);
+  });
+
+  it("warns of the rules that hold in play", async () => {
+    const document = lhagva();
+    if (document.engine === "fantasy") document.seriesValues = { ...document.seriesValues, FOR: 0 };
+    render(CharacterSheet, { character: character(document) });
+
+    await edit();
+    await choose("Armure", "cof.armour.cotte-de-mailles");
+    await choose("Ajouter une arme", "cof.weapon.arc-long");
+    expect(screen.getByRole("rowheader", { name: "Arc long" })).toBeTruthy();
+    const warnings = screen.getByRole("heading", { name: "À savoir" }).nextElementSibling;
+    expect(warnings?.textContent).toMatch(/au-delà de ce que le profil permet/);
+    expect(warnings?.textContent).toMatch(/demande FOR \+1/);
+  });
+
+  it("counts items down as they are used", async () => {
+    render(CharacterSheet, { character: character(lhagva()) });
+    await fireEvent.click(screen.getByRole("button", { name: "Retirer 1 Javelot" }));
+    expect(screen.getByRole("rowheader", { name: "Javelot" })).toBeTruthy();
+    await fireEvent.click(screen.getByRole("button", { name: "Retirer 1 Javelot" }));
+    expect(screen.queryByRole("rowheader", { name: /^Javelot/ })).toBeNull();
+    // Used up, it stays listed until removed.
+    expect(screen.getByRole("button", { name: "Retirer 1 Javelot" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("keeps the equipment on the device until the creation one is taken back", async () => {
+    const sheet = render(CharacterSheet, { character: character(lhagva()) });
+    await edit();
+    await choose("Armure", "cof.armour.cuir-renforce");
+    sheet.unmount();
+
+    render(CharacterSheet, { character: character(lhagva()) });
+    expect(screen.getByText(/Armure : Cuir renforcé/)).toBeTruthy();
+    vi.stubGlobal("confirm", () => true);
+    await fireEvent.click(screen.getByRole("button", { name: "Reprendre l’équipement de création" }));
+    expect(screen.getByText(/Armure : Cuir simple/)).toBeTruthy();
+    expect(screen.queryByText(/Équipement de la partie/)).toBeNull();
+  });
+
+  it("follows the protections of a COC character", async () => {
+    render(CharacterSheet, { character: character(amelia(), "Amelia") });
+    const init = Number(tile("Initiative").textContent);
+    await edit();
+    await fireEvent.click(screen.getByRole("checkbox", { name: "Gilet souple" }));
+    expect(tile("Réduction des dommages").textContent).toBe("4");
+    expect(Number(tile("Initiative").textContent)).toBe(init - 2);
+  });
+});
+
+/** The element of the page with identifier `id`. */
+function document_(id: string | null): HTMLElement {
+  const element = id ? document.getElementById(id) : null;
+  if (!element) throw new Error(`no element ${id}`);
+  return element;
+}

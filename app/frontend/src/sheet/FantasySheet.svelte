@@ -1,17 +1,19 @@
 <script lang="ts">
   // A COF2 character at the table: PV, PM, PC and DR counted in the bar,
-  // then what the player reads during a session. Every number comes from
-  // the engine.
-  import { namesOf, signed } from "../character/edits";
+  // then what the player reads during a session, with the equipment in
+  // play. Every number comes from the engine.
+  import { namesOf, signed, valueOf } from "../character/edits";
   import type {
     FantasyCatalog,
     FantasyDetails,
     FantasyDocument,
+    FantasyEquipment,
     Sheet,
     ValueLine,
   } from "../wasm/palimpseste_wasm";
   import Characteristics from "./Characteristics.svelte";
   import Counter from "./Counter.svelte";
+  import EquipmentSection from "./EquipmentSection.svelte";
   import Marks from "./Marks.svelte";
   import NoteList from "./NoteList.svelte";
   import { type Note, marksAt, steps } from "./notes";
@@ -28,6 +30,7 @@
     details,
     play,
     notes,
+    equipment,
   }: {
     choices: FantasyDocument;
     catalog: FantasyCatalog;
@@ -35,13 +38,14 @@
     details: FantasyDetails;
     play: PlayState;
     notes: Note[];
+    /** The equipment in play, or the creation one. */
+    equipment: FantasyEquipment;
   } = $props();
 
   const profil = $derived(catalog.profils.find((p) => p.id === choices.profil));
   const peuple = $derived(catalog.peuples.find((p) => p.id === choices.peuple));
-  const armour = $derived(catalog.armours.find((a) => a.id === choices.armour));
-  const shield = $derived(catalog.shields.find((s) => s.id === choices.shield));
-  const others = $derived((choices.items ?? []).filter((item) => item.kind === "other"));
+  const armour = $derived(catalog.armours.find((a) => a.id === equipment.armour));
+  const shield = $derived(catalog.shields.find((s) => s.id === equipment.shield));
   const identity = $derived(
     [
       profil ? `${profil.name}${details.family ? ` (${details.family.name})` : ""}` : "Profil à choisir",
@@ -56,6 +60,11 @@
 
   function valueMarks(id: string): Note[] {
     return marksAt(notes, { kind: "value", id });
+  }
+
+  /** Wears and carries `change` in play, the rest of the equipment kept. */
+  function equip(change: Partial<FantasyEquipment>) {
+    play.equip({ engine: "fantasy", ...equipment, ...change });
   }
 
   const COMBAT = [
@@ -88,7 +97,7 @@
       const weapon = catalog.weapons.find((w) => w.id === `cof.weapon.${slug}`);
       if (!weapon) return [];
       const damages = sheet.values.filter((l) => l.id.startsWith(`cof.damage.${slug}.`));
-      const quantity = (choices.items ?? [])
+      const quantity = (equipment.items ?? [])
         .filter((item) => item.kind === "weapon" && item.id === weapon.id)
         .reduce((sum, item) => sum + item.quantity, 0);
       const critical = line(`cof.critical-range.${slug}`);
@@ -170,17 +179,48 @@
     <VoieRanks voies={choices.voies ?? []} names={namesOf(catalog.voies)} {notes} />
   </section>
 
-  <section class="block">
-    <h3>Équipement<Marks notes={marksAt(notes, ...steps("equipment"))} /></h3>
-    <ul class="listing">
-      <li>Armure : {armour ? `${armour.name} (DEF ${signed(armour.defence)})` : "aucune"}</li>
-      <li>Bouclier : {shield ? `${shield.name} (DEF ${signed(shield.defence)})` : "aucun"}</li>
-      {#each others as item, i (i)}
-        <li>{item.name}{#if item.quantity > 1}{` ×${item.quantity}`}{/if}</li>
-      {/each}
-      <li>Bourse : {details.money ?? "—"}<Marks notes={valueMarks("cof.money")} /></li>
-    </ul>
-  </section>
+  <EquipmentSection
+    notes={marksAt(notes, ...steps("equipment"))}
+    items={equipment.items ?? []}
+    weapons={catalog.weapons}
+    findings={sheet.inPlay}
+    kept={play.equipment !== null}
+    onitems={(items) => equip({ items })}
+    onforget={() => play.forgetEquipment()}
+  >
+    {#snippet worn(editing: boolean)}
+      {#if editing}
+        <label class="field">
+          Armure
+          <select
+            value={equipment.armour ?? ""}
+            onchange={(e) => equip({ armour: valueOf(e) || undefined })}
+          >
+            <option value="">Aucune</option>
+            {#each catalog.armours as a (a.id)}
+              <option value={a.id}>{a.name} (DEF {signed(a.defence)})</option>
+            {/each}
+          </select>
+        </label>
+        <label class="field">
+          Bouclier
+          <select
+            value={equipment.shield ?? ""}
+            onchange={(e) => equip({ shield: valueOf(e) || undefined })}
+          >
+            <option value="">Aucun</option>
+            {#each catalog.shields as s (s.id)}
+              <option value={s.id}>{s.name} (DEF {signed(s.defence)})</option>
+            {/each}
+          </select>
+        </label>
+      {:else}
+        <li>Armure : {armour ? `${armour.name} (DEF ${signed(armour.defence)})` : "aucune"}</li>
+        <li>Bouclier : {shield ? `${shield.name} (DEF ${signed(shield.defence)})` : "aucun"}</li>
+        <li>Bourse : {details.money ?? "—"}<Marks notes={valueMarks("cof.money")} /></li>
+      {/if}
+    {/snippet}
+  </EquipmentSection>
 
   <NoteList {notes} />
 </div>
