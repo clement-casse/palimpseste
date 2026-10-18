@@ -4,6 +4,9 @@ A companion application for the French tabletop role-playing game
 *Chroniques Oubliées*, second edition: **COF2** (*Fantasy*) and **COC2**
 (*Contemporain*).
 
+> Palimpseste is a fan-made project, not affiliated with Black Book
+> Éditions. See [NOTICE.md](NOTICE.md).
+
 Palimpseste is a character editor. Later it will also track campaigns. It
 guides a player through character creation step by step. It computes every
 derived value with its breakdown (where each point comes from) and reports
@@ -301,3 +304,15 @@ with its SQLite database on a volume.
   and COC2 rules, with its rule interpretations (D-01, ...). It paraphrases
   copyrighted rulebooks, so it lives in a private repository and is not
   published; rule identifiers and `D-xx` numbers in the code refer to it.
+
+## Licence
+
+**Palimpseste is a fan-made project. It is not affiliated with Black Book
+Éditions**, and it is not endorsed, sponsored or reviewed by Black Book
+Éditions or the authors of *Chroniques Oubliées*.
+
+Palimpseste's code and documentation are licensed under the
+[GNU Affero General Public License v3.0 or later](LICENSE). The game rules,
+names and data of *Chroniques Oubliées* belong to Black Book Éditions and
+their authors and are not covered by this licence: see
+[NOTICE.md](NOTICE.md).
