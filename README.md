@@ -46,7 +46,7 @@ mise.toml                  tool versions and tasks
 Dockerfile, fly.toml       container image and Fly.io deployment
 AGENTS.md                  scope, principles and conventions (CLAUDE.md links to it)
 docs/adr/                  architecture decisions, one document per area
-.claude/skills/            co-rules (normalised game rules), backend-structure
+.claude/skills/            backend-structure
 .claude/agents/            Rust review agents
 crates/                    the rules: no I/O, no async code, no serde
 ├── co-kernel/             concepts shared by every engine
@@ -297,7 +297,7 @@ with its SQLite database on a volume.
 - [docs/adr/](docs/adr/README.md): architecture decisions by area
   (`KER-*`, `ENG-*`, `APP-*`, `BE-*`, `FE-*`), cited in the code as
   `ADR <ID>`.
-- [co-rules skill](.claude/skills/co-rules/SKILL.md): a normalised,
-  paraphrased specification of the COF2 and COC2 rules. Its rule
-  interpretations (D-01, ...) are in
-  [decisions.md](.claude/skills/co-rules/decisions.md).
+- The co-rules skill: a normalised, paraphrased specification of the COF2
+  and COC2 rules, with its rule interpretations (D-01, ...). It paraphrases
+  copyrighted rulebooks, so it lives in a private repository and is not
+  published; rule identifiers and `D-xx` numbers in the code refer to it.

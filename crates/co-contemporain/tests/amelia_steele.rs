@@ -1,5 +1,5 @@
 //! Acceptance test: Amelia Steele, the worked character of the COC2 book
-//! (COC p. 14-28), from the co-rules fixture `examples/coc2-amelia-steele.md`.
+//! (COC p. 14-28), from the co-rules fixture `coc2-amelia-steele`.
 
 use co_contemporain::{
     ALLOCATED_POINTS, AgeBracket, AttackMode, Character, Domaine, SocialClass, Trait, Value, Voie,

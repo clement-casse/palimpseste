@@ -1,3 +1,4 @@
 .vscode
 /target
 /palimpseste.sqlite3*
+.claude/settings.local.json

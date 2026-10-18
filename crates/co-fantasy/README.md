@@ -28,7 +28,7 @@ complete nain guerrier. Read it first.
 | `step.rs` | `Step` in the book order, and `Step::of(&Violation)` | COF.CRE.STEPS |
 
 Rule identifiers (`COF.CRE.CARAC-SERIES`) and interpretations (`D-15`)
-trace to the [co-rules skill](../../.claude/skills/co-rules/SKILL.md). The
+trace to the private co-rules skill. The
 design decisions are in [docs/adr/engines.md](../../docs/adr/engines.md)
 (`ENG-*`, `ENG-COF-*`).
 

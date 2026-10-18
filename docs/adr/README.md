@@ -14,7 +14,7 @@ amended.
 
 Elsewhere: scope, design principles and coding conventions are in
 [AGENTS.md](../../AGENTS.md); interpretations of the game rules (D-01, ...)
-in the [co-rules skill](../../.claude/skills/co-rules/decisions.md); the
+in the private co-rules skill (see AGENTS.md); the
 day-to-day backend layout in the
 [backend-structure skill](../../.claude/skills/backend-structure/SKILL.md).
 

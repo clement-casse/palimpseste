@@ -1,5 +1,5 @@
 //! Acceptance test: Ionas Melenwë, high-elf ensorceleur of the COF2 book
-//! (COF p. 20-40), level 1, from the co-rules fixture `examples/cof2-ionas.md`.
+//! (COF p. 20-40), level 1, from the co-rules fixture `cof2-ionas`.
 //!
 //! Deferred with spell effects: the DM of Choc (1d4+4).
 

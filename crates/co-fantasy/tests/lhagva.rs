@@ -1,5 +1,5 @@
 //! Acceptance test: Lhagva, human barbarian of the COF2 book (COF p. 20-40),
-//! level 1, from the co-rules fixture `examples/cof2-lhagva.md`.
+//! level 1, from the co-rules fixture `cof2-lhagva`.
 
 use co_fantasy::{
     Armour, AttackMode, Character, Family, Money, Peuple, Profil, RecoveryDie, Series, Shield,

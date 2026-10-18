@@ -195,6 +195,7 @@ Code identifiers are in English. Game terms map as follows. Game content (names 
 
 - Make the smallest change that fulfils the task. Do not refactor unrelated code.
 - Write tests first or alongside the change; every violation category needs at least one test.
+- The co-rules skill (rule identifiers such as `COF.DER.PV-L1`, interpretations `D-xx`) paraphrases copyrighted rulebooks. It is a private plugin (`co-rules@co-private`, skill `co-rules:co-rules`), never committed here, and most contributors do not have it. Rule identifiers and `D-xx` numbers in the code and docs are stable references to it; when a rule you need is not in the code or the docs, and the skill is unavailable, stop and ask.
 - Never copy rulebook text into the repository. Test fixtures use invented or minimal data; the book's worked characters (co-rules `examples/`) may be fixtures, as choices and numbers only.
 - If a decision affects the structure (new concept in the public API, new crate, new dependency, change to the principles above), stop and ask, and record the outcome in `docs/adr/` as its README says: change the decision in its area's document in place (never add an amendment), and cite it as `ADR <ID>`.
 - When unsure whether something belongs to the kernel, it does not.

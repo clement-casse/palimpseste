@@ -27,7 +27,7 @@ builds a complete character. Read it first.
 | `step.rs` | `Step` in the book order, and `Step::of(&Violation)` | COC.CRE.STEPS |
 
 Rule identifiers (`COC.CRE.TRAITS`) and interpretations (`D-07`) trace to
-the [co-rules skill](../../.claude/skills/co-rules/SKILL.md). The design
+the private co-rules skill. The design
 decisions are in [docs/adr/engines.md](../../docs/adr/engines.md) (`ENG-*`,
 `ENG-COC-*`).
 
