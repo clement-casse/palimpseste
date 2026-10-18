@@ -72,9 +72,11 @@ does not link `wasm-bindgen`.
 ## WebAssembly
 
 **APP-BINDINGS: Stateless functions over plain data.** `palimpseste-wasm`
-exposes `emptyDocument(engine)`, `catalog(engine)` and
+exposes `emptyDocument(engine)`, `catalog(engine)`,
 `evaluate(document)` (values with breakdowns, violations by step, step
-status). No Rust object crosses the boundary, so JavaScript never frees
+status) and `evaluateInPlay(document, equipment)`: the same steps and
+violations, the values with the equipment in play, and the findings of
+the rules that hold in play (`inPlay`, ADR ENG-IN-PLAY). No Rust object crosses the boundary, so JavaScript never frees
 memory by hand. Types are described to TypeScript by `tsify` and passed as
 `tsify::Ts`, so a wrong value throws instead of panicking. *Why not the
 `into_wasm_abi`/`from_wasm_abi` attributes:* they are deprecated, and leak

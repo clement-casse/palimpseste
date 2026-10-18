@@ -7,8 +7,8 @@ use std::collections::BTreeSet;
 
 use co_kernel::{Contribution, DerivedValue, ParameterValue, Source, ViolationReport};
 use palimpseste_document::{
-    Characteristic, ContemporainDocument, Document, Error, FantasyDocument, ItemEntry, Subject,
-    WaiverEntry,
+    Characteristic, ContemporainDocument, ContemporainEquipment, Document, Equipment, Error,
+    FantasyDocument, FantasyEquipment, ItemEntry, Subject, WaiverEntry,
 };
 use serde::Serialize;
 use tsify::Tsify;
@@ -31,6 +31,9 @@ pub struct Sheet {
     pub unused_waivers: Vec<WaiverEntry>,
     /// What only one engine computes.
     pub details: Details,
+    /// The findings of the rules that hold in play, about the equipment in
+    /// play (ADR ENG-IN-PLAY); empty from [`evaluate`].
+    pub in_play: Vec<ReportedViolation>,
 }
 
 /// What is left to settle in a creation step: violations no waiver accepts.
@@ -222,8 +225,29 @@ pub struct ContemporainDetails {
 /// Returns why the document cannot be read.
 pub fn evaluate(document: &Document) -> Result<Sheet, Error> {
     match document {
-        Document::Contemporain(document) => contemporain(document),
-        Document::Fantasy(document) => fantasy(document),
+        Document::Contemporain(document) => contemporain(document, None),
+        Document::Fantasy(document) => fantasy(document, None),
+    }
+}
+
+/// Evaluates a choices document with the character in play, wearing and
+/// carrying `equipment` (ADR ENG-IN-PLAY): the steps and violations of its
+/// creation, its values with the equipment in play, and the findings of the
+/// rules that hold in play.
+///
+/// # Errors
+///
+/// Returns why the document or the equipment cannot be read, and
+/// [`Error::OtherEngine`] for an equipment of another engine.
+pub fn evaluate_in_play(document: &Document, equipment: &Equipment) -> Result<Sheet, Error> {
+    match (document, equipment) {
+        (Document::Contemporain(document), Equipment::Contemporain(equipment)) => {
+            contemporain(document, Some(equipment))
+        }
+        (Document::Fantasy(document), Equipment::Fantasy(equipment)) => {
+            fantasy(document, Some(equipment))
+        }
+        _ => Err(Error::OtherEngine),
     }
 }
 
@@ -241,6 +265,7 @@ impl Common<'_> {
         characteristics: impl Fn(co_kernel::Characteristic) -> DerivedValue,
         values: Vec<ValueLine>,
         details: Details,
+        in_play: Option<&ViolationReport>,
     ) -> Sheet {
         let violations: Vec<ReportedViolation> = self
             .report
@@ -296,6 +321,15 @@ impl Common<'_> {
                 })
                 .collect(),
             details,
+            in_play: in_play
+                .map(|report| {
+                    report
+                        .entries()
+                        .iter()
+                        .map(|entry| self.violation(entry))
+                        .collect()
+                })
+                .unwrap_or_default(),
         }
     }
 
@@ -485,10 +519,23 @@ fn fantasy_label(id: &str) -> Option<String> {
         .or_else(|| ability_label(id, |voie| Voie::from_id(voie).map(Voie::name)))
 }
 
-fn fantasy(document: &FantasyDocument) -> Result<Sheet, Error> {
+fn fantasy(
+    document: &FantasyDocument,
+    equipment: Option<&FantasyEquipment>,
+) -> Result<Sheet, Error> {
     use co_fantasy::{AttackMode, Family, Money, RecoveryDie, Step, Value, Weapon, WeaponUse};
     let character = document.to_character()?;
     let report = character.report();
+    // In play, the values follow the equipment in play; the steps and
+    // violations stay those of the creation.
+    let played = equipment
+        .map(|equipment| equipment.to_equipment().map(|e| character.in_play(e)))
+        .transpose()?;
+    let value_of = |value: Value| match &played {
+        Some(played) => played.value(value),
+        None => character.value(value),
+    };
+    let items = equipment.map_or(&document.items, |equipment| &equipment.items);
     let step_of = |violation: &co_kernel::Violation| Step::of(violation).id();
     let common = Common {
         report: &report,
@@ -503,7 +550,7 @@ fn fantasy(document: &FantasyDocument) -> Result<Sheet, Error> {
         common.line(
             value.id().as_str().to_owned(),
             fantasy_value_label(value),
-            character.value(value).as_ref(),
+            value_of(value).as_ref(),
         )
     };
     let mut values: Vec<ValueLine> = [
@@ -532,7 +579,7 @@ fn fantasy(document: &FantasyDocument) -> Result<Sheet, Error> {
     if let Some(dice) = values.get_mut(1) {
         dice.dice.clone_from(&recovery_die);
     }
-    for weapon in carried(&document.items, Weapon::from_id) {
+    for weapon in carried(items, Weapon::from_id) {
         for weapon_use in WeaponUse::ALL {
             if let Some(dice) = weapon.dice(weapon_use) {
                 let mut damage = line(Value::Damage(weapon, weapon_use));
@@ -552,11 +599,15 @@ fn fantasy(document: &FantasyDocument) -> Result<Sheet, Error> {
             .iter()
             .map(|voie| voie.id().as_str().to_owned())
             .collect(),
-        money: character
-            .value(Value::Money)
-            .map(|money| Money::pc(money.total()).to_string()),
+        money: value_of(Value::Money).map(|money| Money::pc(money.total()).to_string()),
     });
-    Ok(common.sheet(|c| character.characteristic(c), values, details))
+    let in_play = played.as_ref().map(co_fantasy::InPlay::report);
+    Ok(common.sheet(
+        |c| character.characteristic(c),
+        values,
+        details,
+        in_play.as_ref(),
+    ))
 }
 
 fn contemporain_value_label(value: co_contemporain::Value) -> String {
@@ -607,10 +658,28 @@ fn contemporain_label(id: &str) -> Option<String> {
         .or_else(|| ability_label(id, |voie| Voie::from_id(voie).map(Voie::name)))
 }
 
-fn contemporain(document: &ContemporainDocument) -> Result<Sheet, Error> {
+fn contemporain(
+    document: &ContemporainDocument,
+    equipment: Option<&ContemporainEquipment>,
+) -> Result<Sheet, Error> {
     use co_contemporain::{AttackMode, Step, Value, Weapon};
     let character = document.to_character()?;
     let report = character.report();
+    // In play, the values follow the equipment in play; the steps and
+    // violations stay those of the creation. No COC2 equipment rule holds in
+    // play.
+    let played = equipment
+        .map(|equipment| equipment.to_equipment().map(|e| character.in_play(e)))
+        .transpose()?;
+    let value_of = |value: Value| match &played {
+        Some(played) => played.value(value),
+        None => character.value(value),
+    };
+    let damage_dice = |weapon: Weapon| match &played {
+        Some(played) => played.damage_dice(weapon),
+        None => character.damage_dice(weapon),
+    };
+    let items = equipment.map_or(&document.items, |equipment| &equipment.items);
     let step_of = |violation: &co_kernel::Violation| Step::of(violation).id();
     let common = Common {
         report: &report,
@@ -625,7 +694,7 @@ fn contemporain(document: &ContemporainDocument) -> Result<Sheet, Error> {
         common.line(
             value.id().as_str().to_owned(),
             contemporain_value_label(value),
-            character.value(value).as_ref(),
+            value_of(value).as_ref(),
         )
     };
     let mut values: Vec<ValueLine> = [
@@ -650,13 +719,13 @@ fn contemporain(document: &ContemporainDocument) -> Result<Sheet, Error> {
     .collect();
     let mut weapons = vec![Weapon::MainsNues];
     weapons.extend(
-        carried(&document.items, Weapon::from_id)
+        carried(items, Weapon::from_id)
             .into_iter()
             .filter(|weapon| *weapon != Weapon::MainsNues),
     );
     for weapon in weapons {
         let mut damage = line(Value::Damage(weapon));
-        damage.dice = Some(character.damage_dice(weapon).to_string());
+        damage.dice = Some(damage_dice(weapon).to_string());
         values.push(damage);
         values.push(line(Value::CriticalBonus(weapon)));
         values.push(line(Value::CriticalRange(weapon)));
@@ -674,7 +743,7 @@ fn contemporain(document: &ContemporainDocument) -> Result<Sheet, Error> {
         advantages: character.advantages(),
         disadvantages: character.disadvantages(),
     });
-    Ok(common.sheet(|c| character.characteristic(c), values, details))
+    Ok(common.sheet(|c| character.characteristic(c), values, details, None))
 }
 
 impl From<co_kernel::Category> for Category {

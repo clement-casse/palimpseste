@@ -15,8 +15,8 @@ mod catalog;
 mod sheet;
 
 pub use catalog::{Catalog, catalog};
-use palimpseste_document::{Document, Engine};
-pub use sheet::{Sheet, evaluate};
+use palimpseste_document::{Document, Engine, Equipment};
+pub use sheet::{Sheet, evaluate, evaluate_in_play};
 use tsify::{Ts, Tsify};
 use wasm_bindgen::{JsError, prelude::wasm_bindgen};
 
@@ -51,6 +51,25 @@ pub fn catalog_js(engine: &Ts<Engine>) -> Result<Ts<Catalog>, JsError> {
 #[wasm_bindgen(js_name = evaluate)]
 pub fn evaluate_js(document: &Ts<Document>) -> Result<Ts<Sheet>, JsError> {
     let sheet = evaluate(&document.to_rust()?).map_err(|error| JsError::new(&error.to_string()))?;
+    Ok(sheet.into_ts()?)
+}
+
+/// Evaluates a choices document with the character in play, wearing and
+/// carrying `equipment` (ADR ENG-IN-PLAY): the steps and violations of its
+/// creation, its values with the equipment in play, and the findings of the
+/// rules that hold in play (`inPlay`).
+///
+/// # Errors
+///
+/// Throws when `document` or `equipment` cannot be read, or when the
+/// equipment is of another engine.
+#[wasm_bindgen(js_name = evaluateInPlay)]
+pub fn evaluate_in_play_js(
+    document: &Ts<Document>,
+    equipment: &Ts<Equipment>,
+) -> Result<Ts<Sheet>, JsError> {
+    let sheet = evaluate_in_play(&document.to_rust()?, &equipment.to_rust()?)
+        .map_err(|error| JsError::new(&error.to_string()))?;
     Ok(sheet.into_ts()?)
 }
 
@@ -271,6 +290,69 @@ mod tests {
         let mut document = FantasyDocument::empty();
         document.profil = Some("cof.profil.paladin".into());
         assert!(evaluate(&Document::Fantasy(document)).is_err());
+    }
+
+    #[test]
+    fn in_play_values_follow_the_equipment_and_creation_stays() {
+        let mut document = FantasyDocument::empty();
+        document.profil = Some("cof.profil.barbare".into());
+        document.armour = Some("cof.armour.cuir-simple".into());
+        document.items = vec![ItemEntry::Weapon {
+            id: "cof.weapon.epee-longue".into(),
+            quantity: 1,
+        }];
+        let equipment = palimpseste_document::FantasyEquipment {
+            armour: Some("cof.armour.cotte-de-mailles".into()),
+            shield: None,
+            items: vec![ItemEntry::Weapon {
+                id: "cof.weapon.arc-long".into(),
+                quantity: 1,
+            }],
+        };
+        let creation = fantasy(document.clone());
+        let sheet =
+            evaluate_in_play(&Document::Fantasy(document), &Equipment::Fantasy(equipment)).unwrap();
+
+        let defence = value(&sheet, "cof.defence");
+        assert!(
+            defence
+                .contributions
+                .iter()
+                .any(|c| c.label == "Cotte de mailles")
+        );
+        assert!(
+            sheet
+                .values
+                .iter()
+                .any(|l| l.id == "cof.damage.arc-long.ranged")
+        );
+        assert!(
+            sheet
+                .values
+                .iter()
+                .all(|l| !l.id.starts_with("cof.damage.epee-longue"))
+        );
+        // The steps and violations are the creation's: the arc long added in
+        // play is no starting equipment matter.
+        assert_eq!(sheet.violations, creation.violations);
+        assert_eq!(sheet.steps, creation.steps);
+        let rules: Vec<_> = sheet.in_play.iter().map(|v| v.rule.as_str()).collect();
+        assert!(rules.contains(&"COF.EQP.RANGED"));
+        assert!(rules.contains(&"COF.DER.ARMOUR-LIMIT"));
+        assert!(!rules.contains(&"COF.CRE.EQUIPMENT"));
+        assert_eq!(creation.in_play, []);
+    }
+
+    #[test]
+    fn in_play_equipment_of_another_engine_is_an_error() {
+        let equipment = Equipment::Contemporain(palimpseste_document::ContemporainEquipment {
+            protections: Vec::new(),
+            items: Vec::new(),
+        });
+        assert_eq!(
+            evaluate_in_play(&Document::empty(Engine::Fantasy), &equipment),
+            Err(palimpseste_document::Error::OtherEngine)
+        );
     }
 
     #[test]
