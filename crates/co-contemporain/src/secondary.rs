@@ -3,7 +3,7 @@
 use co_kernel::{Characteristic, Characteristics, DerivedValue, Rank, Source};
 
 use crate::{
-    AgeBracket, AttackMode, Character, Sequel, Trait, Voie, protection,
+    AgeBracket, AttackMode, Character, HEALTH_SCALE_STEPS, Sequel, Trait, Voie, protection,
     rules::{CG, DEF, HEALTH_SCALE, INIT},
 };
 
@@ -101,7 +101,7 @@ pub(crate) fn health_scale(character: &Character) -> DerivedValue {
         .into_iter()
         .filter(|t| character.has_trait(*t))
         .fold(
-            DerivedValue::new().with(Source::Rule(HEALTH_SCALE), 20),
+            DerivedValue::new().with(Source::Rule(HEALTH_SCALE), HEALTH_SCALE_STEPS),
             |value, t| value.with(Source::Value(t.id()), -4),
         )
 }

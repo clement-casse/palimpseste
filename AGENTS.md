@@ -37,6 +37,7 @@ In scope:
 - **Content read by the creation rules**: the 18 domaines with their voie slots, the 18 voies, the traits catalogue and sequels, the age-bracket limits, the weapon and protection tables, as enums and `match` tables.
 - **Creation budgets and limits**: characteristic points, capacity points, maximum voies and rank, trait balance, characteristic bounds, domaine voies, social class, starting equipment of the weapon voies.
 - **Secondary characteristics**: Init, DEF, ATC and ATD per weapon category, contact DM bonus, CG, health scale length, protection RD and malus, weapon damage dice and DM, bonus critique and critical range.
+- **Health-scale states** (ADR ENG-HEALTH-STATES): the steps of a full échelle de santé and its states (step, name, malus), content the character sheet displays. The damage taken is not the engine's.
 - **Catalogue and steps** (ADR ENG-CATALOGUE, ADR ENG-STEPS): each content enum named by the choices document has `ALL`, `id()`, `from_id()` and `name()` (French display name); the content tables the creation rules read are public read-only accessors; `Step` gives the creation steps in the book order and places each violation in one.
 
 Out of scope, do not implement or prepare for:

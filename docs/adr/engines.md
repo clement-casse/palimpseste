@@ -27,6 +27,13 @@ read-only accessors; options depending on the current choices (the voies a
 peuple slot accepts) are `Character` methods. *Why:* the front end offers
 the options the rules allow without restating them.
 
+**ENG-HEALTH-STATES: The COC2 health-scale states are content.**
+`HealthState` (Contusionné, Affaibli, Blessé, Mourant) gives each state's
+step and malus (COC.CNT.SCALES), and `HEALTH_SCALE_STEPS` the steps of a
+full scale; the catalogue carries both, for the sheet to label its track
+(ADR FE-SHEET). The engine holds no play state: the damage taken, and so
+the state reached, are counted by the sheet.
+
 **ENG-CHARACTER: A character stores choices only.** `Character` holds the
 choices, the adjustments and the waivers; every other value is computed on
 demand, with its breakdown. Choices are made and given up in any order
