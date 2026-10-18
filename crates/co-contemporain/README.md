@@ -13,7 +13,7 @@ builds a complete character. Read it first.
 
 | File | Holds | Rules |
 |---|---|---|
-| `character.rs` | `Character` (the choices and their `with_*` / `without_*` builders), `Value`, `Target`, `AttackMode`; the `violations()` and `report()` entry points | |
+| `character.rs` | `Character` (the choices and their `with_*` / `without_*` builders), `Value` (`FIXED`, `name()`), `Target`, `AttackMode` (`id()`, `name()`); the `violations()` and `report()` entry points | |
 | `rules.rs` | every `RuleId`, `Mechanic` and engine `ValueId` constant | |
 | `age.rs` | `Age`, `AgeBracket`, the limits of each bracket | COC.CRE.AGE-BRACKET |
 | `domaine.rs` | `Domaine` (18), its voie slots and social class requirements | COC.CRE.DOMAINE, COC.CNT.DOMAINES |
@@ -25,6 +25,7 @@ builds a complete character. Read it first.
 | `protection.rs` | `Protection`: RD and malus, never DEF | COC.EQP.PROTECTIONS |
 | `equipment.rs` | `Item`, `ItemName`, `Quantity`, the starting equipment of the voies | COC.CRE.EQUIPMENT |
 | `step.rs` | `Step` in the book order, and `Step::of(&Violation)` | COC.CRE.STEPS |
+| `label.rs` | `label(id)` and `term_label(rule)`: the French names of the identifiers the engine emits | |
 
 Rule identifiers (`COC.CRE.TRAITS`) and interpretations (`D-07`) trace to
 the private co-rules skill. The design
@@ -37,6 +38,11 @@ decisions are in [docs/adr/engines.md](../../docs/adr/engines.md) (`ENG-*`,
   string such as `coc.crime`), `from_id()` and `name()` (the French
   display name). Its data is a `match` table beside the mechanic that
   reads it. There are no data files (ADR ENG-CONTENT, ADR ENG-CATALOGUE).
+- **Names.** `Value::FIXED` lists the values in the book order and
+  `Value::name()` names them. `label(id)` names every identifier the engine
+  emits as a violation subject or a breakdown source, and
+  `term_label(rule)` the terms a formula sets (the age bracket), so that
+  the front end restates none of them (ADR ENG-CATALOGUE).
 - **Violations.** `Character::violations` calls each module's
   `check(&Character, &mut Vec<Violation>)` (age, domaine, voies, traits,
   characteristics, equipment), then adds one notice per adjustment.
@@ -54,7 +60,13 @@ decisions are in [docs/adr/engines.md](../../docs/adr/engines.md) (`ENG-*`,
 3. Fill in its row in every `match` table the rules read.
 4. `tests/catalogue.rs` checks that identifiers are unique and round-trip.
    `palimpseste-document` and `palimpseste-wasm` pick it up through
-   `from_id` and `ALL`.
+   `from_id` and `ALL`, and `label` names it through `from_id`.
+
+**Adding a value:** add the variant to `Value`, its identifier to `id()`,
+its name to `name()`, and the variant to `Value::FIXED` unless it is a
+weapon value: `from_id`, and so the adjustments of the choices document,
+find it there, and the sheet lists it in that order. A new choice the violations name
+(a `ValueId` in `rules.rs`) gets its name in `CHOICES` in `label.rs`.
 
 **Adding a rule:**
 

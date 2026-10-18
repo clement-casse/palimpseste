@@ -9,6 +9,7 @@
 **KER-CHARACTERISTICS: One signed value.** A characteristic has a single
 signed value, which is also its modifier (`CharacteristicValue(i32)`).
 Game bounds belong to the engines, which report them as violations.
+`Characteristic::abbreviation()` gives the books' abbreviation (`AGI`).
 
 **KER-VOIE: A voie maps ranks to abilities.** A `Voie` maps each `Rank` to
 one `AbilityId` (`BTreeMap`, CO.VOIE.STRUCTURE). `Rank` wraps a `u8` whose

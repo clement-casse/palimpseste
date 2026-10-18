@@ -14,7 +14,7 @@ depends on it.
 
 | File | Holds | ADR |
 |---|---|---|
-| `characteristic.rs` | `Characteristic` (the seven), `CharacteristicValue(i32)`, `Characteristics` (an array indexed by characteristic) | KER-CHARACTERISTICS |
+| `characteristic.rs` | `Characteristic` (the seven, with their abbreviations), `CharacteristicValue(i32)`, `Characteristics` (an array indexed by characteristic) | KER-CHARACTERISTICS |
 | `voie.rs` | `Rank`, `VoieId`, `AbilityId`, `Voie` (rank → ability) | KER-VOIE |
 | `derived.rs` | `DerivedValue`, `Contribution`, `Source` | KER-SOURCES, KER-TOTAL |
 | `adjustment.rs` | `Adjustment`, `Author` | KER-ADJUSTMENTS |

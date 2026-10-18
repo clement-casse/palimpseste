@@ -24,8 +24,15 @@ content enum the choices document names has `ALL`, `id()` (a stable
 string: `cof.epee-longue`, `coc.crime`), `from_id()` and `name()` (the
 French display name). The content tables the rules read are public
 read-only accessors; options depending on the current choices (the voies a
-peuple slot accepts) are `Character` methods. *Why:* the front end offers
-the options the rules allow without restating them.
+peuple slot accepts) are `Character` methods. Values are named alike:
+`Value::FIXED` lists every value but the weapon values, in the book order,
+and `Value::name()` names each one; COC2's `AttackMode` has a `name()`, and
+an `id()` ending the identifier of its attack value. `label(id)` names every identifier the engine emits as a
+violation subject or a breakdown source (content, choices, values,
+capacités), and `term_label(rule)` the term a formula sets itself when it
+names one (the level, the age bracket). *Why:* the front end offers the
+options the rules allow, and names what the engine reports, without
+restating any identifier.
 
 **ENG-HEALTH-STATES: The COC2 health-scale states are content.**
 `HealthState` (Contusionné, Affaibli, Blessé, Mourant) gives each state's

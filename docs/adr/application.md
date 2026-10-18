@@ -76,8 +76,11 @@ exposes `emptyDocument(engine)`, `catalog(engine)`,
 `evaluate(document)` (values with breakdowns, violations by step, step
 status) and `evaluateInPlay(document, equipment)`: the same steps and
 violations, the values with the equipment in play, and the findings of
-the rules that hold in play (`inPlay`, ADR ENG-IN-PLAY). No Rust object crosses the boundary, so JavaScript never frees
-memory by hand. Types are described to TypeScript by `tsify` and passed as
+the rules that hold in play (`inPlay`, ADR ENG-IN-PLAY). The bindings
+only translate: names, labels and the values listed come from the
+engines (ADR ENG-CATALOGUE), and the bindings name only a formula's
+constant term and an adjustment. No Rust object crosses the boundary, so
+JavaScript never frees memory by hand. Types are described to TypeScript by `tsify` and passed as
 `tsify::Ts`, so a wrong value throws instead of panicking. *Why not the
 `into_wasm_abi`/`from_wasm_abi` attributes:* they are deprecated, and leak
 memory when (de)serialization fails.

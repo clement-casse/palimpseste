@@ -73,7 +73,7 @@ The concepts that mean exactly the same thing in every engine, and nothing
 else:
 
 - **Characteristics**: `AGI`, `CON`, `FOR`, `PER`, `CHA`, `INT`, `VOL`,
-  their values and modifiers.
+  their abbreviations, values and modifiers.
 - **Voie skeleton**: voies, their ranks and the abilities attached to them.
   Structure only, with no cost or budget rule.
 - **Derived values** (`DerivedValue`): a total together with the

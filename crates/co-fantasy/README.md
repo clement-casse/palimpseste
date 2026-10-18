@@ -14,7 +14,7 @@ complete nain guerrier. Read it first.
 
 | File | Holds | Rules |
 |---|---|---|
-| `character.rs` | `Character` (the choices and their `with_*` / `without_*` builders), `Value`, `Target`, `AttackMode`; `violations()`, `report()`, and options that depend on the choices (`peuple_slot_options`) | |
+| `character.rs` | `Character` (the choices and their `with_*` / `without_*` builders), `Value` (`FIXED`, `name()`), `Target`, `AttackMode`; `violations()`, `report()`, and options that depend on the choices (`peuple_slot_options`) | |
 | `rules.rs` | every `RuleId`, `Mechanic` and engine `ValueId` constant, and the level fixed at creation | |
 | `profil.rs` | `Family` (4), `Profil` (14), `RecoveryDie`, weapon mastery | COF.CNT.FAMILIES, COF.CNT.PROFILS |
 | `peuple.rs` | `Peuple` (8), its modifiers and voie de peuple | COF.CRE.PEUPLE, COF.CNT.PEUPLES |
@@ -26,6 +26,7 @@ complete nain guerrier. Read it first.
 | `equipment.rs` | `Item`, `ItemName`, `Quantity`, the profil's starting equipment (`Gear`, `StartingLine`, `StartingItem`) | COF.CRE.EQUIPMENT |
 | `money.rs` | `Money` (built from coins: `Money::pa(9)`), `purse_dice()` | COF.EQP.CURRENCY |
 | `step.rs` | `Step` in the book order, and `Step::of(&Violation)` | COF.CRE.STEPS |
+| `label.rs` | `label(id)` and `term_label(rule)`: the French names of the identifiers the engine emits | |
 
 Rule identifiers (`COF.CRE.CARAC-SERIES`) and interpretations (`D-15`)
 trace to the private co-rules skill. The
@@ -39,6 +40,11 @@ design decisions are in [docs/adr/engines.md](../../docs/adr/engines.md)
   French display name). Its data is a `match` table beside the mechanic
   that reads it. There are no data files (ADR ENG-CONTENT,
   ADR ENG-CATALOGUE).
+- **Names.** `Value::FIXED` lists the values in the book order and
+  `Value::name()` names them. `label(id)` names every identifier the engine
+  emits as a violation subject or a breakdown source, and
+  `term_label(rule)` the terms a formula sets (the level), so that the
+  front end restates none of them (ADR ENG-CATALOGUE).
 - **Violations.** `Character::violations` calls each module's
   `check(&Character, &mut Vec<Violation>)` (profil, peuple,
   characteristics, voies, armour, equipment, money, weapons, derived
@@ -62,7 +68,13 @@ design decisions are in [docs/adr/engines.md](../../docs/adr/engines.md)
    profil voies, starting equipment, ...).
 4. `tests/catalogue.rs` checks that identifiers are unique and round-trip.
    `palimpseste-document` and `palimpseste-wasm` pick it up through
-   `from_id` and `ALL`.
+   `from_id` and `ALL`, and `label` names it through `from_id`.
+
+**Adding a value:** add the variant to `Value`, its identifier to `id()`,
+its name to `name()`, and the variant to `Value::FIXED` unless it is a
+weapon value: `from_id`, and so the adjustments of the choices document,
+find it there, and the sheet lists it in that order. A new choice the violations name
+(a `ValueId` in `rules.rs`) gets its name in `CHOICES` in `label.rs`.
 
 **Adding a rule:**
 
