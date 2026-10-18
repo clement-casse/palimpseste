@@ -167,6 +167,7 @@ pub struct WeaponUseEntry {
 
 /// The content of COC2 read at creation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
 pub struct ContemporainCatalog {
     /// The creation steps, in the book order.
     pub steps: Vec<Named>,
@@ -180,6 +181,8 @@ pub struct ContemporainCatalog {
     pub weapons: Vec<ContemporainWeaponEntry>,
     /// The protections.
     pub protections: Vec<Named>,
+    /// The échelle de santé and its states.
+    pub health_scale: HealthScaleEntry,
 }
 
 /// A COC2 domaine.
@@ -234,6 +237,29 @@ pub struct ContemporainWeaponEntry {
     pub name: String,
     /// The attack value it rolls against.
     pub attack_mode: Named,
+}
+
+/// The COC2 échelle de santé: its full length and the states its steps
+/// reach. A character's scale may be shorter, its first steps blackened.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+pub struct HealthScaleEntry {
+    /// The steps of a full scale.
+    pub steps: i32,
+    /// The states, from the first step reached.
+    pub states: Vec<HealthStateEntry>,
+}
+
+/// A state of the COC2 échelle de santé.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+pub struct HealthStateEntry {
+    /// Identifier.
+    pub id: String,
+    /// Display name.
+    pub name: String,
+    /// The step whose filling reaches the state.
+    pub step: i32,
+    /// The malus to Init, DEF and physical actions, negative.
+    pub malus: i32,
 }
 
 /// The catalogue of `engine`.
@@ -392,7 +418,9 @@ pub(crate) fn attack_mode(mode: co_contemporain::AttackMode) -> Named {
 }
 
 fn contemporain() -> ContemporainCatalog {
-    use co_contemporain::{Domaine, Protection, Step, Trait, Voie, Weapon};
+    use co_contemporain::{
+        Domaine, HEALTH_SCALE_STEPS, HealthState, Protection, Step, Trait, Voie, Weapon,
+    };
     ContemporainCatalog {
         steps: Step::ALL
             .iter()
@@ -441,5 +469,17 @@ fn contemporain() -> ContemporainCatalog {
             .into_iter()
             .map(|p| Named::new(p.id().as_str(), p.name()))
             .collect(),
+        health_scale: HealthScaleEntry {
+            steps: HEALTH_SCALE_STEPS,
+            states: HealthState::ALL
+                .into_iter()
+                .map(|state| HealthStateEntry {
+                    id: state.id().as_str().to_owned(),
+                    name: state.name().to_owned(),
+                    step: state.step(),
+                    malus: state.malus(),
+                })
+                .collect(),
+        },
     }
 }

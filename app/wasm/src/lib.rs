@@ -296,6 +296,12 @@ mod tests {
                 assert_eq!(catalog.domaines.len(), 18);
                 assert_eq!(catalog.voies.len(), 18);
                 assert_eq!(catalog.traits.len(), 32);
+                assert_eq!(catalog.health_scale.steps, 20);
+                let blesse = &catalog.health_scale.states[2];
+                assert_eq!(
+                    (blesse.name.as_str(), blesse.step, blesse.malus),
+                    ("Blessé", 15, -5)
+                );
             }
             Catalog::Fantasy(_) => panic!("contemporain catalog expected"),
         }
