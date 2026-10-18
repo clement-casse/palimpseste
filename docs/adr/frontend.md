@@ -25,9 +25,9 @@ shows the user's profile, `/login` the sign-in page, `/register` creates
 an account; any other path is `NotFound.svelte`.
 
 **FE-SHARED-STATE: Shared state in `.svelte.ts` modules.** The session
-(`session.svelte.ts`), the URL (`router.svelte.ts`) and the PWA status
-(`pwa.svelte.ts`). Only the router reads and changes the URL: `match`
-names the page of a path, `takeQuery` reads once a message the backend
+(`session.svelte.ts`), the URL (`router.svelte.ts`), the PWA status
+(`pwa.svelte.ts`) and the theme (`theme.svelte.ts`). Only the router
+reads and changes the URL: `match` names the page of a path, `takeQuery` reads once a message the backend
 sent back (`?signin=failed`, `?link=…`). A child changes its parent's
 state through `$bindable` props or callbacks.
 
@@ -38,8 +38,18 @@ an error means, and `ErrorMessage.svelte` shows it, the technical detail
 on hover.
 
 **FE-STYLES: Components style themselves.** `index.css` holds the design
-tokens, element defaults and the utilities several components share; each
-component styles itself in its `<style>`.
+tokens (one set per theme, ADR FE-THEMES), element defaults and the
+utilities several components share; each component styles itself in its
+`<style>`.
+
+**FE-THEMES: Four themes, chosen per device.** "Système" (the default)
+follows the device between light and dark; "Clair", "Sombre" and "OLED"
+are chosen on the profile page (`ThemePicker.svelte`), kept in
+`localStorage` and applied as `data-theme` on the root before the app
+shows. OLED keeps the page black with a dimmed ink, and no component
+paints a lighter surface behind content (borders mix `--muted` instead),
+so an OLED screen lights almost nothing. Printing is always light. *Why:*
+the app stays open on the table for hours.
 
 ## Pages
 
