@@ -26,6 +26,32 @@ pub enum AttackMode {
     HeavyWeapon,
 }
 
+impl AttackMode {
+    /// Returns the stable identifier of the weapon category: not a content
+    /// identifier, but the end of the identifier of its attack value
+    /// (`coc.attack.unarmed`).
+    #[must_use]
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::Unarmed => "unarmed",
+            Self::ContactWeapon => "contact-weapon",
+            Self::RangedWeapon => "ranged-weapon",
+            Self::HeavyWeapon => "heavy-weapon",
+        }
+    }
+
+    /// The French display name of the attack value of the category.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Unarmed => "ATC mains nues",
+            Self::ContactWeapon => "ATC armes de contact",
+            Self::RangedWeapon => "ATD armes à distance",
+            Self::HeavyWeapon => "ATD armes lourdes",
+        }
+    }
+}
+
 /// A value the engine computes, other than a characteristic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Value {
@@ -64,6 +90,28 @@ pub enum Value {
 }
 
 impl Value {
+    /// Every value but the weapon values, in the book order: the creation
+    /// budgets, then the secondary characteristics and the effects of the
+    /// protections worn. [`from_id`](Self::from_id) searches it, so it lists
+    /// every such value, shown or not.
+    pub const FIXED: [Self; 15] = [
+        Self::CaracPoints,
+        Self::CapacityPoints,
+        Self::MaxVoies,
+        Self::MaxRank,
+        Self::Initiative,
+        Self::Defence,
+        Self::Attack(AttackMode::Unarmed),
+        Self::Attack(AttackMode::ContactWeapon),
+        Self::Attack(AttackMode::RangedWeapon),
+        Self::Attack(AttackMode::HeavyWeapon),
+        Self::ContactDamageBonus,
+        Self::HealingCapacity,
+        Self::HealthScale,
+        Self::DamageReduction,
+        Self::AgiTestModifier,
+    ];
+
     /// Returns the value whose [`id`](Self::id) is `id`.
     #[must_use]
     pub fn from_id(id: &str) -> Option<Self> {
@@ -71,24 +119,7 @@ impl Value {
     }
 
     /// Every value, the weapon values for every weapon.
-    fn all() -> impl Iterator<Item = Self> {
-        let fixed = [
-            Self::Initiative,
-            Self::Defence,
-            Self::Attack(AttackMode::Unarmed),
-            Self::Attack(AttackMode::ContactWeapon),
-            Self::Attack(AttackMode::RangedWeapon),
-            Self::Attack(AttackMode::HeavyWeapon),
-            Self::ContactDamageBonus,
-            Self::HealingCapacity,
-            Self::HealthScale,
-            Self::CaracPoints,
-            Self::CapacityPoints,
-            Self::MaxVoies,
-            Self::MaxRank,
-            Self::DamageReduction,
-            Self::AgiTestModifier,
-        ];
+    pub(crate) fn all() -> impl Iterator<Item = Self> {
         let weapons = Weapon::ALL.into_iter().flat_map(|weapon| {
             [
                 Self::Damage(weapon),
@@ -96,7 +127,30 @@ impl Value {
                 Self::CriticalRange(weapon),
             ]
         });
-        fixed.into_iter().chain(weapons)
+        Self::FIXED.into_iter().chain(weapons)
+    }
+
+    /// The French display name of the value.
+    #[must_use]
+    pub fn name(self) -> String {
+        let name = match self {
+            Self::Initiative => "Initiative",
+            Self::Defence => "Défense (DEF)",
+            Self::Attack(mode) => mode.name(),
+            Self::ContactDamageBonus => "Bonus aux DM au contact",
+            Self::HealingCapacity => "Capacité de guérison (CG)",
+            Self::HealthScale => "Échelle de santé",
+            Self::CaracPoints => "Points de caractéristique",
+            Self::CapacityPoints => "Points de capacité",
+            Self::MaxVoies => "Voies au maximum",
+            Self::MaxRank => "Rang maximum",
+            Self::Damage(weapon) => return format!("DM {}", weapon.name()),
+            Self::CriticalBonus(weapon) => return format!("Bonus critique {}", weapon.name()),
+            Self::CriticalRange(weapon) => return format!("Zone de critique {}", weapon.name()),
+            Self::DamageReduction => "Réduction des dommages (RD)",
+            Self::AgiTestModifier => "Modificateur aux tests d'AGI",
+        };
+        name.to_owned()
     }
 
     /// Returns the kernel identifier of the value.
@@ -110,10 +164,7 @@ impl Value {
             Self::AgiTestModifier => "coc.agi-test-modifier",
             Self::Initiative => "coc.initiative",
             Self::Defence => "coc.defence",
-            Self::Attack(AttackMode::Unarmed) => "coc.attack.unarmed",
-            Self::Attack(AttackMode::ContactWeapon) => "coc.attack.contact-weapon",
-            Self::Attack(AttackMode::RangedWeapon) => "coc.attack.ranged-weapon",
-            Self::Attack(AttackMode::HeavyWeapon) => "coc.attack.heavy-weapon",
+            Self::Attack(mode) => return ValueId::new(format!("coc.attack.{}", mode.id())),
             Self::ContactDamageBonus => "coc.contact-damage-bonus",
             Self::HealingCapacity => "coc.healing-capacity",
             Self::HealthScale => "coc.health-scale",
@@ -496,6 +547,21 @@ mod tests {
             .map(|v| v.rule().as_str().to_owned())
             .collect();
         assert_eq!(incomplete, ["COC.CRE.AGE-BRACKET", "COC.CRE.DOMAINE"]);
+    }
+
+    #[test]
+    fn attack_values_are_named_by_their_category() {
+        for (mode, id) in [
+            (AttackMode::Unarmed, "coc.attack.unarmed"),
+            (AttackMode::ContactWeapon, "coc.attack.contact-weapon"),
+            (AttackMode::RangedWeapon, "coc.attack.ranged-weapon"),
+            (AttackMode::HeavyWeapon, "coc.attack.heavy-weapon"),
+        ] {
+            let value = Value::Attack(mode);
+            assert_eq!(value.id().as_str(), id);
+            assert_eq!(Value::from_id(id), Some(value));
+            assert_eq!(value.name(), mode.name());
+        }
     }
 
     #[test]

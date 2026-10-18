@@ -2,8 +2,9 @@
 
 The engines compiled to WebAssembly for the PWA. The rules run in the
 browser, on every edit (ADR APP-LOCAL-RULES). This crate only maps what the
-engines compute to plain data, with French labels for display. It applies
-no rule of its own.
+engines compute, and the French names they give it, to plain data. It
+applies no rule; of its own, it names only the constant term of a formula
+("Base") and an adjustment ("Ajustement de ...").
 
 It depends on `co-kernel`, `co-contemporain`, `co-fantasy` and
 `palimpseste-document` (with the `ts` feature), plus `serde`, `tsify` and
@@ -32,7 +33,7 @@ when (de)serialization fails.
 |---|---|
 | `lib.rs` | the `#[wasm_bindgen]` exports and the native tests |
 | `catalog.rs` | `Catalog` (`FantasyCatalog`, `ContemporainCatalog`) and its entries, built from the engines' `ALL`, `id()`, `name()` and public content tables |
-| `sheet.rs` | `Sheet` and its lines (`StepStatus`, `CharacteristicLine`, `ValueLine`, `ContributionLine`, `ReportedViolation`, ...), and `evaluate` |
+| `sheet.rs` | `Sheet` and its lines (`StepStatus`, `CharacteristicLine`, `ValueLine`, `ContributionLine`, `ReportedViolation`, ...), and `evaluate`: the values of each engine's `Value::FIXED`, named by `Value::name()`, `label` and `term_label` |
 
 Identifiers in the catalogue and the sheet are those of the choices
 document, so the front end can write them back as they are.
@@ -55,10 +56,13 @@ crate version locked in `Cargo.lock`. Bump them together, and update the
 
 ## Recipes
 
-**Exposing a new engine value or detail:** add it to `Sheet` (or to the
-engine's `Details`), mapped from the engine's public API. Keep the mapping
-mechanical: if it needs a rule, the rule belongs in the engine. Then
-rebuild and use the generated type in the front end.
+**Exposing a new engine value:** add it to the engine's `Value::FIXED` and
+name it in `Value::name()`; the sheet lists it with no change here.
+
+**Exposing a new engine detail:** add it to the engine's `Details`, mapped
+from the engine's public API. Keep the mapping mechanical: if it needs a
+rule or a name, it belongs in the engine. Then rebuild and use the
+generated type in the front end.
 
 **Exposing new content:** add it to the engine's catalogue struct in
 `catalog.rs`, built from the engine's `ALL` and accessors. Never hard-code

@@ -407,14 +407,8 @@ fn fantasy() -> FantasyCatalog {
 }
 
 /// The identifier and display name of a COC2 attack mode.
-pub(crate) fn attack_mode(mode: co_contemporain::AttackMode) -> Named {
-    use co_contemporain::AttackMode;
-    match mode {
-        AttackMode::Unarmed => Named::new("unarmed", "ATC mains nues"),
-        AttackMode::ContactWeapon => Named::new("contact-weapon", "ATC armes de contact"),
-        AttackMode::RangedWeapon => Named::new("ranged-weapon", "ATD armes à distance"),
-        AttackMode::HeavyWeapon => Named::new("heavy-weapon", "ATD armes lourdes"),
-    }
+fn attack_mode(mode: co_contemporain::AttackMode) -> Named {
+    Named::new(mode.id(), mode.name())
 }
 
 fn contemporain() -> ContemporainCatalog {

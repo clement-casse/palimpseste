@@ -1,11 +1,11 @@
 //! The evaluation of a choices document: every value with its breakdown,
 //! the violations placed in their creation step, and the status of each
-//! step. Everything is computed by the engines; this module only maps their
-//! results to plain data, with French labels for display.
+//! step. Everything is computed and named by the engines; this module only
+//! maps their results to plain data.
 
 use std::collections::BTreeSet;
 
-use co_kernel::{Contribution, DerivedValue, ParameterValue, Source, ViolationReport};
+use co_kernel::{Contribution, DerivedValue, ParameterValue, RuleId, Source, ViolationReport};
 use palimpseste_document::{
     Characteristic, ContemporainDocument, ContemporainEquipment, Document, Equipment, Error,
     FantasyDocument, FantasyEquipment, ItemEntry, Subject, WaiverEntry,
@@ -13,7 +13,7 @@ use palimpseste_document::{
 use serde::Serialize;
 use tsify::Tsify;
 
-use crate::catalog::{Named, attack_mode};
+use crate::catalog::Named;
 
 /// A character evaluated by its engine.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
@@ -251,12 +251,14 @@ pub fn evaluate_in_play(document: &Document, equipment: &Equipment) -> Result<Sh
     }
 }
 
-/// The parts every engine shares, from its report and labels.
+/// The parts every engine shares, from its report and the engine's labels
+/// (`label` and `term_label`, ADR ENG-CATALOGUE).
 struct Common<'a> {
     report: &'a ViolationReport,
     steps: Vec<(&'static str, &'static str)>,
     step_of: &'a dyn Fn(&co_kernel::Violation) -> &'static str,
     label: &'a dyn Fn(&str) -> Option<String>,
+    term_label: &'a dyn Fn(&RuleId) -> Option<&'static str>,
 }
 
 impl Common<'_> {
@@ -337,9 +339,7 @@ impl Common<'_> {
         let violation = entry.violation();
         let subject_label = match violation.subject() {
             co_kernel::Subject::Character => None,
-            co_kernel::Subject::Characteristic(c) => {
-                Some(abbreviation(Characteristic::from(*c)).to_owned())
-            }
+            co_kernel::Subject::Characteristic(c) => Some(c.abbreviation().to_owned()),
             co_kernel::Subject::Voie(id) => (self.label)(id.as_str()),
             co_kernel::Subject::Ability(id) => (self.label)(id.as_str()),
             co_kernel::Subject::Value(id) => (self.label)(id.as_str()),
@@ -376,15 +376,15 @@ impl Common<'_> {
 
     fn contribution(&self, contribution: &Contribution) -> ContributionLine {
         let (source, label) = match contribution.source() {
-            Source::Characteristic(c) => (
-                SourceKind::Characteristic,
-                abbreviation(Characteristic::from(*c)).to_owned(),
-            ),
+            Source::Characteristic(c) => (SourceKind::Characteristic, c.abbreviation().to_owned()),
             Source::Ability(id) => (
                 SourceKind::Ability,
                 (self.label)(id.as_str()).unwrap_or_else(|| id.as_str().to_owned()),
             ),
-            Source::Rule(rule) => (SourceKind::Rule, rule_label(rule.as_str()).to_owned()),
+            Source::Rule(rule) => (
+                SourceKind::Rule,
+                (self.term_label)(rule).unwrap_or("Base").to_owned(),
+            ),
             Source::Value(id) => (
                 SourceKind::Value,
                 (self.label)(id.as_str()).unwrap_or_else(|| id.as_str().to_owned()),
@@ -414,34 +414,6 @@ impl Common<'_> {
     }
 }
 
-/// The French label of a term a rule's formula sets itself.
-fn rule_label(rule: &str) -> &'static str {
-    match rule {
-        "COF.CRE.LEVEL1" => "Niveau",
-        "COC.CRE.AGE-BRACKET" => "Tranche d'âge",
-        _ => "Base",
-    }
-}
-
-/// The abbreviation the books use for `characteristic`.
-pub(crate) const fn abbreviation(characteristic: Characteristic) -> &'static str {
-    match characteristic {
-        Characteristic::Agi => "AGI",
-        Characteristic::Con => "CON",
-        Characteristic::For => "FOR",
-        Characteristic::Per => "PER",
-        Characteristic::Cha => "CHA",
-        Characteristic::Int => "INT",
-        Characteristic::Vol => "VOL",
-    }
-}
-
-/// The label of a capacité identifier, `<voie>.<rank>`.
-fn ability_label(id: &str, voie: impl Fn(&str) -> Option<&'static str>) -> Option<String> {
-    let (voie_id, rank) = id.rsplit_once('.')?;
-    Some(format!("{}, rang {rank}", voie(voie_id)?))
-}
-
 /// The weapons the document carries, in document order without repeats.
 fn carried<T: Ord + Copy>(items: &[ItemEntry], from_id: impl Fn(&str) -> Option<T>) -> Vec<T> {
     let mut seen = BTreeSet::new();
@@ -455,75 +427,11 @@ fn carried<T: Ord + Copy>(items: &[ItemEntry], from_id: impl Fn(&str) -> Option<
         .collect()
 }
 
-fn fantasy_value_label(value: co_fantasy::Value) -> String {
-    use co_fantasy::{AttackMode, Value};
-    match value {
-        Value::VigourPoints => "Points de vigueur (PV)".to_owned(),
-        Value::RecoveryDice => "Dés de récupération (DR)".to_owned(),
-        Value::LuckPoints => "Points de chance (PC)".to_owned(),
-        Value::ManaPoints => "Points de mana (PM)".to_owned(),
-        Value::Initiative => "Initiative".to_owned(),
-        Value::Defence => "Défense (DEF)".to_owned(),
-        Value::Attack(AttackMode::Contact) => "Attaque au contact".to_owned(),
-        Value::Attack(AttackMode::Ranged) => "Attaque à distance".to_owned(),
-        Value::Attack(AttackMode::Magic) => "Attaque magique".to_owned(),
-        Value::Money => "Argent (pc)".to_owned(),
-        Value::Damage(weapon, weapon_use) => {
-            format!(
-                "DM {} ({})",
-                weapon.name(),
-                weapon_use.name().to_lowercase()
-            )
-        }
-        Value::CriticalRange(weapon) => format!("Zone de critique {}", weapon.name()),
-    }
-}
-
-/// The French label of a COF2 identifier: content, a choice or a value.
-fn fantasy_label(id: &str) -> Option<String> {
-    use co_fantasy::{Armour, Family, Peuple, Profil, Series, Shield, Value, Voie, Weapon};
-    let fixed = match id {
-        "cof.profil" => Some("Profil"),
-        "cof.peuple" => Some("Peuple"),
-        "cof.series" => Some("Série de valeurs"),
-        "cof.series-value" => Some("Valeur de série"),
-        "cof.peuple-bonus" => Some("Bonus de peuple"),
-        "cof.peuple-malus" => Some("Malus de peuple"),
-        "cof.profil-voies" => Some("Voies de profil"),
-        "cof.peuple-voie" => Some("Voie de peuple"),
-        "cof.armour" => Some("Armure"),
-        "cof.shield" => Some("Bouclier"),
-        "cof.purse" => Some("Bourse"),
-        _ => None,
-    };
-    let content = || {
-        Profil::from_id(id)
-            .map(Profil::name)
-            .or_else(|| Peuple::from_id(id).map(Peuple::name))
-            .or_else(|| Series::from_id(id).map(Series::name))
-            .or_else(|| {
-                Family::ALL
-                    .into_iter()
-                    .find(|family| family.id().as_str() == id)
-                    .map(Family::name)
-            })
-            .or_else(|| Armour::from_id(id).map(Armour::name))
-            .or_else(|| Shield::from_id(id).map(Shield::name))
-            .or_else(|| Weapon::from_id(id).map(Weapon::name))
-            .or_else(|| Voie::from_id(id).map(Voie::name))
-    };
-    fixed
-        .or_else(content)
-        .map(str::to_owned)
-        .or_else(|| Value::from_id(id).map(fantasy_value_label))
-        .or_else(|| ability_label(id, |voie| Voie::from_id(voie).map(Voie::name)))
-}
-
 fn fantasy(
     document: &FantasyDocument,
     equipment: Option<&FantasyEquipment>,
 ) -> Result<Sheet, Error> {
-    use co_fantasy::{AttackMode, Family, Money, RecoveryDie, Step, Value, Weapon, WeaponUse};
+    use co_fantasy::{Family, Money, Step, Value, Weapon, WeaponUse};
     let character = document.to_character()?;
     let report = character.report();
     // In play, the values follow the equipment in play; the steps and
@@ -544,40 +452,22 @@ fn fantasy(
             .map(|step| (step.id(), step.name()))
             .collect(),
         step_of: &step_of,
-        label: &fantasy_label,
+        label: &co_fantasy::label,
+        term_label: &co_fantasy::term_label,
     };
     let line = |value: Value| {
         common.line(
             value.id().as_str().to_owned(),
-            fantasy_value_label(value),
+            value.name(),
             value_of(value).as_ref(),
         )
     };
-    let mut values: Vec<ValueLine> = [
-        Value::VigourPoints,
-        Value::RecoveryDice,
-        Value::LuckPoints,
-        Value::ManaPoints,
-        Value::Initiative,
-        Value::Defence,
-        Value::Attack(AttackMode::Contact),
-        Value::Attack(AttackMode::Ranged),
-        Value::Attack(AttackMode::Magic),
-        Value::Money,
-    ]
-    .into_iter()
-    .map(line)
-    .collect();
-    let recovery_die = character.recovery_die().map(|die| {
-        match die {
-            RecoveryDie::D6 => "d6",
-            RecoveryDie::D8 => "d8",
-            RecoveryDie::D10 => "d10",
+    let recovery_die = character.recovery_die().map(|die| die.to_string());
+    let mut values: Vec<ValueLine> = Value::FIXED.into_iter().map(line).collect();
+    for value in &mut values {
+        if value.id == Value::RecoveryDice.id().as_str() {
+            value.dice.clone_from(&recovery_die);
         }
-        .to_owned()
-    });
-    if let Some(dice) = values.get_mut(1) {
-        dice.dice.clone_from(&recovery_die);
     }
     for weapon in carried(items, Weapon::from_id) {
         for weapon_use in WeaponUse::ALL {
@@ -610,59 +500,11 @@ fn fantasy(
     ))
 }
 
-fn contemporain_value_label(value: co_contemporain::Value) -> String {
-    use co_contemporain::Value;
-    match value {
-        Value::Initiative => "Initiative".to_owned(),
-        Value::Defence => "Défense (DEF)".to_owned(),
-        Value::Attack(mode) => attack_mode(mode).name,
-        Value::ContactDamageBonus => "Bonus aux DM au contact".to_owned(),
-        Value::HealingCapacity => "Capacité de guérison (CG)".to_owned(),
-        Value::HealthScale => "Échelle de santé".to_owned(),
-        Value::CaracPoints => "Points de caractéristique".to_owned(),
-        Value::CapacityPoints => "Points de capacité".to_owned(),
-        Value::MaxVoies => "Voies au maximum".to_owned(),
-        Value::MaxRank => "Rang maximum".to_owned(),
-        Value::Damage(weapon) => format!("DM {}", weapon.name()),
-        Value::CriticalBonus(weapon) => format!("Bonus critique {}", weapon.name()),
-        Value::CriticalRange(weapon) => format!("Zone de critique {}", weapon.name()),
-        Value::DamageReduction => "Réduction des dommages (RD)".to_owned(),
-        Value::AgiTestModifier => "Modificateur aux tests d'AGI".to_owned(),
-    }
-}
-
-/// The French label of a COC2 identifier: content, a choice or a value.
-fn contemporain_label(id: &str) -> Option<String> {
-    use co_contemporain::{Domaine, Protection, Trait, Value, Voie, Weapon};
-    let fixed = match id {
-        "coc.age" => Some("Âge"),
-        "coc.domaine" => Some("Domaine"),
-        "coc.advantages" => Some("Avantages"),
-        "coc.disadvantages" => Some("Désavantages"),
-        "coc.social-class" => Some("Classe sociale"),
-        "coc.allocated-points" => Some("Points attribués"),
-        _ => None,
-    };
-    let content = || {
-        Domaine::from_id(id)
-            .map(Domaine::name)
-            .or_else(|| Trait::from_id(id).map(Trait::name))
-            .or_else(|| Weapon::from_id(id).map(Weapon::name))
-            .or_else(|| Protection::from_id(id).map(Protection::name))
-            .or_else(|| Voie::from_id(id).map(Voie::name))
-    };
-    fixed
-        .or_else(content)
-        .map(str::to_owned)
-        .or_else(|| Value::from_id(id).map(contemporain_value_label))
-        .or_else(|| ability_label(id, |voie| Voie::from_id(voie).map(Voie::name)))
-}
-
 fn contemporain(
     document: &ContemporainDocument,
     equipment: Option<&ContemporainEquipment>,
 ) -> Result<Sheet, Error> {
-    use co_contemporain::{AttackMode, Step, Value, Weapon};
+    use co_contemporain::{Step, Value, Weapon};
     let character = document.to_character()?;
     let report = character.report();
     // In play, the values follow the equipment in play; the steps and
@@ -688,35 +530,17 @@ fn contemporain(
             .map(|step| (step.id(), step.name()))
             .collect(),
         step_of: &step_of,
-        label: &contemporain_label,
+        label: &co_contemporain::label,
+        term_label: &co_contemporain::term_label,
     };
     let line = |value: Value| {
         common.line(
             value.id().as_str().to_owned(),
-            contemporain_value_label(value),
+            value.name(),
             value_of(value).as_ref(),
         )
     };
-    let mut values: Vec<ValueLine> = [
-        Value::CaracPoints,
-        Value::CapacityPoints,
-        Value::MaxVoies,
-        Value::MaxRank,
-        Value::Initiative,
-        Value::Defence,
-        Value::Attack(AttackMode::Unarmed),
-        Value::Attack(AttackMode::ContactWeapon),
-        Value::Attack(AttackMode::RangedWeapon),
-        Value::Attack(AttackMode::HeavyWeapon),
-        Value::ContactDamageBonus,
-        Value::HealingCapacity,
-        Value::HealthScale,
-        Value::DamageReduction,
-        Value::AgiTestModifier,
-    ]
-    .into_iter()
-    .map(line)
-    .collect();
+    let mut values: Vec<ValueLine> = Value::FIXED.into_iter().map(line).collect();
     let mut weapons = vec![Weapon::MainsNues];
     weapons.extend(
         carried(items, Weapon::from_id)

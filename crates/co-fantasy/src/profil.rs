@@ -1,5 +1,7 @@
 //! Families and profils (COF.CNT.FAMILIES, COF.CNT.PROFILS).
 
+use std::fmt;
+
 use co_kernel::{Characteristic, Subject, ValueId, Violation};
 
 use crate::{
@@ -80,6 +82,17 @@ pub enum RecoveryDie {
     D8,
     /// Ten-sided die.
     D10,
+}
+
+/// Writes the die as the books do: `d6`, `d8`, `d10`.
+impl fmt::Display for RecoveryDie {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::D6 => "d6",
+            Self::D8 => "d8",
+            Self::D10 => "d10",
+        })
+    }
 }
 
 /// One of the 14 profils of COF2.
@@ -386,6 +399,7 @@ mod tests {
         assert_eq!(Profil::Barbare.family(), Family::Combattants);
         assert_eq!(Family::Combattants.vigour_per_level(), 5);
         assert_eq!(Family::Mages.recovery_die(), RecoveryDie::D6);
+        assert_eq!(Family::Combattants.recovery_die().to_string(), "d10");
         assert_eq!(Family::Mystiques.id().as_str(), "cof.family.mystiques");
     }
 

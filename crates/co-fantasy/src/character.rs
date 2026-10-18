@@ -52,6 +52,22 @@ pub enum Value {
 }
 
 impl Value {
+    /// Every value but the weapon values, in the book order (PV to the
+    /// attack values, then the money held). [`from_id`](Self::from_id)
+    /// searches it, so it lists every such value, shown or not.
+    pub const FIXED: [Self; 10] = [
+        Self::VigourPoints,
+        Self::RecoveryDice,
+        Self::LuckPoints,
+        Self::ManaPoints,
+        Self::Initiative,
+        Self::Defence,
+        Self::Attack(AttackMode::Contact),
+        Self::Attack(AttackMode::Ranged),
+        Self::Attack(AttackMode::Magic),
+        Self::Money,
+    ];
+
     /// Returns the value whose [`id`](Self::id) is `id`.
     #[must_use]
     pub fn from_id(id: &str) -> Option<Self> {
@@ -59,26 +75,40 @@ impl Value {
     }
 
     /// Every value, the weapon values for every weapon and use.
-    fn all() -> impl Iterator<Item = Self> {
-        let fixed = [
-            Self::VigourPoints,
-            Self::RecoveryDice,
-            Self::LuckPoints,
-            Self::ManaPoints,
-            Self::Initiative,
-            Self::Defence,
-            Self::Attack(AttackMode::Contact),
-            Self::Attack(AttackMode::Ranged),
-            Self::Attack(AttackMode::Magic),
-            Self::Money,
-        ];
+    pub(crate) fn all() -> impl Iterator<Item = Self> {
         let weapons = Weapon::ALL.into_iter().flat_map(|weapon| {
             WeaponUse::ALL
                 .into_iter()
                 .map(move |weapon_use| Self::Damage(weapon, weapon_use))
                 .chain([Self::CriticalRange(weapon)])
         });
-        fixed.into_iter().chain(weapons)
+        Self::FIXED.into_iter().chain(weapons)
+    }
+
+    /// The French display name of the value.
+    #[must_use]
+    pub fn name(self) -> String {
+        let name = match self {
+            Self::VigourPoints => "Points de vigueur (PV)",
+            Self::RecoveryDice => "Dés de récupération (DR)",
+            Self::LuckPoints => "Points de chance (PC)",
+            Self::ManaPoints => "Points de mana (PM)",
+            Self::Initiative => "Initiative",
+            Self::Defence => "Défense (DEF)",
+            Self::Attack(AttackMode::Contact) => "Attaque au contact",
+            Self::Attack(AttackMode::Ranged) => "Attaque à distance",
+            Self::Attack(AttackMode::Magic) => "Attaque magique",
+            Self::Money => "Argent (pc)",
+            Self::Damage(weapon, weapon_use) => {
+                return format!(
+                    "DM {} ({})",
+                    weapon.name(),
+                    weapon_use.name().to_lowercase()
+                );
+            }
+            Self::CriticalRange(weapon) => return format!("Zone de critique {}", weapon.name()),
+        };
+        name.to_owned()
     }
 
     /// Returns the kernel identifier of the value.

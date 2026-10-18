@@ -33,6 +33,21 @@ impl Characteristic {
         Self::Vol,
     ];
 
+    /// The abbreviation the books use: `AGI`, `CON`, `FOR`, `PER`, `CHA`,
+    /// `INT`, `VOL`.
+    #[must_use]
+    pub const fn abbreviation(self) -> &'static str {
+        match self {
+            Self::Agi => "AGI",
+            Self::Con => "CON",
+            Self::For => "FOR",
+            Self::Per => "PER",
+            Self::Cha => "CHA",
+            Self::Int => "INT",
+            Self::Vol => "VOL",
+        }
+    }
+
     fn index(self) -> usize {
         match self {
             Self::Agi => 0,
@@ -132,6 +147,15 @@ mod tests {
                 Characteristic::Int,
                 Characteristic::Vol,
             ]
+        );
+    }
+
+    #[test]
+    fn abbreviations_are_the_books() {
+        let abbreviations = Characteristic::ALL.map(Characteristic::abbreviation);
+        assert_eq!(
+            abbreviations,
+            ["AGI", "CON", "FOR", "PER", "CHA", "INT", "VOL"]
         );
     }
 
