@@ -5,14 +5,16 @@
 # a failing one, so the suite is built and run once, and its report goes to
 # Codecov.
 #
-# One job: the repository is private, so minutes are counted, and each job pays
-# its own setup and is rounded up to the minute.
+# One check job: the repository is private, so minutes are counted, and each
+# job pays its own setup and is rounded up to the minute.
+#
+# Every push to main deploys to Fly.io once the checks pass; nothing else
+# deploys. Pushes to main are not filtered by path, so every commit deploys.
 name: CI
 
 on:
   push:
     branches: [main]
-    paths-ignore: ["**/*.md", "docs/**", ".claude/**"]
   pull_request:
     paths-ignore: ["**/*.md", "docs/**", ".claude/**"]
   workflow_dispatch:
@@ -81,3 +83,25 @@ jobs:
       - run: mise run wasm:build
       - run: mise run frontend:test
       - run: mise run frontend:build
+
+  deploy:
+    name: Deploy to Fly.io
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # One deployment at a time, never cancelled midway; a newer push waiting
+    # here replaces an older one still waiting.
+    concurrency:
+      group: fly-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+        with:
+          install_args: --locked flyctl
+      # Fly's remote builder builds the Dockerfile, so the image build costs
+      # no Actions minutes.
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
