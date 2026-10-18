@@ -9,9 +9,9 @@ use co_kernel::{
 };
 
 use crate::{
-    Armour, Family, Item, Money, Peuple, Profil, Quantity, RecoveryDie, Series, Shield, Voie,
-    Weapon, WeaponUse, armour, characteristics, derived, equipment, money, peuple, profil, voie,
-    weapon,
+    Armour, Equipment, Family, InPlay, Item, Money, Peuple, Profil, Quantity, RecoveryDie, Series,
+    Shield, Voie, Weapon, WeaponUse, armour, characteristics, derived, equipment, money, peuple,
+    profil, voie, weapon,
 };
 
 /// The kind of attack an attack value applies to.
@@ -134,9 +134,7 @@ pub struct Character {
     peuple_bonus: Option<Characteristic>,
     peuple_malus: Option<Characteristic>,
     voies: BTreeMap<Voie, BTreeSet<Rank>>,
-    armour: Option<Armour>,
-    shield: Option<Shield>,
-    items: BTreeMap<Item, Quantity>,
+    equipment: Equipment,
     purse: Option<Money>,
     adjustments: Vec<(Target, Adjustment)>,
     waivers: Vec<Waiver>,
@@ -258,28 +256,28 @@ impl Character {
     /// Puts on `armour`, replacing any armour worn.
     #[must_use]
     pub const fn with_armour(mut self, armour: Armour) -> Self {
-        self.armour = Some(armour);
+        self.equipment.armour = Some(armour);
         self
     }
 
     /// Takes off the armour.
     #[must_use]
     pub const fn without_armour(mut self) -> Self {
-        self.armour = None;
+        self.equipment.armour = None;
         self
     }
 
     /// Takes up `shield`, replacing any shield carried.
     #[must_use]
     pub const fn with_shield(mut self, shield: Shield) -> Self {
-        self.shield = Some(shield);
+        self.equipment.shield = Some(shield);
         self
     }
 
     /// Puts down the shield.
     #[must_use]
     pub const fn without_shield(mut self) -> Self {
-        self.shield = None;
+        self.equipment.shield = None;
         self
     }
 
@@ -287,20 +285,22 @@ impl Character {
     /// a quantity of 0 gives the item up.
     #[must_use]
     pub fn with_item(mut self, item: impl Into<Item>, quantity: impl Into<Quantity>) -> Self {
-        let item = item.into();
-        let quantity = quantity.into();
-        if quantity.get() == 0 {
-            self.items.remove(&item);
-        } else {
-            self.items.insert(item, quantity);
-        }
+        self.equipment = self.equipment.with_item(item, quantity);
         self
     }
 
     /// Gives up `item`.
     #[must_use]
     pub fn without_item(mut self, item: impl Into<Item>) -> Self {
-        self.items.remove(&item.into());
+        self.equipment.items.remove(&item.into());
+        self
+    }
+
+    /// Wears and carries `equipment`, replacing the armour, the shield and
+    /// every item.
+    #[must_use]
+    pub fn with_equipment(mut self, equipment: Equipment) -> Self {
+        self.equipment = equipment;
         self
     }
 
@@ -430,6 +430,18 @@ impl Character {
         ViolationReport::new(self.violations(), &self.waivers)
     }
 
+    /// Returns the character in play, wearing and carrying `equipment`
+    /// instead of the equipment chosen at creation (ADR ENG-IN-PLAY). Its
+    /// adjustments and waivers still apply.
+    #[must_use]
+    pub fn in_play(&self, equipment: Equipment) -> InPlay {
+        InPlay::new(self.clone().with_equipment(equipment))
+    }
+
+    pub(crate) fn waivers(&self) -> &[Waiver] {
+        &self.waivers
+    }
+
     pub(crate) const fn profil(&self) -> Option<Profil> {
         self.profil
     }
@@ -465,11 +477,11 @@ impl Character {
     }
 
     pub(crate) const fn armour(&self) -> Option<Armour> {
-        self.armour
+        self.equipment.armour
     }
 
     pub(crate) const fn shield(&self) -> Option<Shield> {
-        self.shield
+        self.equipment.shield
     }
 
     pub(crate) const fn purse(&self) -> Option<Money> {
@@ -478,10 +490,13 @@ impl Character {
 
     /// The weapons carried, with their quantity, in weapon order.
     pub(crate) fn weapons_carried(&self) -> impl Iterator<Item = (Weapon, Quantity)> + '_ {
-        self.items.iter().filter_map(|(item, quantity)| match item {
-            Item::Weapon(weapon) => Some((*weapon, *quantity)),
-            Item::Other(_) => None,
-        })
+        self.equipment
+            .items
+            .iter()
+            .filter_map(|(item, quantity)| match item {
+                Item::Weapon(weapon) => Some((*weapon, *quantity)),
+                Item::Other(_) => None,
+            })
     }
 
     /// The weapons carried, in weapon order.

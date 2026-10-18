@@ -38,6 +38,7 @@ In scope:
 - **Creation budgets and limits**: characteristic points, capacity points, maximum voies and rank, trait balance, characteristic bounds, domaine voies, social class, starting equipment of the weapon voies.
 - **Secondary characteristics**: Init, DEF, ATC and ATD per weapon category, contact DM bonus, CG, health scale length, protection RD and malus, weapon damage dice and DM, bonus critique and critical range.
 - **Health-scale states** (ADR ENG-HEALTH-STATES): the steps of a full échelle de santé and its states (step, name, malus), content the character sheet displays. The damage taken is not the engine's.
+- **Equipment in play** (ADR ENG-IN-PLAY): `Equipment` (protections, items), `Character::in_play` and the values of `InPlay`, computed from the equipment it is given; nothing is stored.
 - **Catalogue and steps** (ADR ENG-CATALOGUE, ADR ENG-STEPS): each content enum named by the choices document has `ALL`, `id()`, `from_id()` and `name()` (French display name); the content tables the creation rules read are public read-only accessors; `Step` gives the creation steps in the book order and places each violation in one.
 
 Out of scope, do not implement or prepare for:
@@ -59,6 +60,7 @@ In scope:
 - **Content read by the creation rules**: the 4 families, the 14 profils with their voies, key and magic characteristics, armour limits, weapon mastery and starting equipment, the 8 peuples with their modifiers and voie de peuple, the 3 value series, the 78 voies reachable at level 1, the armour and shield table, the weapon tables, the currency, as enums and `match` tables.
 - **Creation limits**: series assignment and its advice, peuple modifiers, characteristic bounds, two profil voies and the voie de peuple, voie du mage, mage extra capacité, level required per rank, armour limits, starting equipment and purse, arc long strength, halfelin weapon size.
 - **Derived values**: PV, DR (count and die), PC, PM, Init, DEF with armour and shield, contact, ranged and magic attack values, weapon damage dice and DM, critical range, money held, with the documented effects of rank 1-2 capacités (D-22) and the documented spells (D-23).
+- **Equipment in play** (ADR ENG-IN-PLAY): `Equipment` (armour, shield, items), `Character::in_play`, the values of `InPlay` and its report of the rules that hold in play (armour limit, arc long, Petite taille), computed from the equipment it is given; nothing is stored.
 - **Catalogue and steps** (ADR ENG-CATALOGUE, ADR ENG-STEPS): each content enum named by the choices document has `ALL`, `id()`, `from_id()` and `name()` (French display name); the content tables the creation rules read are public read-only accessors; `Step` gives the creation steps in the book order and places each violation in one.
 
 Out of scope, do not implement or prepare for:
@@ -186,6 +188,7 @@ Code identifiers are in English. Game terms map as follows. Game content (names 
 | arme, mains nues | `Weapon`, `Weapon::MainsNues` (COC2) |
 | protection | `Protection` |
 | objet, quantité | `Item`, `ItemName` (free text), `Quantity` |
+| équipement (porté en jeu) | `Equipment`, `InPlay` |
 | dés, dé | `Dice`, `Die` |
 | dommages (DM) | `Damage` |
 | bonus critique, zone de critique | `CriticalBonus`, `CriticalRange` |
