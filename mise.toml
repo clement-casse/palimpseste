@@ -9,6 +9,10 @@ mr-boxington = "latest"
 "cargo:wasm-bindgen-cli" = "0.2.129"
 node = "24"
 pnpm = "10.33.0"
+flyctl = "latest"
+
+[env]
+RUST_LOG = "info,tower_http=warn"
 
 [tasks.fmt]
 run = "cargo fmt --all -- --config group_imports=StdExternalCrate,imports_granularity=Crate,format_code_in_doc_comments=true"

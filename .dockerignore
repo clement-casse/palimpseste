@@ -1,0 +1,10 @@
+.git/
+.jj/
+.vscode/
+.claude/
+target/
+**/node_modules/
+app/frontend/dist/
+app/frontend/src/wasm/
+*.sqlite3*
+mise.local.toml
