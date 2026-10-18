@@ -38,10 +38,14 @@ export const PROFILE = "/profile";
 
 export const characterPath = (id: number) => `/characters/${id}`;
 
+/** The sheet a player follows a character with during a session. */
+export const characterSheetPath = (id: number) => `/characters/${id}/sheet`;
+
 /** The page a path shows. */
 export type Page =
   | { name: "characters" }
   | { name: "character"; id: number }
+  | { name: "character-sheet"; id: number }
   | { name: "profile" }
   | { name: "login" }
   | { name: "register" }
@@ -54,6 +58,8 @@ export function match(path: string): Page {
   if (path === PROFILE) return { name: "profile" };
   const character = /^\/characters\/(\d+)$/.exec(path);
   if (character) return { name: "character", id: Number(character[1]) };
+  const sheet = /^\/characters\/(\d+)\/sheet$/.exec(path);
+  if (sheet) return { name: "character-sheet", id: Number(sheet[1]) };
   return { name: "not-found" };
 }
 

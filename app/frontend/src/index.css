@@ -196,3 +196,106 @@ a.button {
   cursor: pointer;
   padding: 0.2rem 0;
 }
+
+/* Shared by both character sheets (ADR FE-SHEET): the resource bar stays in
+   reach while the sections, in columns, scroll under it. */
+
+.character-sheet :where(button, select) {
+  border: 1px solid var(--muted);
+  border-radius: 0.4rem;
+  background: none;
+  color: var(--ink);
+}
+
+.character-sheet :where(button:disabled) {
+  opacity: 0.4;
+}
+
+.identity {
+  margin: 0.25rem 0 0.75rem;
+  color: var(--muted);
+}
+
+.play-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  margin: 0 -1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
+  background: var(--page);
+}
+
+.play-sections {
+  columns: 3 17rem;
+  column-gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.block {
+  break-inside: avoid;
+  margin-bottom: 1.25rem;
+}
+
+.block h3 {
+  margin: 0 0 0.5rem;
+  color: var(--accent);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.block h4 {
+  margin: 0.75rem 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr));
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.weapons {
+  width: 100%;
+  margin-top: 0.75rem;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.weapons th {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: normal;
+  text-align: left;
+}
+
+.weapons th,
+.weapons td {
+  padding: 0.25rem 0.5rem 0.25rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+  vertical-align: top;
+}
+
+.listing li {
+  padding: 0.15rem 0;
+}
+
+@media print {
+  .character-sheet button:not(.mark, .box),
+  .character-sheet select,
+  .character-sheet .tools {
+    display: none;
+  }
+
+  .play-bar {
+    position: static;
+  }
+}

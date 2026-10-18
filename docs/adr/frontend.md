@@ -20,14 +20,16 @@ their components for Svelte 4 syntax).
 ## Structure
 
 **FE-PAGES: One page per path.** `/` lists the user's characters,
-`/characters/{id}` edits one (the current step in the hash), `/profile`
-shows the user's profile, `/login` the sign-in page, `/register` creates
-an account; any other path is `NotFound.svelte`.
+`/characters/{id}` edits one (the current step in the hash),
+`/characters/{id}/sheet` shows its sheet for play (ADR FE-SHEET),
+`/profile` shows the user's profile, `/login` the sign-in page,
+`/register` creates an account; any other path is `NotFound.svelte`.
 
 **FE-SHARED-STATE: Shared state in `.svelte.ts` modules.** The session
 (`session.svelte.ts`), the URL (`router.svelte.ts`), the PWA status
-(`pwa.svelte.ts`) and the theme (`theme.svelte.ts`). Only the router
-reads and changes the URL: `match` names the page of a path, `takeQuery` reads once a message the backend
+(`pwa.svelte.ts`), the theme (`theme.svelte.ts`) and the screen wake lock
+(`wakelock.svelte.ts`). Only the router reads and changes the URL: `match`
+names the page of a path, `takeQuery` reads once a message the backend
 sent back (`?signin=failed`, `?link=…`). A child changes its parent's
 state through `$bindable` props or callbacks.
 
@@ -44,12 +46,12 @@ utilities several components share; each component styles itself in its
 
 **FE-THEMES: Four themes, chosen per device.** "Système" (the default)
 follows the device between light and dark; "Clair", "Sombre" and "OLED"
-are chosen on the profile page (`ThemePicker.svelte`), kept in
-`localStorage` and applied as `data-theme` on the root before the app
-shows. OLED keeps the page black with a dimmed ink, and no component
-paints a lighter surface behind content (borders mix `--muted` instead),
-so an OLED screen lights almost nothing. Printing is always light. *Why:*
-the app stays open on the table for hours.
+are chosen on the profile page or the sheet (`ThemePicker.svelte`),
+kept in `localStorage` and applied as `data-theme` on the root before
+the app shows. OLED keeps the page black with a dimmed ink, and no
+component paints a lighter surface behind content (borders mix
+`--muted` instead), so an OLED screen lights almost nothing. Printing is
+always light. *Why:* the app stays open on the table for hours.
 
 ## Pages
 
@@ -85,6 +87,22 @@ nickname) and a reason; an `absolute` waiver asks for confirmation.
 holds them in French, keyed by rule identifier and filled with the
 violation's parameters; a rule without a message shows its identifier.
 
+**FE-SHEET: The sheet, for play.** `/characters/{id}/sheet` shows a
+character on one page, read only, its values from `evaluate()`: a resource
+bar kept in reach (COF2 PV, PM for a character who knows a spell, PC and
+DR; COC2 the échelle de santé, its states from the catalogue, ADR
+ENG-HEALTH-STATES), then characteristics, combat and weapons, voies,
+traits and equipment in columns. Each waiver and adjustment gets a
+numbered mark where it applies (the characteristic, the voie, the value,
+or the section of the violation's step) that opens its note, and every
+note is listed at the end. The resources are counted on the device only:
+`PlayState` keeps what was used, by value identifier, in `localStorage`
+under `palimpseste.play.{id}`, and nothing is sent to the backend. The
+screen is kept on through the Screen Wake Lock API while the sheet shows,
+with a toggle. An unfinished character still shows, under a banner that
+leads back to the editor. *Why the amounts used:* a maximum changed in
+the editor keeps the count sensible.
+
 ## PWA
 
 **FE-PWA: `vite-plugin-pwa`, `generateSW`.** It writes the manifest (with
@@ -99,7 +117,7 @@ through `virtual:pwa-register` in prompt mode (`injectRegister: false`)
 and checks for a new version every hour. A new version waits until the
 user reloads from `StatusBanner.svelte` (unsaved edits still ask first).
 The banner also says when the browser is offline: edits are then not
-saved, and nothing is stored offline. *Why:* auto-update left open apps
+saved, and no document is stored offline. *Why:* auto-update left open apps
 on the previous build, and a reload must never interrupt an edit.
 
 ## Tests
@@ -119,3 +137,5 @@ check`, as they need a WebAssembly build and Node.
 - Starting-equipment buttons, and the rules the interface still knows
   (armour limits by table order).
 - Local drafts when a session ends mid-edit.
+- Saving play state (the resources of the sheet) with the character or a
+  campaign, and the Game Master seeing it.

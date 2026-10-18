@@ -50,10 +50,11 @@ src/
 ├── session.svelte.ts           the signed-in user
 ├── pwa.svelte.ts               new version and offline status
 ├── theme.svelte.ts             the theme chosen on this device (Système, Clair, Sombre, OLED)
+├── wakelock.svelte.ts          keeps the screen on while a page wants it
 ├── api.ts                      the REST client: types and calls; a 401 signs out
 ├── errors.ts                   describe(): what an error means, in French
 ├── messages.ts                 French violation messages, keyed by rule identifier
-├── engines.ts                  engine display names
+├── engines.ts                  engine display names, unsettled(): what is left to settle
 ├── index.css                   design tokens, element defaults, shared utilities
 ├── SignIn, Register, ProfilePage, ProfileFields, Characters, CharacterItem,
 │   NotFound, StatusBanner, ErrorMessage, ThemePicker (.svelte)
@@ -67,6 +68,15 @@ src/
 │   │   RankPicker, Items (.svelte)
 │   ├── Overrides.svelte, OverrideDialog.svelte, override.ts   waivers and adjustments
 │   └── edits.ts                helpers to read and change a document
+├── sheet/                      the character sheet, /characters/{id}/sheet
+│   ├── SheetPage.svelte        loads the character
+│   ├── CharacterSheet.svelte   evaluates once, header, unfinished banner, the screen kept on
+│   ├── FantasySheet.svelte, ContemporainSheet.svelte   per-engine resource bar and sections
+│   ├── Counter, HealthTrack, Restore (.svelte)          resources counted during a session
+│   ├── play.svelte.ts          PlayState: what was used, per character, in localStorage
+│   ├── notes.ts, Marks.svelte, NoteList.svelte          waivers and adjustments, numbered and placed
+│   ├── Tile, Characteristics, VoieRanks (.svelte)
+│   └── values.ts               how values, damage and critical ranges are written
 ├── test/
 │   ├── setup.ts                loads the real .wasm once for every test
 │   └── backend.ts              stubBackend(): a fetch stub that records what was sent
@@ -74,8 +84,9 @@ src/
 ```
 
 Pages (ADR FE-PAGES): `/` lists the characters, `/characters/{id}` edits
-one (the current step is in the hash), `/profile`, `/login` and
-`/register`. Any other path shows `NotFound.svelte`.
+one (the current step is in the hash), `/characters/{id}/sheet` shows its
+sheet for play, `/profile`, `/login` and `/register`. Any other path shows
+`NotFound.svelte`.
 
 ## Conventions
 

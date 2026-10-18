@@ -9,6 +9,7 @@ describe("match", () => {
     expect(match("/register")).toEqual({ name: "register" });
     expect(match("/profile")).toEqual({ name: "profile" });
     expect(match("/characters/12")).toEqual({ name: "character", id: 12 });
+    expect(match("/characters/12/sheet")).toEqual({ name: "character-sheet", id: 12 });
     for (const path of ["/characters/x", "/characters/1/more", "/nothing", "/login/"]) {
       expect(match(path), path).toEqual({ name: "not-found" });
     }
