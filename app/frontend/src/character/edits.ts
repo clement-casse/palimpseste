@@ -13,7 +13,10 @@ export function ranksOf(voies: VoieEntry[] | undefined, id: string): number[] {
 
 /** Sets the ranks acquired in voie `id`; no rank drops the voie. */
 export function setRanks(holder: { voies?: VoieEntry[] }, id: string, ranks: number[]) {
-  const voies = (holder.voies ??= []);
+  // Through the holder: on a `$state` document, the value of `??=` is the
+  // raw array, which the document no longer sees.
+  holder.voies ??= [];
+  const voies = holder.voies;
   const index = voies.findIndex((voie) => voie.id === id);
   if (ranks.length === 0) {
     if (index >= 0) voies.splice(index, 1);
