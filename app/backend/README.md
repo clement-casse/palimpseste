@@ -97,8 +97,9 @@ server starts and warns that nobody can sign in. Logs go through `tracing`
 and are filtered by `RUST_LOG`. They carry ids only, never documents,
 tokens or claims (ADR BE-LOGS).
 
-The SQLite file is created if missing. Opening it creates the tables and
-migrates an older schema in place (ADR BE-STORE).
+The SQLite file is created if missing. Opening it migrates its schema,
+versioned by `PRAGMA user_version`, in place; a database newer than the
+server is refused (ADR BE-STORE).
 
 ## Recipes
 
@@ -109,8 +110,8 @@ Follow the backend-structure skill. In short:
   its model type, and a handler and view in `api/http.rs`.
 - **New persistence:** a method on `PalimpsesteRepository`, implemented in
   `repo/sqlite.rs` on `spawn_blocking`. A schema change is a migration
-  that runs when its column is missing, with a test that opens an older
-  database.
+  appended to `MIGRATIONS`, run once per database, with a test that opens
+  a database of the previous version.
 - **A new configuration option:** a clap field with an `env` in `main.rs`,
   and a row in ADR BE-CONFIG.
 
@@ -123,8 +124,8 @@ Follow the backend-structure skill. In short:
   against `MockPalimpsesteService`. `api/http/sign_in.rs` runs the whole
   OIDC flow against a local test issuer, signed with
   `tests/fixtures/issuer-key.pem`.
-- **SQLite:** `repo/sqlite.rs` runs on temporary database files, migrations
-  included.
+- **SQLite:** `repo/sqlite.rs` runs on in-memory and temporary database
+  files, migrations included.
 
 ```sh
 mise run check          # fmt, lint, test (nextest), doc-test
