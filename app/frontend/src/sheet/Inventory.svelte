@@ -1,6 +1,9 @@
 <script lang="ts">
   // The items carried in play, counted up and down as they are used (torches,
   // javelots…). An item used up stays, struck out, until it is removed.
+  import { Button } from "flowbite-svelte";
+  import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
+
   import type { ItemEntry } from "../wasm/palimpseste_wasm";
 
   let {
@@ -24,48 +27,31 @@
 </script>
 
 {#each items as item, i (i)}
-  <li class={["item", item.quantity === 0 && "spent"]}>
-    <span class="name">{label(item)}</span>
-    <span class="quantity">×{item.quantity}</span>
-    <button
-      type="button"
+  <li class="flex items-center gap-1.5">
+    <span class={["flex-1", item.quantity === 0 && "text-gray-500 line-through dark:text-gray-400"]}>
+      {label(item)}
+    </span>
+    <span
+      class={["text-gray-500 tabular-nums dark:text-gray-400", item.quantity === 0 && "line-through"]}
+    >
+      ×{item.quantity}
+    </span>
+    <Button
+      color="alternative"
+      class="h-10 w-10 p-0 print:hidden"
       aria-label="Retirer 1 {label(item)}"
       disabled={item.quantity === 0}
-      onclick={() => count(i, item.quantity - 1)}>−</button
+      onclick={() => count(i, item.quantity - 1)}
     >
-    <button type="button" aria-label="Ajouter 1 {label(item)}" onclick={() => count(i, item.quantity + 1)}
-      >+</button
+      <MinusOutline size="sm" />
+    </Button>
+    <Button
+      color="alternative"
+      class="h-10 w-10 p-0 print:hidden"
+      aria-label="Ajouter 1 {label(item)}"
+      onclick={() => count(i, item.quantity + 1)}
     >
+      <PlusOutline size="sm" />
+    </Button>
   </li>
 {/each}
-
-<style>
-  .item {
-    display: flex;
-    gap: 0.4rem;
-    align-items: center;
-  }
-
-  .name {
-    flex: 1;
-  }
-
-  .quantity {
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .spent .name,
-  .spent .quantity {
-    color: var(--muted);
-    text-decoration: line-through;
-  }
-
-  button {
-    width: 2.5rem;
-    height: 2.5rem;
-    padding: 0;
-    font-size: 1.2rem;
-    line-height: 1;
-  }
-</style>

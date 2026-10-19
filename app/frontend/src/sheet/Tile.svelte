@@ -2,6 +2,8 @@
   // A value read at a glance: its short name above, the value large. With
   // its breakdown, the value opens it, so what makes it (an armour, a
   // capacité, an adjustment) can be read.
+  import { Button, Card, Modal } from "flowbite-svelte";
+
   import Breakdown from "../character/Breakdown.svelte";
   import type { ContributionLine } from "../wasm/palimpseste_wasm";
   import Marks from "./Marks.svelte";
@@ -20,70 +22,25 @@
     notes?: Note[];
     contributions?: ContributionLine[];
   } = $props();
-  const uid = $props.id();
+
+  let open = $state(false);
 </script>
 
-<li class="tile" {title}>
-  <span class="label">{label}<Marks {notes} /></span>
-  {#if contributions && contributions.length > 0}
-    <button type="button" class="value" popovertarget={uid} aria-label="{title ?? label} {value}, détail"
-      >{value}</button
-    >
-    <div popover id={uid} class="breakdown">
-      <strong>{title ?? label} : {value}</strong>
-      <Breakdown {contributions} />
-    </div>
-  {:else}
-    <strong class="value">{value}</strong>
-  {/if}
+<li {title}>
+  <Card class="h-full items-center px-1 py-2 text-center">
+    <span class="text-xs leading-tight text-gray-500 dark:text-gray-400">{label}<Marks {notes} /></span>
+    {#if contributions && contributions.length > 0}
+      <Button
+        color="light"
+        class="min-w-11 border-0 px-1 py-0 text-2xl font-bold underline decoration-dotted underline-offset-4"
+        aria-label="{title ?? label} {value}, détail"
+        onclick={() => (open = true)}>{value}</Button
+      >
+      <Modal bind:open title="{title ?? label} : {value}" size="xs">
+        <Breakdown {contributions} />
+      </Modal>
+    {:else}
+      <strong class="text-2xl font-bold text-gray-900 dark:text-white">{value}</strong>
+    {/if}
+  </Card>
 </li>
-
-<style>
-  .tile {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0.4rem 0.25rem;
-    border: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
-    border-radius: 0.5rem;
-    text-align: center;
-  }
-
-  .label {
-    color: var(--muted);
-    font-size: 0.8rem;
-    line-height: 1.2;
-  }
-
-  .value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    line-height: 1.3;
-  }
-
-  button.value {
-    min-width: 2.75rem;
-    padding: 0 0.25rem;
-    border: none;
-    border-bottom: 1px dotted var(--muted);
-    border-radius: 0;
-    background: none;
-    color: inherit;
-    cursor: pointer;
-  }
-
-  .breakdown {
-    min-width: min(18rem, calc(100vw - 2rem));
-    max-width: min(24rem, calc(100vw - 2rem));
-    padding: 1rem;
-    border: 1px solid var(--muted);
-    border-radius: 0.5rem;
-    background: var(--page);
-    color: var(--ink);
-    text-align: left;
-  }
-
-  .breakdown::backdrop {
-    background: rgb(0 0 0 / 50%);
-  }
-</style>

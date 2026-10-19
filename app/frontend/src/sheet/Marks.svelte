@@ -1,66 +1,32 @@
 <script lang="ts">
   // The numbered marks of the notes about one thing of the sheet. A mark
-  // opens its note in a popover; the sheet also lists every note.
+  // opens its note; the sheet also lists every note.
+  import { Button, Modal, P } from "flowbite-svelte";
+
   import type { Note } from "./notes";
 
   let { notes }: { notes: Note[] } = $props();
-  const uid = $props.id();
+
+  // The note shown, by number.
+  let shown = $state<number | null>(null);
 </script>
 
 {#each notes as note (note.number)}
-  <button
-    type="button"
-    class={["mark", note.kind]}
-    popovertarget="{uid}-{note.number}"
-    aria-label="Note {note.number}">{note.number}</button
+  <Button
+    size="xs"
+    pill
+    outline
+    class={["ms-1 px-2 py-0 align-super text-xs", note.kind === "adjustment" && "border-dashed"]}
+    aria-label="Note {note.number}"
+    onclick={() => (shown = note.number)}>{note.number}</Button
   >
-  <span popover id="{uid}-{note.number}" class="note">
-    <strong>{note.number}. {note.kind === "waiver" ? "Dérogation" : "Ajustement"}</strong>
-    {note.text}
-    <span class="by">{note.author} : {note.reason}</span>
-  </span>
+  <Modal
+    open={shown === note.number}
+    title="{note.number}. {note.kind === 'waiver' ? 'Dérogation' : 'Ajustement'}"
+    size="xs"
+    oncancel={() => (shown = null)}
+  >
+    <P>{note.text}</P>
+    <P size="sm" class="text-gray-500 dark:text-gray-400">{note.author} : {note.reason}</P>
+  </Modal>
 {/each}
-
-<style>
-  .mark {
-    min-width: 1.6rem;
-    margin-left: 0.25rem;
-    padding: 0 0.35rem;
-    border: 1px solid var(--accent);
-    border-radius: 1rem;
-    background: none;
-    color: var(--accent);
-    font-size: 0.75rem;
-    font-weight: bold;
-    line-height: 1.4;
-    vertical-align: super;
-    cursor: pointer;
-  }
-
-  .mark.adjustment {
-    border-style: dashed;
-  }
-
-  .note {
-    max-width: min(24rem, calc(100vw - 2rem));
-    padding: 1rem;
-    border: 1px solid var(--muted);
-    border-radius: 0.5rem;
-    background: var(--page);
-    color: var(--ink);
-    font-size: 1rem;
-    font-weight: normal;
-    text-transform: none;
-    letter-spacing: normal;
-  }
-
-  .note::backdrop {
-    background: rgb(0 0 0 / 50%);
-  }
-
-  .by {
-    display: block;
-    margin-top: 0.5rem;
-    color: var(--muted);
-  }
-</style>

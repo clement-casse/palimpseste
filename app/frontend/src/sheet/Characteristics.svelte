@@ -9,7 +9,7 @@
     $props();
 </script>
 
-<ul class="tiles">
+<ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
   {#each characteristics as line (line.characteristic)}
     <Tile
       label={line.characteristic}

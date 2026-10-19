@@ -3,6 +3,9 @@
   // the first one not blackened (COC.DER.HEALTH-SCALE). The states come from
   // the engine; the one shown is the last whose step is filled, so a state
   // on a blackened step never applies (COC.CNT.SCALES).
+  import { Button } from "flowbite-svelte";
+  import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
+
   import { signed } from "../character/edits";
   import type { HealthScaleEntry } from "../wasm/palimpseste_wasm";
   import Marks from "./Marks.svelte";
@@ -38,31 +41,51 @@
   }
 </script>
 
-<div class="health" role="group" aria-label="Échelle de santé">
-  <div class="head">
-    <span class="label">Santé<Marks {notes} /></span>
-    <output>{damage} / {length} DM</output>
-    <span class={["state", state && "hurt"]}>
+<div class="min-w-0 flex-[1_1_26rem]" role="group" aria-label="Échelle de santé">
+  <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <span class="font-bold">Santé<Marks {notes} /></span>
+    <output class="text-xl font-bold tabular-nums">{damage} / {length} DM</output>
+    <span class={state ? "font-bold text-red-700 dark:text-red-500" : "text-gray-500 dark:text-gray-400"}>
       {state ? `${state.name} ${signed(state.malus)}` : "Aucun état"}
     </span>
-    <span class="buttons">
-      <button type="button" aria-label="Retirer 1 DM" disabled={damage <= 0} onclick={() => onchange(damage - 1)}>
-        −
-      </button>
-      <button type="button" aria-label="Ajouter 1 DM" disabled={damage >= length} onclick={() => onchange(damage + 1)}>
-        +
-      </button>
+    <span class="ms-auto flex gap-1.5 print:hidden">
+      <Button
+        color="alternative"
+        class="h-11 w-11 p-0"
+        aria-label="Retirer 1 DM"
+        disabled={damage <= 0}
+        onclick={() => onchange(damage - 1)}
+      >
+        <MinusOutline />
+      </Button>
+      <Button
+        color="alternative"
+        class="h-11 w-11 p-0"
+        aria-label="Ajouter 1 DM"
+        disabled={damage >= length}
+        onclick={() => onchange(damage + 1)}
+      >
+        <PlusOutline />
+      </Button>
     </span>
   </div>
-  <div class="track" style:--steps={steps}>
+  <div class="mt-1.5 grid grid-cols-[repeat(var(--steps),minmax(0,1fr))] gap-0.5" style:--steps={steps}>
     {#each { length: steps }, i (i)}
       {@const step = i + 1}
       {#if step <= blackened}
-        <span class="box blackened" title="Case {step} noircie"></span>
+        <!-- Hatched rather than filled, so it reads as struck out in every theme. -->
+        <span
+          class="h-8 rounded-sm border border-gray-400 bg-[repeating-linear-gradient(45deg,var(--color-gray-400)_0_2px,transparent_2px_6px)] nth-[5n]:border-2"
+          title="Case {step} noircie"
+        ></span>
       {:else}
+        <!-- Every fifth step ends a state. -->
         <button
           type="button"
-          class={["box", step <= reached && "filled"]}
+          class={[
+            "h-8 cursor-pointer rounded-sm border nth-[5n]:border-2",
+            step <= reached ? "border-red-600 bg-red-600" : "border-gray-400 dark:border-gray-500",
+          ]}
           aria-label="Case {step}"
           aria-pressed={step <= reached}
           onclick={() => fill(step)}
@@ -71,7 +94,10 @@
     {/each}
     {#each scale.states as s, i (s.id)}
       <span
-        class={["threshold", s.step <= blackened && "gone"]}
+        class={[
+          "row-start-2 text-right text-xs leading-tight text-gray-500 dark:text-gray-400",
+          s.step <= blackened && "line-through",
+        ]}
         style:grid-column="{(scale.states[i - 1]?.step ?? 0) + 1} / {s.step + 1}"
       >
         {s.name} {signed(s.malus)}
@@ -79,91 +105,3 @@
     {/each}
   </div>
 </div>
-
-<style>
-  .health {
-    flex: 1 1 26rem;
-  }
-
-  .head {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.75rem;
-    align-items: center;
-  }
-
-  .label {
-    font-weight: bold;
-  }
-
-  output {
-    font-size: 1.25rem;
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .state {
-    color: var(--muted);
-  }
-
-  .state.hurt {
-    color: var(--error);
-    font-weight: bold;
-  }
-
-  .buttons {
-    display: flex;
-    gap: 0.4rem;
-    margin-left: auto;
-  }
-
-  .buttons button {
-    width: 2.75rem;
-    height: 2.75rem;
-    padding: 0;
-    font-size: 1.4rem;
-    line-height: 1;
-  }
-
-  .track {
-    display: grid;
-    grid-template-columns: repeat(var(--steps), minmax(0, 1fr));
-    gap: 0.2rem;
-    margin-top: 0.4rem;
-  }
-
-  .box {
-    height: 2rem;
-    padding: 0;
-    border: 1px solid var(--muted);
-    border-radius: 0.2rem;
-    background: none;
-  }
-
-  /* Every fifth step ends a state. */
-  .box:nth-child(5n) {
-    border-width: 2px;
-  }
-
-  .box.filled {
-    border-color: var(--error);
-    background: var(--error);
-  }
-
-  /* Hatched rather than filled, so it reads as struck out in every theme. */
-  .box.blackened {
-    background: repeating-linear-gradient(45deg, var(--muted) 0 2px, transparent 2px 6px);
-  }
-
-  .threshold {
-    grid-row: 2;
-    color: var(--muted);
-    font-size: 0.75rem;
-    line-height: 1.2;
-    text-align: right;
-  }
-
-  .threshold.gone {
-    text-decoration: line-through;
-  }
-</style>
