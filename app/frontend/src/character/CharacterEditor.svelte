@@ -74,9 +74,11 @@
     if (!pending) return;
     if (pending.kind === "waiver") {
       const { rule, subject } = pending.violation;
-      (choices.waivers ??= []).push({ rule, subject, author, reason });
+      choices.waivers ??= [];
+      choices.waivers.push({ rule, subject, author, reason });
     } else {
-      (choices.adjustments ??= []).push({ target: pending.target, amount, author, reason });
+      choices.adjustments ??= [];
+      choices.adjustments.push({ target: pending.target, amount, author, reason });
     }
   }
 

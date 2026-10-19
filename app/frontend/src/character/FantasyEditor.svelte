@@ -102,7 +102,8 @@
     if (catalog.armours.some((a) => a.id === id)) choices.armour = id;
     else if (catalog.shields.some((s) => s.id === id)) choices.shield = id;
     else {
-      const items = (choices.items ??= []);
+      choices.items ??= [];
+      const items = choices.items;
       const item = items.find((i) => i.kind === "weapon" && i.id === id);
       if (item) item.quantity += 1;
       else items.push({ kind: "weapon", id, quantity: 1 });

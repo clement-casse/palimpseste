@@ -51,7 +51,8 @@
   }
 
   function setTrait(id: string, points: number | undefined) {
-    const traits = (choices.traits ??= []);
+    choices.traits ??= [];
+    const traits = choices.traits;
     const index = traits.findIndex((t) => t.id === id);
     if (points === undefined) {
       if (index >= 0) traits.splice(index, 1);
