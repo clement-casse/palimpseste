@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Li, List } from "flowbite-svelte";
+
   import type { ContributionLine } from "../wasm/palimpseste_wasm";
   import { signed } from "./edits";
 
@@ -6,31 +8,17 @@
 </script>
 
 {#if contributions.length > 0}
-  <ul>
+  <List tag="ul" class="space-y-1 text-sm text-gray-500 dark:text-gray-400">
     {#each contributions as contribution, i (i)}
-      <li class={contribution.source}>
+      <Li
+        class={[
+          "flex flex-wrap justify-between gap-2",
+          contribution.source === "adjustment" && "text-primary-700 dark:text-primary-400",
+        ]}
+      >
         <span>{contribution.label}</span>
         <span>{signed(contribution.amount)}</span>
-      </li>
+      </Li>
     {/each}
-  </ul>
+  </List>
 {/if}
-
-<style>
-  ul {
-    margin: 0.25rem 0 0.5rem 1rem;
-    color: var(--muted);
-  }
-
-  li {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .adjustment {
-    color: var(--accent);
-  }
-</style>

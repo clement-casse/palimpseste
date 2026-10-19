@@ -2,6 +2,8 @@
   // Asks for what every override needs: a reason, signed by the current
   // user. Breaking a rule stays possible, never easier than following it;
   // an absolute rule asks for an explicit confirmation.
+  import { Button, Checkbox, Helper, Input, Label, Modal, P, Textarea } from "flowbite-svelte";
+
   import { message } from "../messages";
   import { I32_MAX, I32_MIN } from "./edits";
   import type { OverrideRequest } from "./override";
@@ -18,7 +20,6 @@
     oncancel: () => void;
   } = $props();
 
-  let dialog: HTMLDialogElement | undefined = $state();
   let reason = $state("");
   let amount = $state(1);
   let confirmed = $state(false);
@@ -34,91 +35,61 @@
       (request?.kind !== "adjustment" ||
         (Number.isInteger(amount) && amount !== 0 && amount >= I32_MIN && amount <= I32_MAX)),
   );
+  const title = $derived(
+    request?.kind === "waiver" ? "Accepter une dérogation" : request ? `Ajuster ${request.label}` : "",
+  );
 
-  $effect(() => {
-    if (!dialog) return;
-    if (request) {
-      reason = "";
-      amount = 1;
-      confirmed = false;
-      if (!dialog.open) dialog.showModal();
-    } else if (dialog.open) {
-      dialog.close();
-    }
-  });
+  // The next request starts from a blank form.
+  function reset() {
+    reason = "";
+    amount = 1;
+    confirmed = false;
+  }
+
+  function cancel() {
+    reset();
+    oncancel();
+  }
 
   function submit(event: SubmitEvent) {
     event.preventDefault();
-    if (valid) onconfirm(reason.trim(), amount);
+    if (!valid) return;
+    const [given, added] = [reason.trim(), amount];
+    reset();
+    onconfirm(given, added);
   }
 </script>
 
-<dialog bind:this={dialog} {oncancel}>
+<Modal open={request !== null} {title} size="sm" oncancel={cancel}>
   {#if request}
-    <form onsubmit={submit}>
+    <form class="flex flex-col gap-4" onsubmit={submit}>
       {#if request.kind === "waiver"}
-        <h3>Accepter une dérogation</h3>
-        <p>{message(request.violation)}</p>
-        <p class="hint">
+        <P>{message(request.violation)}</P>
+        <Helper class="text-sm">
           La règle <code>{request.violation.rule}</code> reste signalée comme acceptée par une
           dérogation.
-        </p>
+        </Helper>
       {:else}
-        <h3>Ajuster {request.label}</h3>
-        <label>
+        <Label class="flex flex-col gap-2">
           Valeur ajoutée
-          <input type="number" step="1" bind:value={amount} required />
-        </label>
-        <p class="hint">L'ajustement reste visible dans le détail de la valeur.</p>
+          <Input type="number" step="1" bind:value={amount} required />
+        </Label>
+        <Helper class="text-sm">L'ajustement reste visible dans le détail de la valeur.</Helper>
       {/if}
-      <label>
+      <Label class="flex flex-col gap-2">
         Raison
-        <textarea bind:value={reason} required rows="3"></textarea>
-      </label>
+        <Textarea bind:value={reason} required rows={3} class="w-full" />
+      </Label>
       {#if absolute}
-        <label class="confirm">
-          <input type="checkbox" bind:checked={confirmed} />
+        <Checkbox bind:checked={confirmed}>
           Le livre interdit d'enfreindre cette règle ; je confirme la dérogation.
-        </label>
+        </Checkbox>
       {/if}
-      <p class="hint">Signé {author}.</p>
-      <div class="actions">
-        <button type="button" onclick={oncancel}>Annuler</button>
-        <button type="submit" disabled={!valid}>Confirmer</button>
+      <Helper class="text-sm">Signé {author}.</Helper>
+      <div class="flex justify-end gap-2">
+        <Button color="alternative" onclick={cancel}>Annuler</Button>
+        <Button type="submit" disabled={!valid}>Confirmer</Button>
       </div>
     </form>
   {/if}
-</dialog>
-
-<style>
-  dialog {
-    max-width: 30rem;
-    background: var(--page);
-    color: var(--ink);
-    border: 1px solid var(--accent);
-  }
-
-  form {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-  }
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .confirm {
-    flex-direction: row;
-    align-items: baseline;
-  }
-
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-  }
-</style>
+</Modal>

@@ -1,6 +1,8 @@
 <script lang="ts">
   // Items carried: weapons of the engine's tables, and free text items the
   // rules never check (D-26).
+  import { Button, Input, Listgroup, ListgroupItem, Select } from "flowbite-svelte";
+
   import type { ItemEntry } from "../wasm/palimpseste_wasm";
   import { U32_MAX, integerOf, valueOf } from "./edits";
 
@@ -49,59 +51,39 @@
   }
 </script>
 
-<ul class="items">
-  {#each items as item, i (i)}
-    <li>
-      <span>{label(item)}</span>
-      <input
-        type="number"
-        min="0"
-        aria-label="Quantité"
-        value={item.quantity}
-        onchange={(event) => typeQuantity(event, i)}
-      />
-      <button type="button" onclick={() => onchange(items.filter((_, j) => j !== i))}>
-        Retirer
-      </button>
-    </li>
-  {/each}
-</ul>
-<div class="add">
-  <select aria-label="Ajouter une arme" onchange={addWeapon}>
-    <option value="">Ajouter une arme…</option>
-    {#each weapons as weapon (weapon.id)}
-      <option value={weapon.id}>{weapon.name}</option>
-    {/each}
-  </select>
-  <form onsubmit={addOther}>
-    <input aria-label="Autre objet" placeholder="Autre objet" bind:value={other} />
-    <button type="submit" disabled={!other.trim()}>Ajouter</button>
-  </form>
+<div class="space-y-3">
+  {#if items.length > 0}
+    <Listgroup class="flex-col">
+      {#each items as item, i (i)}
+        <ListgroupItem class="flex-wrap gap-2 text-gray-900 dark:text-white">
+          <span class="flex-1">{label(item)}</span>
+          <div class="w-20">
+            <Input
+              type="number"
+              min="0"
+              size="sm"
+              aria-label="Quantité"
+              value={item.quantity}
+              onchange={(event) => typeQuantity(event, i)}
+            />
+          </div>
+          <Button size="xs" color="alternative" onclick={() => onchange(items.filter((_, j) => j !== i))}>
+            Retirer
+          </Button>
+        </ListgroupItem>
+      {/each}
+    </Listgroup>
+  {/if}
+  <div class="flex flex-wrap gap-2">
+    <Select placeholder="" class="w-auto" aria-label="Ajouter une arme" onchange={addWeapon}>
+      <option value="">Ajouter une arme…</option>
+      {#each weapons as weapon (weapon.id)}
+        <option value={weapon.id}>{weapon.name}</option>
+      {/each}
+    </Select>
+    <form class="flex flex-1 gap-2" onsubmit={addOther}>
+      <Input class="min-w-40" aria-label="Autre objet" placeholder="Autre objet" bind:value={other} />
+      <Button type="submit" disabled={!other.trim()}>Ajouter</Button>
+    </form>
+  </div>
 </div>
-
-<style>
-  li {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.2rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
-  }
-
-  li > span {
-    flex: 1;
-  }
-
-  li input {
-    flex: 0 0 4rem;
-    width: 4rem;
-  }
-
-  .add {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-</style>

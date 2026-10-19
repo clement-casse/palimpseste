@@ -2,6 +2,24 @@
   // The choices of a COC2 character, one section per creation step. The book
   // allows deferring and revisiting every choice; budgets and limits come
   // from the engine, which reports what goes beyond them.
+  import {
+    Badge,
+    Checkbox,
+    Heading,
+    Helper,
+    Input,
+    Label,
+    Listgroup,
+    ListgroupItem,
+    P,
+    Select,
+    Table,
+    TableBody,
+    TableBodyCell,
+    TableBodyRow,
+    TableHeadCell,
+  } from "flowbite-svelte";
+
   import type {
     Characteristic,
     ContemporainCatalog,
@@ -85,25 +103,28 @@
 </script>
 
 {#if step === "domaine-and-age"}
-  <div class="row">
-    <label class="field">
+  <div class="flex flex-wrap items-end gap-4">
+    <Label class="flex flex-col gap-2">
       Âge
-      <input
-        type="number"
-        min="0"
-        step="1"
-        value={choices.age ?? ""}
-        onchange={(e) => {
-          const age = integerOf(e, choices.age, { min: 0, max: U16_MAX });
-          if (age !== null) (choices.age = age);
-        }}
-      />
-    </label>
-    <p class="hint">Tranche d'âge : {details.ageBracket ?? "—"}</p>
+      <div class="w-28">
+        <Input
+          type="number"
+          min="0"
+          step="1"
+          value={choices.age ?? ""}
+          onchange={(e) => {
+            const age = integerOf(e, choices.age, { min: 0, max: U16_MAX });
+            if (age !== null) (choices.age = age);
+          }}
+        />
+      </div>
+    </Label>
+    <Helper class="pb-3 text-sm">Tranche d'âge : {details.ageBracket ?? "—"}</Helper>
   </div>
-  <label class="field">
+  <Label class="flex flex-col gap-2">
     Domaine
-    <select
+    <Select
+      placeholder=""
       value={choices.domaine ?? ""}
       onchange={(e) => {
         const id = valueOf(e);
@@ -121,61 +142,62 @@
           <option value={d.id}>{d.name}</option>
         {/each}
       </optgroup>
-    </select>
-  </label>
+    </Select>
+  </Label>
   {#if domaine}
-    <p class="hint">
+    <Helper class="text-sm">
       Retenez au moins {domaine.minimumRetained} des voies du domaine :
       {domaine.slots.map((slot) => slot.map((id) => voieNames.get(id)).join(" ou ")).join(", ")}.
-    </p>
+    </Helper>
   {/if}
 {:else if step === "voies"}
-  <p class="budget">
+  <P weight="semibold">
     Points de capacité : {details.capacityPointsSpent} / {total("coc.capacity-points")} · Voies :
     {details.voieCount} / {total("coc.max-voies")} · Rang maximum : {total("coc.max-rank")}
-  </p>
-  <ul class="voies">
+  </P>
+  <Listgroup class="flex-col">
     {#each [...catalog.voies].sort((a, b) => Number(domaineVoies.has(b.id)) - Number(domaineVoies.has(a.id))) as voie (voie.id)}
-      <li>
-        <span>
+      <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
+        <span class="flex items-center gap-2">
           {voie.name}
-          {#if domaineVoies.has(voie.id)}<small class="tag">domaine</small>{/if}
+          {#if domaineVoies.has(voie.id)}<Badge>domaine</Badge>{/if}
         </span>
         <RankPicker
           ranks={ranksOf(choices.voies, voie.id)}
           onchange={(ranks) => setRanks(choices, voie.id, ranks)}
         />
-      </li>
+      </ListgroupItem>
     {/each}
-  </ul>
+  </Listgroup>
 {:else if step === "traits"}
-  <p class="budget">
+  <P weight="semibold">
     Avantages {signed(details.advantages)} · Désavantages {signed(details.disadvantages)} · Solde
     {signed(details.advantages + details.disadvantages)} · Classe sociale :
     {details.socialClass ?? "contradictoire"}
-  </p>
+  </P>
   {#each [true, false] as advantage (advantage)}
-    <h3>{advantage ? "Avantages" : "Désavantages"}</h3>
-    <ul class="traits">
+    <Heading tag="h3" class="text-lg">{advantage ? "Avantages" : "Désavantages"}</Heading>
+    <Listgroup class="flex-col">
       {#each catalog.traits.filter((t) => t.advantage === advantage) as t (t.id)}
         {@const points = pointsOf(t.id)}
-        <li>
-          <label>
-            <input
-              type="checkbox"
-              checked={points !== undefined}
-              onchange={(e) =>
-                setTrait(
-                  t.id,
-                  e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked
-                    ? t.allowedPoints[0]
-                    : undefined,
-                )}
-            />
+        <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
+          <Checkbox
+            checked={points !== undefined}
+            onchange={(e) =>
+              setTrait(
+                t.id,
+                e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked
+                  ? t.allowedPoints[0]
+                  : undefined,
+              )}
+          >
             {t.name}
-          </label>
+          </Checkbox>
           {#if points !== undefined}
-            <select
+            <Select
+              placeholder=""
+              size="sm"
+              class="w-auto"
               aria-label="Points de {t.name}"
               value={String(points)}
               onchange={(e) => setTrait(t.id, Number(valueOf(e)))}
@@ -188,91 +210,69 @@
                   <option value={String(p)}>{p}</option>
                 {/each}
               </optgroup>
-            </select>
+            </Select>
           {/if}
-        </li>
+        </ListgroupItem>
       {/each}
-    </ul>
+    </Listgroup>
   {/each}
 {:else if step === "characteristics"}
-  <p class="budget">
+  <P weight="semibold">
     Points de caractéristique : {details.caracPointsSpent} / {total("coc.carac-points")}
-  </p>
-  <table class="assign">
-    <tbody>
+  </P>
+  <Table class="w-auto">
+    <TableBody>
       {#each CHARACTERISTICS as c (c)}
-        <tr>
-          <th scope="row">{c}</th>
-          <td>
-            <input
-              type="number"
-              step="1"
-              aria-label="Points attribués à {c}"
-              value={choices.caracPoints?.[c] ?? 0}
-              onchange={(e) => {
-                const points = integerOf(e, choices.caracPoints?.[c] ?? 0);
-                if (points !== null) setPoints(c, points);
-              }}
-            />
-          </td>
-        </tr>
+        <TableBodyRow>
+          <TableHeadCell scope="row" class="py-2">{c}</TableHeadCell>
+          <TableBodyCell class="py-2">
+            <div class="w-24">
+              <Input
+                type="number"
+                step="1"
+                size="sm"
+                aria-label="Points attribués à {c}"
+                value={choices.caracPoints?.[c] ?? 0}
+                onchange={(e) => {
+                  const points = integerOf(e, choices.caracPoints?.[c] ?? 0);
+                  if (points !== null) setPoints(c, points);
+                }}
+              />
+            </div>
+          </TableBodyCell>
+        </TableBodyRow>
       {/each}
-    </tbody>
-  </table>
+    </TableBody>
+  </Table>
 {:else if step === "equipment"}
   {#if startingWeapons.length > 0}
-    <h3>Équipement de départ des voies</h3>
-    <ul class="starting">
+    <Heading tag="h3" class="text-lg">Équipement de départ des voies</Heading>
+    <ul class="list-inside list-disc">
       {#each startingWeapons as voie (voie.id)}
         <li>{voie.name} : une arme ({voie.startingWeapon?.name})</li>
       {/each}
     </ul>
   {/if}
-  <h3>Protections</h3>
-  <ul class="protections">
+  <Heading tag="h3" class="text-lg">Protections</Heading>
+  <div class="flex flex-col gap-2">
     {#each catalog.protections as protection (protection.id)}
-      <li>
-        <label>
-          <input
-            type="checkbox"
-            checked={choices.protections?.includes(protection.id) ?? false}
-            onchange={(e) =>
-              toggleProtection(
-                protection.id,
-                e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked,
-              )}
-          />
-          {protection.name}
-        </label>
-      </li>
+      <Checkbox
+        checked={choices.protections?.includes(protection.id) ?? false}
+        onchange={(e) =>
+          toggleProtection(
+            protection.id,
+            e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked,
+          )}
+      >
+        {protection.name}
+      </Checkbox>
     {/each}
-  </ul>
-  <p class="hint">Aucune voie ne donne de protection : en porter une se négocie avec le MJ.</p>
-  <h3>Objets portés</h3>
+  </div>
+  <Helper class="text-sm">Aucune voie ne donne de protection : en porter une se négocie avec le MJ.</Helper>
+  <Heading tag="h3" class="text-lg">Objets portés</Heading>
   <Items
     items={choices.items ?? []}
     weapons={catalog.weapons.filter((w) => w.attackMode.id !== "unarmed")}
     onchange={setItems}
   />
 {/if}
-
-<style>
-  .budget {
-    font-weight: bold;
-  }
-
-  .traits li {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.2rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
-  }
-
-  .tag {
-    margin-left: 0.4rem;
-    color: var(--accent);
-  }
-</style>

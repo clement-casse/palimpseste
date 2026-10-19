@@ -1,6 +1,8 @@
 <script lang="ts">
   // Every waiver and adjustment of the character, attributed, with a way to
   // take it back. A waiver that no longer accepts anything is flagged.
+  import { Button, Heading, Listgroup, ListgroupItem } from "flowbite-svelte";
+
   import type { AdjustmentEntry, Sheet, WaiverEntry } from "../wasm/palimpseste_wasm";
   import { sameSubject, signed } from "./edits";
 
@@ -39,47 +41,34 @@
 </script>
 
 {#if waivers.length > 0 || adjustments.length > 0}
-  <section class="overrides">
-    <h3>Dérogations et ajustements</h3>
-    <ul>
+  <section class="mt-6 space-y-3">
+    <Heading tag="h3" class="text-lg">Dérogations et ajustements</Heading>
+    <Listgroup class="flex-col">
       {#each waivers as waiver, i (i)}
-        <li class={{ unused: unused(waiver) }}>
+        <ListgroupItem
+          class={[
+            "flex-wrap justify-between gap-2",
+            unused(waiver) ? "text-gray-500 dark:text-gray-400" : "text-gray-900 dark:text-white",
+          ]}
+        >
           <span>
-            Dérogation <code>{waiver.rule}</code> sur {waiverSubject(waiver)}
+            Dérogation <code class="text-xs text-gray-500 dark:text-gray-400">{waiver.rule}</code> sur
+            {waiverSubject(waiver)}
             {#if unused(waiver)}<em>(sans objet)</em>{/if}
             — {waiver.author} : {waiver.reason}
           </span>
-          <button type="button" onclick={() => onremovewaiver(i)}>Retirer</button>
-        </li>
+          <Button size="xs" color="alternative" onclick={() => onremovewaiver(i)}>Retirer</Button>
+        </ListgroupItem>
       {/each}
       {#each adjustments as adjustment, i (i)}
-        <li>
+        <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
           <span>
             Ajustement {target(adjustment)}
             {signed(adjustment.amount)} — {adjustment.author} : {adjustment.reason}
           </span>
-          <button type="button" onclick={() => onremoveadjustment(i)}>Retirer</button>
-        </li>
+          <Button size="xs" color="alternative" onclick={() => onremoveadjustment(i)}>Retirer</Button>
+        </ListgroupItem>
       {/each}
-    </ul>
+    </Listgroup>
   </section>
 {/if}
-
-<style>
-  li {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  code {
-    font-size: 0.8em;
-    color: var(--muted);
-  }
-
-  .unused {
-    color: var(--muted);
-  }
-</style>

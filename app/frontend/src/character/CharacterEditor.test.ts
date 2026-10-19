@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { navigate } from "../router.svelte";
@@ -151,5 +151,38 @@ describe("renaming", () => {
     open("profil");
     await rename("Échec");
     expect(screen.getByRole("alert").textContent?.trim()).toMatch(/^Le serveur a rencontré une erreur/);
+  });
+});
+
+describe("adjusting", () => {
+  it("asks for a reason, then lists the adjustment signed by the user", async () => {
+    stubBackend(storing());
+    open("characteristics");
+    await fireEvent.click(screen.getByRole("button", { name: /^AGI/ }));
+    await fireEvent.click(screen.getAllByRole("button", { name: "Ajuster…" })[0]);
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.textContent).toMatch("Ajuster AGI");
+    const confirm = screen.getByRole("button", { name: "Confirmer" }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    await fireEvent.input(screen.getByRole("textbox", { name: "Raison" }), {
+      target: { value: "Entraînement" },
+    });
+    await fireEvent.click(confirm);
+    await vi.runAllTimersAsync();
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText(/Ajustement AGI\s+\+1 — Ana : Entraînement/)).toBeTruthy();
+  });
+});
+
+describe("the steps", () => {
+  it("open the step chosen in the list", async () => {
+    stubBackend(storing());
+    open("profil");
+    const steps = screen.getByRole("navigation", { name: "Étapes de création" });
+    await fireEvent.click(within(steps).getByRole("button", { name: /Équipement/ }));
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Équipement");
+    expect(location.hash).toBe("#equipment");
   });
 });
