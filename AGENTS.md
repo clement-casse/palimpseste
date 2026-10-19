@@ -82,7 +82,8 @@ An HTTP server that serves the application, signs users in, checks and stores (s
 In scope:
 
 - **Authentication** (ADR BE-OIDC, ADR BE-SESSIONS): sign-in through any number of OIDC providers configured by the environment (Authorization Code with PKCE, `state` and `nonce`, through `openidconnect`), one flow for signing in and up: the first sign-in of an identity (issuer, subject) starts a registration, and its user is created once they choose their nickname and profile, or never if they cancel (ADR BE-FIRST-SIGN-IN), server-side sessions in an `HttpOnly`, `SameSite=Lax` cookie, sign-out.
-- **Users** (ADR BE-USERS, ADR BE-IDENTITIES): a private id never sent out, a public nickname (unique regardless of ASCII case) and profile, changed by their owner; one or more identities, at most one per provider, each with a private label, linked by a signed-in user through the sign-in flow. Only the signed-in user is reachable (`/api/me`); every route but `/api/auth/*` needs a session.
+- **Users** (ADR BE-USERS, ADR BE-IDENTITIES): a private id never sent out, a public nickname (unique regardless of ASCII case) and profile, changed by their owner; one or more identities, at most one per provider, each with a private label, linked by a signed-in user through the sign-in flow. Only the signed-in user is reachable (`/api/me`), and their friends; every route but `/api/auth/*` needs a session.
+- **Friends** (ADR BE-INVITATIONS, ADR BE-FRIENDS): single-use invitation links valid 7 days, their token hashed and never in a URL; a mutual friendship, named by its id, ended by either friend for both; friends see each other's nickname and profile and read each other's characters, never changing them.
 - **Characters**: a list per user, reachable by their owner only, each with a name, its engine (`contemporain`, `fantasy`) and its choices document; read, renamed, deleted, and the document replaced with `If-Match`.
 - **Checks**: that requests are well formed and a document is readable by `palimpseste-document` (ADR BE-CHECKS). Never violations: a rule-breaking character is stored as sent.
 - **Persistence**: SQLite through `rusqlite`, called from `spawn_blocking`.
@@ -91,7 +92,7 @@ In scope:
 
 - **Structure** (ADR BE-LAYOUT): one bounded context in a lib + bin crate; the model, the use cases (`PalimpsesteService`) and `Error` in `lib.rs` and concept-named files, adapters in `repo/`, `provider/` and `api/`, wiring and clap configuration in `main.rs` only. Follow `.claude/skills/backend-structure/SKILL.md`.
 
-Out of scope, do not implement or prepare for: unlinking or merging identities, showing users to each other, roles, friends, parties, campaigns, computing violations.
+Out of scope, do not implement or prepare for: unlinking or merging identities, searching users, choosing which characters friends see, blocking, roles, parties, campaigns, computing violations.
 
 ## Current scope: `app/document`
 

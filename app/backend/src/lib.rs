@@ -1,9 +1,10 @@
 //! Palimpseste backend: signs users in through OIDC providers
 //! (ADR BE-OIDC), creates their account at their first sign-in
 //! (ADR BE-FIRST-SIGN-IN), keeps their nickname, profile and identities
-//! (ADR BE-USERS), and checks and stores their characters with their choices
-//! documents (ADR BE-CHECKS). It never applies a rule: the rules run in the
-//! browser.
+//! (ADR BE-USERS), makes friends of users through invitation links
+//! (ADR BE-INVITATIONS, ADR BE-FRIENDS), and checks and stores their characters
+//! with their choices documents (ADR BE-CHECKS). It never applies a rule: the
+//! rules run in the browser.
 //!
 //! The crate is one bounded context laid out as ADR BE-LAYOUT says: the model
 //! ([`User`], [`Character`], ...), the use cases ([`PalimpsesteService`])
@@ -13,6 +14,8 @@
 
 pub mod api;
 mod character;
+mod friend;
+mod invitation;
 mod provider;
 mod registration;
 mod repo;
@@ -28,6 +31,11 @@ use thiserror::Error as ThisError;
 pub use crate::{
     api::http::HttpApi,
     character::{Character, CharacterId, CharacterName, Version},
+    friend::{Friend, FriendshipId},
+    invitation::{
+        INVITATION_TTL, Invitation, InvitationId, InvitationStatus, InvitationToken,
+        ReceivedInvitation, UnixTime,
+    },
     provider::{IdentityProviders, OidcProviders, ProviderConfig},
     registration::{PendingRegistration, REGISTRATION_TTL, Registration, RegistrationToken},
     repo::{PalimpsesteRepository, SqliteRepo},
@@ -40,8 +48,9 @@ pub use crate::{
     user::{Identity, NICKNAME_MAX, Nickname, PROFILE_MAX, Profile, User, UserId},
 };
 
-/// Who a use case acts for: the signed-in user. Every character and
-/// profile use case reaches that user's data only.
+/// Who a use case acts for: the signed-in user. Every use case reaches that
+/// user's data only, and reads their friends' characters (ADR
+/// BE-ACTION-CONTEXT).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ActionContext {
     /// The signed-in user.
@@ -146,6 +155,59 @@ pub trait PalimpsesteService: Send + Sync + 'static {
         expected: Version,
         document: Document,
     ) -> Result<Version, Error>;
+
+    /// Creates an invitation of the user, to send as a link: the only time
+    /// its token is given.
+    async fn create_invitation(
+        &self,
+        ctx: &ActionContext,
+    ) -> Result<(InvitationToken, Invitation), Error>;
+
+    /// The user's invitations waiting to be accepted, the first to expire
+    /// first.
+    async fn invitations(&self, ctx: &ActionContext) -> Result<Vec<Invitation>, Error>;
+
+    /// Revokes an invitation of the user.
+    async fn revoke_invitation(&self, ctx: &ActionContext, id: InvitationId) -> Result<(), Error>;
+
+    /// The invitation `token`, as the user who opened its link sees it.
+    async fn received_invitation(
+        &self,
+        ctx: &ActionContext,
+        token: &InvitationToken,
+    ) -> Result<ReceivedInvitation, Error>;
+
+    /// Accepts the invitation `token`: the user and its sender become
+    /// friends, and the invitation is used up.
+    async fn accept_invitation(
+        &self,
+        ctx: &ActionContext,
+        token: &InvitationToken,
+    ) -> Result<Friend, Error>;
+
+    /// The user's friends, by nickname.
+    async fn friends(&self, ctx: &ActionContext) -> Result<Vec<Friend>, Error>;
+
+    /// A friend of the user.
+    async fn friend(&self, ctx: &ActionContext, id: FriendshipId) -> Result<Friend, Error>;
+
+    /// Ends a friendship of the user, for both friends.
+    async fn remove_friend(&self, ctx: &ActionContext, id: FriendshipId) -> Result<(), Error>;
+
+    /// The characters of a friend of the user, to read.
+    async fn friend_characters(
+        &self,
+        ctx: &ActionContext,
+        id: FriendshipId,
+    ) -> Result<Vec<Character>, Error>;
+
+    /// A character of a friend of the user, to read.
+    async fn friend_character(
+        &self,
+        ctx: &ActionContext,
+        id: FriendshipId,
+        character: CharacterId,
+    ) -> Result<Character, Error>;
 }
 
 /// Why a use case failed. Each variant but [`Error::Underlying`] is an
@@ -201,6 +263,19 @@ pub enum Error {
     /// A document of another engine than its character's.
     #[error("the document is of another engine than the character")]
     OtherEngine,
+    /// No invitation of this token waits to be accepted: unknown, expired,
+    /// used or revoked; or no invitation of the user has this id.
+    #[error("invitation not found")]
+    InvitationNotFound,
+    /// The user opened their own invitation: send it to someone else.
+    #[error("own invitation")]
+    OwnInvitation,
+    /// The user and the sender of the invitation are already friends.
+    #[error("already friends")]
+    AlreadyFriends,
+    /// Unknown, or not a friendship of the user.
+    #[error("friend not found")]
+    FriendNotFound,
     /// The character is not at the version expected: it is at this one.
     #[error("document at version {0}")]
     Stale(Version),

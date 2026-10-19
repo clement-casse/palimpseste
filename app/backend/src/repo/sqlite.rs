@@ -15,9 +15,10 @@ use palimpseste_document::{Document, Engine};
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, params};
 
 use crate::{
-    Character, CharacterId, CharacterName, Error, Identity, Linking, Nickname, PendingSignIn,
-    Profile, ProviderId, Registration, SignInId, TokenHash, User, UserId, Version,
-    repo::PalimpsesteRepository, user::nickname_candidates,
+    Character, CharacterId, CharacterName, Error, Friend, FriendshipId, Identity, Invitation,
+    InvitationId, Linking, Nickname, PendingSignIn, Profile, ProviderId, Registration, SignInId,
+    TokenHash, UnixTime, User, UserId, Version, friend::pair, repo::PalimpsesteRepository,
+    user::nickname_candidates,
 };
 
 /// The tables of schema version 1, created where missing.
@@ -105,14 +106,39 @@ const INDEXES: &str = "
 /// a migration turn off: rebuilding a table others reference (`users`)
 /// first makes `SqliteRepo::with` turn them off around `migrate`, and check
 /// them with `PRAGMA foreign_key_check` before the commit.
-const MIGRATIONS: [&str; 0] = [];
+const MIGRATIONS: [&str; 1] = [
+    // 2: invitations and friendships (ADR BE-INVITATIONS, ADR BE-FRIENDS).
+    // One friendship per pair of users, the lower id first.
+    "CREATE TABLE invitations (
+         id INTEGER PRIMARY KEY,
+         token_hash TEXT NOT NULL UNIQUE,
+         user_id INTEGER NOT NULL REFERENCES users (id),
+         expires_at INTEGER NOT NULL
+     );
+     CREATE INDEX invitations_user ON invitations (user_id);
+     CREATE TABLE friendships (
+         id INTEGER PRIMARY KEY,
+         user_low INTEGER NOT NULL REFERENCES users (id),
+         user_high INTEGER NOT NULL REFERENCES users (id),
+         CHECK (user_low < user_high),
+         UNIQUE (user_low, user_high)
+     );
+     CREATE INDEX friendships_high ON friendships (user_high);",
+];
 
 const USER_COLUMNS: &str = "users.id, users.nickname, users.profile";
 
 const CHARACTER_COLUMNS: &str = "id, name, engine, document, version";
 
-/// Users, their identities, sessions, sign-ins, registrations and
-/// characters, in one SQLite database. Clones share the connection.
+/// The friendships of user `?1`, each with its `id` and the other user as
+/// `friend_id`.
+const FRIENDSHIPS_OF: &str = "SELECT id,
+           CASE WHEN user_low = ?1 THEN user_high ELSE user_low END AS friend_id
+    FROM friendships WHERE user_low = ?1 OR user_high = ?1";
+
+/// Users, their identities, sessions, sign-ins, registrations, characters,
+/// invitations and friendships, in one SQLite database. Clones share the
+/// connection.
 #[derive(Debug, Clone)]
 pub struct SqliteRepo {
     connection: Arc<Mutex<Connection>>,
@@ -567,12 +593,13 @@ impl PalimpsesteRepository for SqliteRepo {
 
     async fn purge_expired(&self) -> Result<(), Error> {
         self.call(
-            "purging expired sessions, sign-ins and registrations",
+            "purging expired sessions, sign-ins, registrations and invitations",
             |connection| {
                 connection.execute_batch(
                     "DELETE FROM sessions WHERE expires_at <= unixepoch();
                  DELETE FROM logins WHERE expires_at <= unixepoch();
-                 DELETE FROM registrations WHERE expires_at <= unixepoch();",
+                 DELETE FROM registrations WHERE expires_at <= unixepoch();
+                 DELETE FROM invitations WHERE expires_at <= unixepoch();",
                 )
             },
         )
@@ -619,10 +646,7 @@ impl PalimpsesteRepository for SqliteRepo {
 
     async fn characters(&self, owner: UserId) -> Result<Vec<Character>, Error> {
         self.call("listing the characters of a user", move |connection| {
-            let mut statement = connection.prepare(&format!(
-                "SELECT {CHARACTER_COLUMNS} FROM characters WHERE user_id = ?1 ORDER BY id"
-            ))?;
-            statement.query_map(params![owner.0], character)?.collect()
+            owned_characters(connection, owner)
         })
         .await
     }
@@ -705,6 +729,204 @@ impl PalimpsesteRepository for SqliteRepo {
             Replaced::Stale(version) => Err(Error::Stale(version)),
         }
     }
+
+    async fn create_invitation(
+        &self,
+        inviter: UserId,
+        token: &TokenHash,
+        ttl: Duration,
+    ) -> Result<Invitation, Error> {
+        let token = token.0.clone();
+        self.call("creating an invitation", move |connection| {
+            connection.query_row(
+                "INSERT INTO invitations (token_hash, user_id, expires_at)
+                 VALUES (?1, ?2, unixepoch() + ?3)
+                 RETURNING id, expires_at",
+                params![token, inviter.0, seconds(ttl)],
+                invitation,
+            )
+        })
+        .await
+    }
+
+    async fn invitations(&self, inviter: UserId) -> Result<Vec<Invitation>, Error> {
+        self.call("listing the invitations of a user", move |connection| {
+            let mut statement = connection.prepare(
+                "SELECT id, expires_at FROM invitations
+                 WHERE user_id = ?1 AND expires_at > unixepoch()
+                 ORDER BY expires_at, id",
+            )?;
+            statement
+                .query_map(params![inviter.0], invitation)?
+                .collect()
+        })
+        .await
+    }
+
+    async fn delete_invitation(&self, inviter: UserId, id: InvitationId) -> Result<bool, Error> {
+        self.call("revoking an invitation", move |connection| {
+            let deleted = connection.execute(
+                "DELETE FROM invitations WHERE id = ?1 AND user_id = ?2",
+                params![id.get(), inviter.0],
+            )?;
+            Ok(deleted > 0)
+        })
+        .await
+    }
+
+    async fn invitation_inviter(&self, token: &TokenHash) -> Result<Option<User>, Error> {
+        let token = token.0.clone();
+        self.call("finding the sender of an invitation", move |connection| {
+            connection
+                .query_row(
+                    &format!(
+                        "SELECT {USER_COLUMNS} FROM invitations
+                         JOIN users ON users.id = invitations.user_id
+                         WHERE invitations.token_hash = ?1
+                           AND invitations.expires_at > unixepoch()"
+                    ),
+                    params![token],
+                    user,
+                )
+                .optional()
+        })
+        .await
+    }
+
+    async fn friendship_between(
+        &self,
+        one: UserId,
+        other: UserId,
+    ) -> Result<Option<FriendshipId>, Error> {
+        self.call("finding a friendship", move |connection| {
+            find_friendship(connection, one, other)
+        })
+        .await
+    }
+
+    async fn accept_invitation(&self, user: UserId, token: &TokenHash) -> Result<Friend, Error> {
+        let token = token.0.clone();
+        self.call("accepting an invitation", move |connection| {
+            let transaction = connection.transaction()?;
+            let inviter = transaction
+                .query_row(
+                    "SELECT user_id FROM invitations
+                     WHERE token_hash = ?1 AND expires_at > unixepoch()",
+                    params![token],
+                    |row| row.get(0).map(UserId),
+                )
+                .optional()?;
+            let Some(inviter) = inviter else {
+                return Ok(Err(Error::InvitationNotFound));
+            };
+            if inviter == user {
+                return Ok(Err(Error::OwnInvitation));
+            }
+            if find_friendship(&transaction, user, inviter)?.is_some() {
+                return Ok(Err(Error::AlreadyFriends));
+            }
+            transaction.execute(
+                "DELETE FROM invitations WHERE token_hash = ?1",
+                params![token],
+            )?;
+            let (low, high) = pair(user, inviter);
+            transaction.execute(
+                "INSERT INTO friendships (user_low, user_high) VALUES (?1, ?2)",
+                params![low.0, high.0],
+            )?;
+            let friendship = FriendshipId::from(transaction.last_insert_rowid());
+            let friend = transaction.query_row(
+                "SELECT ?1, nickname, profile FROM users WHERE id = ?2",
+                params![friendship.get(), inviter.0],
+                friend,
+            )?;
+            transaction.commit()?;
+            Ok(Ok(friend))
+        })
+        .await?
+    }
+
+    async fn friends(&self, user: UserId) -> Result<Vec<Friend>, Error> {
+        self.call("listing the friends of a user", move |connection| {
+            let mut statement = connection.prepare(&format!(
+                "SELECT mine.id, users.nickname, users.profile
+                 FROM ({FRIENDSHIPS_OF}) AS mine JOIN users ON users.id = mine.friend_id
+                 ORDER BY users.nickname COLLATE NOCASE, mine.id"
+            ))?;
+            statement.query_map(params![user.0], friend)?.collect()
+        })
+        .await
+    }
+
+    async fn friend(&self, user: UserId, id: FriendshipId) -> Result<Option<Friend>, Error> {
+        self.call("reading a friend", move |connection| {
+            connection
+                .query_row(
+                    &format!(
+                        "SELECT mine.id, users.nickname, users.profile
+                         FROM ({FRIENDSHIPS_OF}) AS mine JOIN users ON users.id = mine.friend_id
+                         WHERE mine.id = ?2"
+                    ),
+                    params![user.0, id.get()],
+                    friend,
+                )
+                .optional()
+        })
+        .await
+    }
+
+    async fn delete_friendship(&self, user: UserId, id: FriendshipId) -> Result<bool, Error> {
+        self.call("ending a friendship", move |connection| {
+            let deleted = connection.execute(
+                "DELETE FROM friendships WHERE id = ?2 AND (user_low = ?1 OR user_high = ?1)",
+                params![user.0, id.get()],
+            )?;
+            Ok(deleted > 0)
+        })
+        .await
+    }
+
+    async fn friend_characters(
+        &self,
+        user: UserId,
+        id: FriendshipId,
+    ) -> Result<Option<Vec<Character>>, Error> {
+        self.call("listing the characters of a friend", move |connection| {
+            let friend = connection
+                .query_row(
+                    &format!("SELECT friend_id FROM ({FRIENDSHIPS_OF}) WHERE id = ?2"),
+                    params![user.0, id.get()],
+                    |row| row.get(0).map(UserId),
+                )
+                .optional()?;
+            friend
+                .map(|friend| owned_characters(connection, friend))
+                .transpose()
+        })
+        .await
+    }
+
+    async fn friend_character(
+        &self,
+        user: UserId,
+        id: FriendshipId,
+        character: CharacterId,
+    ) -> Result<Option<Character>, Error> {
+        self.call("reading a character of a friend", move |connection| {
+            connection
+                .query_row(
+                    &format!(
+                        "SELECT {CHARACTER_COLUMNS} FROM characters
+                         WHERE id = ?3
+                           AND user_id = (SELECT friend_id FROM ({FRIENDSHIPS_OF}) WHERE id = ?2)"
+                    ),
+                    params![user.0, id.get(), character.get()],
+                    self::character,
+                )
+                .optional()
+        })
+        .await
+    }
 }
 
 /// `ttl` in whole seconds, for SQL.
@@ -777,6 +999,45 @@ fn find_character(
             character,
         )
         .optional()
+}
+
+/// The characters of `owner`, in the order they were created.
+fn owned_characters(connection: &Connection, owner: UserId) -> rusqlite::Result<Vec<Character>> {
+    let mut statement = connection.prepare(&format!(
+        "SELECT {CHARACTER_COLUMNS} FROM characters WHERE user_id = ?1 ORDER BY id"
+    ))?;
+    statement.query_map(params![owner.0], character)?.collect()
+}
+
+/// The friendship of `one` and `other`, if they are friends.
+fn find_friendship(
+    connection: &Connection,
+    one: UserId,
+    other: UserId,
+) -> rusqlite::Result<Option<FriendshipId>> {
+    let (low, high) = pair(one, other);
+    connection
+        .query_row(
+            "SELECT id FROM friendships WHERE user_low = ?1 AND user_high = ?2",
+            params![low.0, high.0],
+            |row| row.get::<_, i64>(0).map(FriendshipId::from),
+        )
+        .optional()
+}
+
+fn invitation(row: &Row<'_>) -> rusqlite::Result<Invitation> {
+    Ok(Invitation {
+        id: InvitationId::from(row.get::<_, i64>(0)?),
+        expires_at: UnixTime(row.get(1)?),
+    })
+}
+
+fn friend(row: &Row<'_>) -> rusqlite::Result<Friend> {
+    Ok(Friend {
+        friendship: FriendshipId::from(row.get::<_, i64>(0)?),
+        nickname: Nickname(row.get(1)?),
+        profile: Profile(row.get(2)?),
+    })
 }
 
 fn user(row: &Row<'_>) -> rusqlite::Result<User> {
@@ -1299,6 +1560,274 @@ mod tests {
             None
         );
         assert_eq!(repo.characters(ana.id).await.unwrap(), vec![]);
+    }
+
+    #[tokio::test]
+    async fn invitations_wait_until_revoked_or_expired() {
+        let repo = SqliteRepo::in_memory();
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let ben = sign_up(&repo, "b", "Ben").await;
+        let week = repo
+            .create_invitation(ana.id, &token("week"), HOUR * 24 * 7)
+            .await
+            .unwrap();
+        let hour = repo
+            .create_invitation(ana.id, &token("hour"), HOUR)
+            .await
+            .unwrap();
+        repo.create_invitation(ana.id, &token("expired"), Duration::ZERO)
+            .await
+            .unwrap();
+        assert!(hour.expires_at < week.expires_at);
+        assert_eq!(
+            repo.invitations(ana.id).await.unwrap(),
+            vec![hour.clone(), week.clone()]
+        );
+        assert_eq!(repo.invitations(ben.id).await.unwrap(), vec![]);
+        assert_eq!(
+            repo.invitation_inviter(&token("week")).await.unwrap(),
+            Some(ana.clone())
+        );
+        for unknown in ["expired", "none"] {
+            assert_eq!(
+                repo.invitation_inviter(&token(unknown)).await.unwrap(),
+                None
+            );
+        }
+
+        assert!(!repo.delete_invitation(ben.id, week.id).await.unwrap());
+        assert!(repo.delete_invitation(ana.id, week.id).await.unwrap());
+        assert!(!repo.delete_invitation(ana.id, week.id).await.unwrap());
+        assert_eq!(repo.invitation_inviter(&token("week")).await.unwrap(), None);
+        let kept = || -> i64 {
+            lock(&repo.connection)
+                .query_row("SELECT COUNT(*) FROM invitations", [], |row| row.get(0))
+                .unwrap()
+        };
+        // Hidden once expired, removed by the purge.
+        assert_eq!(kept(), 2);
+        repo.purge_expired().await.unwrap();
+        assert_eq!(kept(), 1);
+        assert_eq!(repo.invitations(ana.id).await.unwrap(), vec![hour]);
+    }
+
+    #[tokio::test]
+    async fn an_accepted_invitation_makes_friends_of_both() {
+        let repo = SqliteRepo::in_memory();
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let ben = sign_up(&repo, "b", "Ben").await;
+        let cy = sign_up(&repo, "c", "Cy").await;
+        for name in ["first", "second", "expired"] {
+            let ttl = if name == "expired" {
+                Duration::ZERO
+            } else {
+                HOUR
+            };
+            repo.create_invitation(ben.id, &token(name), ttl)
+                .await
+                .unwrap();
+        }
+        // Their sender cannot use it, and it stays for someone else.
+        assert!(matches!(
+            repo.accept_invitation(ben.id, &token("first")).await,
+            Err(Error::OwnInvitation)
+        ));
+        for unknown in ["expired", "none"] {
+            assert!(matches!(
+                repo.accept_invitation(ana.id, &token(unknown)).await,
+                Err(Error::InvitationNotFound)
+            ));
+        }
+        let ben_for_ana = repo
+            .accept_invitation(ana.id, &token("first"))
+            .await
+            .unwrap();
+        assert_eq!(ben_for_ana.nickname, ben.nickname);
+        // Used up.
+        assert!(matches!(
+            repo.accept_invitation(cy.id, &token("first")).await,
+            Err(Error::InvitationNotFound)
+        ));
+        assert_eq!(
+            repo.invitation_inviter(&token("first")).await.unwrap(),
+            None
+        );
+        assert_eq!(repo.invitations(ben.id).await.unwrap().len(), 1);
+        // Friends already: the second invitation stays for someone else.
+        assert!(matches!(
+            repo.accept_invitation(ana.id, &token("second")).await,
+            Err(Error::AlreadyFriends)
+        ));
+        let friendship = ben_for_ana.friendship;
+        let ana_for_ben = Friend {
+            friendship,
+            nickname: ana.nickname.clone(),
+            profile: ana.profile.clone(),
+        };
+        assert_eq!(
+            repo.friends(ana.id).await.unwrap(),
+            vec![ben_for_ana.clone()]
+        );
+        assert_eq!(
+            repo.friends(ben.id).await.unwrap(),
+            vec![ana_for_ben.clone()]
+        );
+        assert_eq!(repo.friends(cy.id).await.unwrap(), vec![]);
+        assert_eq!(
+            repo.friend(ben.id, friendship).await.unwrap(),
+            Some(ana_for_ben)
+        );
+        assert_eq!(repo.friend(cy.id, friendship).await.unwrap(), None);
+        for (one, other) in [(ana.id, ben.id), (ben.id, ana.id)] {
+            assert_eq!(
+                repo.friendship_between(one, other).await.unwrap(),
+                Some(friendship)
+            );
+        }
+        assert_eq!(repo.friendship_between(ana.id, cy.id).await.unwrap(), None);
+
+        // Cy accepts the second one: Ben's friends, by nickname.
+        repo.accept_invitation(cy.id, &token("second"))
+            .await
+            .unwrap();
+        let nicknames: Vec<String> = repo
+            .friends(ben.id)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|friend| friend.nickname.0)
+            .collect();
+        assert_eq!(nicknames, ["Ana", "Cy"]);
+    }
+
+    #[tokio::test]
+    async fn either_friend_ends_the_friendship_for_both() {
+        let repo = SqliteRepo::in_memory();
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let ben = sign_up(&repo, "b", "Ben").await;
+        let cy = sign_up(&repo, "c", "Cy").await;
+        repo.create_invitation(ana.id, &token("ana"), HOUR)
+            .await
+            .unwrap();
+        let friendship = repo
+            .accept_invitation(ben.id, &token("ana"))
+            .await
+            .unwrap()
+            .friendship;
+        assert!(!repo.delete_friendship(cy.id, friendship).await.unwrap());
+        assert!(repo.delete_friendship(ben.id, friendship).await.unwrap());
+        assert!(!repo.delete_friendship(ana.id, friendship).await.unwrap());
+        assert_eq!(repo.friends(ana.id).await.unwrap(), vec![]);
+        assert_eq!(repo.friends(ben.id).await.unwrap(), vec![]);
+        assert_eq!(repo.friendship_between(ana.id, ben.id).await.unwrap(), None);
+        // Friends again through a new invitation.
+        repo.create_invitation(ben.id, &token("ben"), HOUR)
+            .await
+            .unwrap();
+        repo.accept_invitation(ana.id, &token("ben")).await.unwrap();
+        assert!(
+            repo.friendship_between(ana.id, ben.id)
+                .await
+                .unwrap()
+                .is_some()
+        );
+    }
+
+    #[tokio::test]
+    async fn friends_read_each_others_characters_only() {
+        let repo = SqliteRepo::in_memory();
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let ben = sign_up(&repo, "b", "Ben").await;
+        let cy = sign_up(&repo, "c", "Cy").await;
+        let fantasy = Document::empty(Engine::Fantasy);
+        let brune = repo
+            .create_character(ana.id, &brune_name(), &fantasy)
+            .await
+            .unwrap();
+        let max = repo
+            .create_character(ben.id, &CharacterName::parse("Max").unwrap(), &fantasy)
+            .await
+            .unwrap();
+        let cyd = repo
+            .create_character(cy.id, &CharacterName::parse("Cyd").unwrap(), &fantasy)
+            .await
+            .unwrap();
+        repo.create_invitation(ana.id, &token("ana"), HOUR)
+            .await
+            .unwrap();
+        let friendship = repo
+            .accept_invitation(ben.id, &token("ana"))
+            .await
+            .unwrap()
+            .friendship;
+
+        assert_eq!(
+            repo.friend_characters(ben.id, friendship).await.unwrap(),
+            Some(vec![brune.clone()])
+        );
+        assert_eq!(
+            repo.friend_characters(ana.id, friendship).await.unwrap(),
+            Some(vec![max.clone()])
+        );
+        assert_eq!(
+            repo.friend_character(ben.id, friendship, brune.id)
+                .await
+                .unwrap(),
+            Some(brune.clone())
+        );
+        // Not one's own character, nor a third user's, through a friendship.
+        for character in [max.id, cyd.id] {
+            assert_eq!(
+                repo.friend_character(ben.id, friendship, character)
+                    .await
+                    .unwrap(),
+                None
+            );
+        }
+        // Not through someone else's friendship.
+        assert_eq!(
+            repo.friend_characters(cy.id, friendship).await.unwrap(),
+            None
+        );
+        assert_eq!(
+            repo.friend_character(cy.id, friendship, brune.id)
+                .await
+                .unwrap(),
+            None
+        );
+        // Reading never writes.
+        assert_eq!(repo.character(ben.id, brune.id).await.unwrap(), None);
+
+        repo.delete_friendship(ana.id, friendship).await.unwrap();
+        assert_eq!(
+            repo.friend_characters(ben.id, friendship).await.unwrap(),
+            None
+        );
+        assert_eq!(
+            repo.friend_character(ben.id, friendship, brune.id)
+                .await
+                .unwrap(),
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn migrates_a_database_of_version_1() {
+        let mut connection = Connection::open_in_memory().unwrap();
+        migrate(&mut connection, &MIGRATIONS[..0]).unwrap();
+        assert_eq!(schema_version(&connection), 1);
+        let repo = SqliteRepo {
+            connection: Arc::new(Mutex::new(connection)),
+        };
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let ben = sign_up(&repo, "b", "Ben").await;
+        migrate(&mut lock(&repo.connection), &MIGRATIONS).unwrap();
+        assert_eq!(schema_version(&lock(&repo.connection)), last_version());
+        repo.create_invitation(ana.id, &token("ana"), HOUR)
+            .await
+            .unwrap();
+        let ana_for_ben = repo.accept_invitation(ben.id, &token("ana")).await.unwrap();
+        assert_eq!(ana_for_ben.nickname, ana.nickname);
     }
 
     #[tokio::test]

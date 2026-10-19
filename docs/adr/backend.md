@@ -1,7 +1,8 @@
 # Backend
 
 `app/backend` (`palimpseste-backend`) serves the application, signs users
-in, and checks and stores their characters (ADR APP-STORE-ONLY). The
+in, makes friends of them, and checks and stores their characters (ADR
+APP-STORE-ONLY). The
 day-to-day guide to its layout is the backend-structure skill; where the
 skill and this document disagree, this document wins and the skill is
 updated.
@@ -47,9 +48,11 @@ and providers, the HTTP adapter against a mock of the service and end to
 end, the SQLite repository alone, and sign-in against an issuer the test
 serves (key in `tests/fixtures/issuer-key.pem`).
 
-**BE-ACTION-CONTEXT: Ownership is the whole policy.** Every use case
-acting for a signed-in user takes `ctx: &ActionContext` (the user's id)
-first, and every repository query is scoped by it. *Why:* with no roles
+**BE-ACTION-CONTEXT: Ownership and friendship are the whole policy.** Every
+use case acting for a signed-in user takes `ctx: &ActionContext` (the
+user's id) first, and every repository query is scoped by it: a user
+changes their own data only, and reads a friend's characters through a
+query that joins their friendship (ADR BE-FRIENDS). *Why:* with no roles
 nor parties, an authorizer would anticipate; it arrives with them.
 
 **BE-ERRORS: One `Error` enum.** With `thiserror`, each condition the user
@@ -63,7 +66,8 @@ alias.
 
 **BE-API: The routes.** Every route but `/api/auth/*` and `/healthz` answers `401`
 without a live session; another user's character is `404`, as if it did
-not exist; an unknown path under `/api` is `404`.
+not exist, except read as a friend's under `/api/me/friends`; an unknown
+path under `/api` is `404`.
 
 | Method | Path | Result |
 |---|---|---|
@@ -84,6 +88,16 @@ not exist; an unknown path under `/api` is `404`.
 | `PATCH` | `/api/characters/{id}` `{name}` | the renamed character |
 | `DELETE` | `/api/characters/{id}` | `204` |
 | `PUT` | `/api/characters/{id}/document` | `204`, the new version in `ETag` |
+| `GET` | `/api/me/invitations` | `[{id, expires}]`: the user's invitations waiting, the first to expire first, `expires` in seconds since the Unix epoch |
+| `POST` | `/api/me/invitations` | `201`, `{id, token, expires}`: the only time the token is sent (BE-INVITATIONS) |
+| `DELETE` | `/api/me/invitations/{id}` | `204`, the invitation revoked |
+| `POST` | `/api/invitations/lookup` `{token}` | `{nickname, profile, status, friend}`: the sender, and `status` `open`, `own` or `friends` (then `friend` is the friendship); `404` for an invitation unknown, expired, used or revoked |
+| `POST` | `/api/me/friends` `{token}` | `201`, the sender as a friend `{id, nickname, profile}`, the invitation used up; `404` as for `lookup` |
+| `GET` | `/api/me/friends` | `[{id, nickname, profile}]`, by nickname |
+| `GET` | `/api/me/friends/{id}` | the friend |
+| `DELETE` | `/api/me/friends/{id}` | `204`, the friendship ended for both |
+| `GET` | `/api/me/friends/{id}/characters` | the friend's characters, as `/api/me/characters` |
+| `GET` | `/api/me/friends/{id}/characters/{character}` | `{id, name, engine, document, version}`, to read |
 | `GET` | `/healthz` | `200` `ok` while the database answers, else `503` with no body; `no-store` (BE-HEALTH) |
 
 **BE-HEALTH: A cheap health check.** `/healthz` is what the hosting
@@ -103,14 +117,15 @@ computes violations.
 | Status | Request |
 |---|---|
 | `400` | malformed JSON |
-| `422` | JSON of the wrong shape (an unknown field in `PATCH /api/me` or `POST /api/auth/registration`, an unknown engine, a negative rank); a blank or too long nickname or profile; a blank character name; a document of another engine than the character's, or unreadable (ADR APP-READABLE) |
-| `409` | a nickname another user has; a registration of an identity another browser registered meanwhile |
+| `422` | JSON of the wrong shape (an unknown field in `PATCH /api/me`, `POST /api/auth/registration` or a body carrying an invitation token, an unknown engine, a negative rank); a blank or too long nickname or profile; a blank character name; a document of another engine than the character's, or unreadable (ADR APP-READABLE); accepting one's own invitation |
+| `409` | a nickname another user has; a registration of an identity another browser registered meanwhile; accepting an invitation of a friend |
 | `428` | a document `PUT` without `If-Match` |
 | `412` | a document `PUT` at a stale version, with the current `ETag` |
 
 **BE-STORE: SQLite through `rusqlite`.** `rusqlite` (`bundled`), one
 connection, each query on `spawn_blocking`. Tables `users`, `identities`,
-`sessions`, `logins`, `registrations` and `characters`; a document is stored as JSON text
+`sessions`, `logins`, `registrations`, `characters`, `invitations` and
+`friendships` (version 2); a document is stored as JSON text
 next to a version counter, its `ETag`. Foreign keys are enforced on the
 connection. The schema version is `PRAGMA user_version`, and opening the
 store migrates in one transaction: a database of no version (new, or older
@@ -159,8 +174,8 @@ leaves the server. The nickname is unique regardless of ASCII case (an
 index `COLLATE NOCASE`); trimmed, it is not blank and holds at most 32
 characters. The profile is free text, trimmed, at most 2000 characters,
 empty until written. Their owner changes them. "Public" says what others
-may see once friends or parties exist; no route shows a user to another
-yet.
+see: a user's friends, and whoever opens one of their invitation links
+(ADR BE-FRIENDS).
 
 **BE-FIRST-SIGN-IN: The first sign-in creates an account, once asked.**
 Signing in and signing up are one flow: the first sign-in of an identity no
@@ -191,6 +206,29 @@ the same flow and callback (one redirect URI per provider), with the user
 recorded in `logins.link_user`; the callback then links the identity
 instead of opening a session. Another user's identity is never moved nor
 merged (`link=taken`).
+
+## Friends
+
+**BE-INVITATIONS: Friends through single-use links.** No user searches for
+another: a user creates an invitation, sends its link, and the one person
+who accepts it becomes their friend. An invitation is a random 32-byte
+token, kept for 7 days (`invitations`) as its SHA-256 with its sender, as
+sessions are, so it is shown once, when created; its sender lists the ones
+waiting and revokes them. Accepting it uses it up; its sender cannot, and
+neither can a friend of theirs, both keeping it for someone else. The link
+is `/invitation#{token}`, and the API takes the token in JSON bodies only:
+a fragment never reaches the server, and the request trace (BE-LOGS) never
+records a token. Opening a link needs a session, so an invitation shows its
+sender's nickname and profile to users only. *Why single-use:* a forwarded
+link befriends one person at most, and a friend reads every character.
+
+**BE-FRIENDS: A friendship is mutual.** `friendships` keeps one row per
+pair of users, the lower id first (`CHECK`, `UNIQUE`), so either friend
+removing it removes it for both. Friends see each other's nickname and
+profile, and read each other's characters, never changing them: a
+friend's character is reached under `/api/me/friends/{id}` only, and the
+character routes stay their owner's. A friend is named by the friendship's
+id, so a user's id never leaves the server (BE-USERS).
 
 ## Operation
 
@@ -241,7 +279,8 @@ events).
 - The service: each domain event at `info` (registration started and
   cancelled, user created, signed in and out, identity linked, profile
   updated, character created, renamed or
-  deleted, document stored with its version).
+  deleted, document stored with its version, invitation created and
+  revoked, friendship created and removed).
 - The HTTP adapter: conflicts and stale versions at `info`; unprocessable
   requests with why, a missing `If-Match` and failed sign-ins at `warn`;
   internal errors and a failed health check at `error`.
@@ -259,6 +298,6 @@ stale path is never cached as the app shell. Every other file
 ## Open
 
 - Unlinking an identity (keeping at least one), and merging two users.
-- Showing users to each other, roles and an authorizer: with friends or
-  parties.
+- Roles and an authorizer: with parties.
+- Choosing which characters friends see, and blocking a user.
 - Structured error bodies, and the body of a `412`.

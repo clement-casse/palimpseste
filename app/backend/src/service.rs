@@ -6,11 +6,12 @@ use async_trait::async_trait;
 use palimpseste_document::{Document, Engine};
 
 use crate::{
-    ActionContext, Character, CharacterId, CharacterName, Error, IdentityProviders, LinkedIdentity,
-    Linking, Nickname, PalimpsesteRepository, PalimpsesteService, PendingRegistration,
-    PendingSignIn, Profile, ProviderAnswer, ProviderId, ProviderSummary, REGISTRATION_TTL,
-    RegistrationToken, SESSION_TTL, SIGN_IN_TTL, SessionToken, SignInEnd, SignInId, StartedSignIn,
-    User, UserId, VerifiedIdentity, Version,
+    ActionContext, Character, CharacterId, CharacterName, Error, Friend, FriendshipId,
+    INVITATION_TTL, IdentityProviders, Invitation, InvitationId, InvitationStatus, InvitationToken,
+    LinkedIdentity, Linking, Nickname, PalimpsesteRepository, PalimpsesteService,
+    PendingRegistration, PendingSignIn, Profile, ProviderAnswer, ProviderId, ProviderSummary,
+    REGISTRATION_TTL, ReceivedInvitation, RegistrationToken, SESSION_TTL, SIGN_IN_TTL,
+    SessionToken, SignInEnd, SignInId, StartedSignIn, User, UserId, VerifiedIdentity, Version,
 };
 
 /// The use cases, keeping their data in `R` and signing in through `P`.
@@ -353,6 +354,104 @@ impl<R: PalimpsesteRepository, P: IdentityProviders> PalimpsesteService
             .await?;
         tracing::info!(character_id = %id, %version, "document stored");
         Ok(version)
+    }
+
+    async fn create_invitation(
+        &self,
+        ctx: &ActionContext,
+    ) -> Result<(InvitationToken, Invitation), Error> {
+        let token = InvitationToken::random();
+        let invitation = self
+            .repo
+            .create_invitation(ctx.user, &token.hash(), INVITATION_TTL)
+            .await?;
+        tracing::info!(invitation_id = %invitation.id, user_id = %ctx.user, "invitation created");
+        Ok((token, invitation))
+    }
+
+    async fn invitations(&self, ctx: &ActionContext) -> Result<Vec<Invitation>, Error> {
+        self.repo.invitations(ctx.user).await
+    }
+
+    async fn revoke_invitation(&self, ctx: &ActionContext, id: InvitationId) -> Result<(), Error> {
+        if !self.repo.delete_invitation(ctx.user, id).await? {
+            return Err(Error::InvitationNotFound);
+        }
+        tracing::info!(invitation_id = %id, "invitation revoked");
+        Ok(())
+    }
+
+    async fn received_invitation(
+        &self,
+        ctx: &ActionContext,
+        token: &InvitationToken,
+    ) -> Result<ReceivedInvitation, Error> {
+        let inviter = self
+            .repo
+            .invitation_inviter(&token.hash())
+            .await?
+            .ok_or(Error::InvitationNotFound)?;
+        let status = if inviter.id == ctx.user {
+            InvitationStatus::Own
+        } else {
+            self.repo
+                .friendship_between(ctx.user, inviter.id)
+                .await?
+                .map_or(InvitationStatus::Open, InvitationStatus::Friends)
+        };
+        Ok(ReceivedInvitation { inviter, status })
+    }
+
+    async fn accept_invitation(
+        &self,
+        ctx: &ActionContext,
+        token: &InvitationToken,
+    ) -> Result<Friend, Error> {
+        let friend = self.repo.accept_invitation(ctx.user, &token.hash()).await?;
+        tracing::info!(friendship_id = %friend.friendship, user_id = %ctx.user, "friendship created");
+        Ok(friend)
+    }
+
+    async fn friends(&self, ctx: &ActionContext) -> Result<Vec<Friend>, Error> {
+        self.repo.friends(ctx.user).await
+    }
+
+    async fn friend(&self, ctx: &ActionContext, id: FriendshipId) -> Result<Friend, Error> {
+        self.repo
+            .friend(ctx.user, id)
+            .await?
+            .ok_or(Error::FriendNotFound)
+    }
+
+    async fn remove_friend(&self, ctx: &ActionContext, id: FriendshipId) -> Result<(), Error> {
+        if !self.repo.delete_friendship(ctx.user, id).await? {
+            return Err(Error::FriendNotFound);
+        }
+        tracing::info!(friendship_id = %id, user_id = %ctx.user, "friendship removed");
+        Ok(())
+    }
+
+    async fn friend_characters(
+        &self,
+        ctx: &ActionContext,
+        id: FriendshipId,
+    ) -> Result<Vec<Character>, Error> {
+        self.repo
+            .friend_characters(ctx.user, id)
+            .await?
+            .ok_or(Error::FriendNotFound)
+    }
+
+    async fn friend_character(
+        &self,
+        ctx: &ActionContext,
+        id: FriendshipId,
+        character: CharacterId,
+    ) -> Result<Character, Error> {
+        self.repo
+            .friend_character(ctx.user, id, character)
+            .await?
+            .ok_or(Error::CharacterNotFound)
     }
 }
 
@@ -714,6 +813,183 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(version, Version::from(2));
+    }
+
+    fn ben() -> User {
+        User {
+            id: UserId(2),
+            nickname: Nickname::parse("Ben").unwrap(),
+            profile: Profile::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn an_invitation_is_created_for_a_week() {
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_create_invitation()
+            .withf(|user, _, ttl| *user == ANA.user && *ttl == INVITATION_TTL)
+            .times(1)
+            .returning(|_, _, _| {
+                Ok(Invitation {
+                    id: InvitationId::from(1),
+                    expires_at: crate::UnixTime(100),
+                })
+            });
+        let (token, invitation) = service(repo, MockIdentityProviders::new())
+            .create_invitation(&ANA)
+            .await
+            .unwrap();
+        assert_eq!(token.as_str().len(), 64);
+        assert_eq!(invitation.id, InvitationId::from(1));
+    }
+
+    #[tokio::test]
+    async fn a_received_invitation_says_what_accepting_it_would_do() {
+        let token = InvitationToken::from_link("token");
+        let received = |inviter: User, friendship: Option<FriendshipId>| {
+            let mut repo = MockPalimpsesteRepository::new();
+            repo.expect_invitation_inviter()
+                .with(eq(token.hash()))
+                .returning(move |_| Ok(Some(inviter.clone())));
+            repo.expect_friendship_between()
+                .returning(move |_, _| Ok(friendship));
+            service(repo, MockIdentityProviders::new())
+        };
+        let status = |service: PalimpsesteServiceImpl<_, _>| {
+            let token = token.clone();
+            async move {
+                service
+                    .received_invitation(&ANA, &token)
+                    .await
+                    .unwrap()
+                    .status
+            }
+        };
+        assert_eq!(status(received(ben(), None)).await, InvitationStatus::Open);
+        assert_eq!(status(received(user(), None)).await, InvitationStatus::Own);
+        let friendship = FriendshipId::from(7);
+        assert_eq!(
+            status(received(ben(), Some(friendship))).await,
+            InvitationStatus::Friends(friendship)
+        );
+
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_invitation_inviter().returning(|_| Ok(None));
+        let result = service(repo, MockIdentityProviders::new())
+            .received_invitation(&ANA, &token)
+            .await;
+        assert!(matches!(result, Err(Error::InvitationNotFound)));
+    }
+
+    #[tokio::test]
+    async fn an_invitation_is_read_for_its_reader() {
+        let token = InvitationToken::from_link("token");
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_invitation_inviter()
+            .returning(|_| Ok(Some(ben())));
+        repo.expect_friendship_between()
+            .with(eq(ANA.user), eq(ben().id))
+            .times(1)
+            .returning(|_, _| Ok(None));
+        let received = service(repo, MockIdentityProviders::new())
+            .received_invitation(&ANA, &token)
+            .await
+            .unwrap();
+        assert_eq!(received.inviter, ben());
+
+        // One's own invitation needs no friendship.
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_invitation_inviter()
+            .returning(|_| Ok(Some(user())));
+        repo.expect_friendship_between().never();
+        service(repo, MockIdentityProviders::new())
+            .received_invitation(&ANA, &token)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn accepting_an_invitation_makes_its_sender_a_friend() {
+        let token = InvitationToken::from_link("token");
+        let friend = Friend {
+            friendship: FriendshipId::from(7),
+            nickname: ben().nickname,
+            profile: ben().profile,
+        };
+        let accepted = friend.clone();
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_accept_invitation()
+            .with(eq(ANA.user), eq(token.hash()))
+            .times(1)
+            .returning(move |_, _| Ok(accepted.clone()));
+        let made = service(repo, MockIdentityProviders::new())
+            .accept_invitation(&ANA, &token)
+            .await
+            .unwrap();
+        assert_eq!(made, friend);
+    }
+
+    #[tokio::test]
+    async fn invitations_are_the_users_to_list_and_revoke() {
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_invitations()
+            .with(eq(ANA.user))
+            .returning(|_| Ok(vec![]));
+        repo.expect_delete_invitation()
+            .with(eq(ANA.user), eq(InvitationId::from(1)))
+            .times(1)
+            .returning(|_, _| Ok(true));
+        let service = service(repo, MockIdentityProviders::new());
+        assert_eq!(service.invitations(&ANA).await.unwrap(), vec![]);
+        service
+            .revoke_invitation(&ANA, InvitationId::from(1))
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn accepting_an_invitation_hands_on_why_it_failed() {
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_accept_invitation()
+            .returning(|_, _| Err(Error::AlreadyFriends));
+        let result = service(repo, MockIdentityProviders::new())
+            .accept_invitation(&ANA, &InvitationToken::from_link("token"))
+            .await;
+        assert!(matches!(result, Err(Error::AlreadyFriends)));
+    }
+
+    #[tokio::test]
+    async fn unknown_friends_and_invitations_are_not_found() {
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_friend().returning(|_, _| Ok(None));
+        repo.expect_delete_friendship().returning(|_, _| Ok(false));
+        repo.expect_friend_characters().returning(|_, _| Ok(None));
+        repo.expect_friend_character().returning(|_, _, _| Ok(None));
+        repo.expect_delete_invitation().returning(|_, _| Ok(false));
+        let service = service(repo, MockIdentityProviders::new());
+        let friendship = FriendshipId::from(1);
+        assert!(matches!(
+            service.friend(&ANA, friendship).await,
+            Err(Error::FriendNotFound)
+        ));
+        assert!(matches!(
+            service.remove_friend(&ANA, friendship).await,
+            Err(Error::FriendNotFound)
+        ));
+        assert!(matches!(
+            service.friend_characters(&ANA, friendship).await,
+            Err(Error::FriendNotFound)
+        ));
+        assert!(matches!(
+            service
+                .friend_character(&ANA, friendship, CharacterId::from(1))
+                .await,
+            Err(Error::CharacterNotFound)
+        ));
+        assert!(matches!(
+            service.revoke_invitation(&ANA, InvitationId::from(1)).await,
+            Err(Error::InvitationNotFound)
+        ));
     }
 
     #[tokio::test]
