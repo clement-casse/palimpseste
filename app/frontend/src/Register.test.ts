@@ -61,7 +61,7 @@ describe("creating an account", () => {
       }
     });
     await fireEvent.click(await screen.findByRole("button", { name: "Créer le compte" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("Ce pseudonyme est déjà pris.");
+    expect((await screen.findByRole("alert")).textContent?.trim()).toBe("Ce pseudonyme est déjà pris.");
     expect(location.pathname).toBe("/register");
   });
 
