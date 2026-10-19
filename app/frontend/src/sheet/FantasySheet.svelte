@@ -2,6 +2,17 @@
   // A COF2 character at the table: PV, PM, PC and DR counted in the bar,
   // then what the player reads during a session, with the equipment in
   // play. Every number comes from the engine.
+  import {
+    Label,
+    Select,
+    Table,
+    TableBody,
+    TableBodyCell,
+    TableBodyRow,
+    TableHead,
+    TableHeadCell,
+  } from "flowbite-svelte";
+
   import { namesOf, signed, valueOf } from "../character/edits";
   import type {
     FantasyCatalog,
@@ -11,6 +22,7 @@
     Sheet,
     ValueLine,
   } from "../wasm/palimpseste_wasm";
+  import Block from "./Block.svelte";
   import Characteristics from "./Characteristics.svelte";
   import Counter from "./Counter.svelte";
   import EquipmentSection from "./EquipmentSection.svelte";
@@ -106,11 +118,13 @@
   );
 </script>
 
-<p class="identity">
+<p class="mb-3 text-gray-500 dark:text-gray-400">
   {identity}<Marks notes={marksAt(notes, ...steps("profil", "peuple"))} />
 </p>
 
-<div class="play-bar">
+<div
+  class="sticky top-0 z-10 -mx-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-gray-200 bg-white px-4 py-2 print:static dark:border-gray-700 dark:bg-gray-900"
+>
   {#each resources as resource (resource.id)}
     <Counter
       label={resource.short}
@@ -125,15 +139,13 @@
   <Restore {play} />
 </div>
 
-<div class="play-sections">
-  <section class="block">
-    <h3>Caractéristiques<Marks notes={marksAt(notes, ...steps("characteristics"))} /></h3>
+<div class="mt-4 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  <Block title="Caractéristiques" notes={marksAt(notes, ...steps("characteristics"))}>
     <Characteristics characteristics={sheet.characteristics} {notes} />
-  </section>
+  </Block>
 
-  <section class="block">
-    <h3>Combat<Marks notes={marksAt(notes, ...steps("derived"))} /></h3>
-    <ul class="tiles">
+  <Block title="Combat" notes={marksAt(notes, ...steps("derived"))}>
+    <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
       {#each COMBAT as tile (tile.id)}
         {@const value = line(tile.id)}
         <Tile
@@ -146,38 +158,37 @@
       {/each}
     </ul>
     {#if weapons.length > 0}
-      <table class="weapons">
-        <thead>
-          <tr><th>Arme</th><th>Usage</th><th>DM</th><th>Critique</th></tr>
-        </thead>
-        <tbody>
+      <Table class="mt-3">
+        <TableHead>
+          <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Usage</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
+        </TableHead>
+        <TableBody>
           {#each weapons as { weapon, quantity, damages, critical } (weapon.id)}
             {#each damages as dm, i (dm.id)}
-              <tr>
+              <TableBodyRow>
                 {#if i === 0}
-                  <th scope="row" rowspan={damages.length}>
+                  <TableHeadCell scope="row" rowspan={damages.length} class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">
                     {weapon.name}{#if quantity > 1}{` ×${quantity}`}{/if}
-                  </th>
+                  </TableHeadCell>
                 {/if}
-                <td>{weapon.uses[i]?.name ?? ""}</td>
-                <td>{damage(dm)}<Marks notes={valueMarks(dm.id)} /></td>
+                <TableBodyCell class="px-2 py-2">{weapon.uses[i]?.name ?? ""}</TableBodyCell>
+                <TableBodyCell class="px-2 py-2">{damage(dm)}<Marks notes={valueMarks(dm.id)} /></TableBodyCell>
                 {#if i === 0}
-                  <td rowspan={damages.length}>
+                  <TableBodyCell rowspan={damages.length} class="px-2 py-2">
                     {range(critical)}{#if critical}<Marks notes={valueMarks(critical.id)} />{/if}
-                  </td>
+                  </TableBodyCell>
                 {/if}
-              </tr>
+              </TableBodyRow>
             {/each}
           {/each}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     {/if}
-  </section>
+  </Block>
 
-  <section class="block">
-    <h3>Voies<Marks notes={marksAt(notes, ...steps("voies"))} /></h3>
+  <Block title="Voies" notes={marksAt(notes, ...steps("voies"))}>
     <VoieRanks voies={choices.voies ?? []} names={namesOf(catalog.voies)} {notes} />
-  </section>
+  </Block>
 
   <EquipmentSection
     notes={marksAt(notes, ...steps("equipment"))}
@@ -190,9 +201,10 @@
   >
     {#snippet worn(editing: boolean)}
       {#if editing}
-        <label class="field">
+        <Label class="flex flex-col gap-2">
           Armure
-          <select
+          <Select
+            placeholder=""
             value={equipment.armour ?? ""}
             onchange={(e) => equip({ armour: valueOf(e) || undefined })}
           >
@@ -200,11 +212,12 @@
             {#each catalog.armours as a (a.id)}
               <option value={a.id}>{a.name} (DEF {signed(a.defence)})</option>
             {/each}
-          </select>
-        </label>
-        <label class="field">
+          </Select>
+        </Label>
+        <Label class="flex flex-col gap-2">
           Bouclier
-          <select
+          <Select
+            placeholder=""
             value={equipment.shield ?? ""}
             onchange={(e) => equip({ shield: valueOf(e) || undefined })}
           >
@@ -212,8 +225,8 @@
             {#each catalog.shields as s (s.id)}
               <option value={s.id}>{s.name} (DEF {signed(s.defence)})</option>
             {/each}
-          </select>
-        </label>
+          </Select>
+        </Label>
       {:else}
         <li>Armure : {armour ? `${armour.name} (DEF ${signed(armour.defence)})` : "aucune"}</li>
         <li>Bouclier : {shield ? `${shield.name} (DEF ${signed(shield.defence)})` : "aucun"}</li>

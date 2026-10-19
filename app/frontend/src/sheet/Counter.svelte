@@ -1,6 +1,9 @@
 <script lang="ts">
   // A resource counted during a session: what is left of its maximum, spent
   // and recovered one at a time.
+  import { Button, Progressbar } from "flowbite-svelte";
+  import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
+
   import Marks from "./Marks.svelte";
   import type { Note } from "./notes";
 
@@ -29,69 +32,29 @@
   const share = $derived(max > 0 ? (100 * left) / max : 0);
 </script>
 
-<div class="counter" role="group" aria-label={title}>
-  <span class="label" {title}>{label}<Marks {notes} /></span>
-  <span class="count">
-    <output>{left} / {max}</output>
-    {#if die}<span class="die">{die}</span>{/if}
-    <span class="gauge" aria-hidden="true"><span style:width="{share}%"></span></span>
+<div class="flex items-center gap-1.5" role="group" aria-label={title}>
+  <span class="font-bold" {title}>{label}<Marks {notes} /></span>
+  <span class="flex min-w-18 flex-col leading-tight">
+    <output class="text-xl font-bold tabular-nums">{left} / {max}</output>
+    {#if die}<span class="text-xs text-gray-500 dark:text-gray-400">{die}</span>{/if}
+    <Progressbar progress={share} size="h-1" class="mt-1" />
   </span>
-  <button type="button" aria-label="Retirer 1 {label}" disabled={left <= 0} onclick={() => onchange(used + 1)}>
-    −
-  </button>
-  <button type="button" aria-label="Ajouter 1 {label}" disabled={used <= 0} onclick={() => onchange(used - 1)}>
-    +
-  </button>
+  <Button
+    color="alternative"
+    class="h-11 w-11 p-0 print:hidden"
+    aria-label="Retirer 1 {label}"
+    disabled={left <= 0}
+    onclick={() => onchange(used + 1)}
+  >
+    <MinusOutline />
+  </Button>
+  <Button
+    color="alternative"
+    class="h-11 w-11 p-0 print:hidden"
+    aria-label="Ajouter 1 {label}"
+    disabled={used <= 0}
+    onclick={() => onchange(used - 1)}
+  >
+    <PlusOutline />
+  </Button>
 </div>
-
-<style>
-  .counter {
-    display: flex;
-    gap: 0.4rem;
-    align-items: center;
-  }
-
-  .label {
-    font-weight: bold;
-  }
-
-  .count {
-    display: flex;
-    flex-direction: column;
-    min-width: 4.5rem;
-    line-height: 1.2;
-  }
-
-  output {
-    font-size: 1.25rem;
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .die {
-    color: var(--muted);
-    font-size: 0.8rem;
-  }
-
-  .gauge {
-    height: 0.25rem;
-    margin-top: 0.2rem;
-    border-radius: 0.25rem;
-    background: color-mix(in srgb, var(--muted) 35%, transparent);
-  }
-
-  .gauge span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--accent);
-  }
-
-  button {
-    width: 2.75rem;
-    height: 2.75rem;
-    padding: 0;
-    font-size: 1.4rem;
-    line-height: 1;
-  }
-</style>

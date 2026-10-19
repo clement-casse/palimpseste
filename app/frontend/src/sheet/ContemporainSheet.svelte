@@ -2,6 +2,17 @@
   // A COC2 character at the table: the échelle de santé counted in the bar,
   // then what the player reads during a session, with the equipment in
   // play. Every number comes from the engine.
+  import {
+    Checkbox,
+    Heading,
+    Table,
+    TableBody,
+    TableBodyCell,
+    TableBodyRow,
+    TableHead,
+    TableHeadCell,
+  } from "flowbite-svelte";
+
   import { namesOf, signed } from "../character/edits";
   import type {
     ContemporainCatalog,
@@ -11,6 +22,7 @@
     Sheet,
     ValueLine,
   } from "../wasm/palimpseste_wasm";
+  import Block from "./Block.svelte";
   import Characteristics from "./Characteristics.svelte";
   import EquipmentSection from "./EquipmentSection.svelte";
   import HealthTrack from "./HealthTrack.svelte";
@@ -118,11 +130,13 @@
   );
 </script>
 
-<p class="identity">
+<p class="mb-3 text-gray-500 dark:text-gray-400">
   {identity}<Marks notes={marksAt(notes, ...steps("domaine-and-age"))} />
 </p>
 
-<div class="play-bar">
+<div
+  class="sticky top-0 z-10 -mx-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-gray-200 bg-white px-4 py-2 print:static dark:border-gray-700 dark:bg-gray-900"
+>
   {#if health !== undefined}
     <HealthTrack
       scale={catalog.healthScale}
@@ -135,15 +149,13 @@
   <Restore {play} />
 </div>
 
-<div class="play-sections">
-  <section class="block">
-    <h3>Caractéristiques<Marks notes={marksAt(notes, ...steps("characteristics"))} /></h3>
+<div class="mt-4 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  <Block title="Caractéristiques" notes={marksAt(notes, ...steps("characteristics"))}>
     <Characteristics characteristics={sheet.characteristics} {notes} />
-  </section>
+  </Block>
 
-  <section class="block">
-    <h3>Combat<Marks notes={marksAt(notes, ...steps("secondary"))} /></h3>
-    <ul class="tiles">
+  <Block title="Combat" notes={marksAt(notes, ...steps("secondary"))}>
+    <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
       {#each COMBAT as tile (tile.id)}
         {@const value = line(tile.id)}
         <Tile
@@ -175,51 +187,49 @@
         {/if}
       {/each}
     </ul>
-    <table class="weapons">
-      <thead>
-        <tr><th>Arme</th><th>Att.</th><th>DM</th><th>Critique</th></tr>
-      </thead>
-      <tbody>
+    <Table class="mt-3">
+      <TableHead>
+        <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Att.</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
+      </TableHead>
+      <TableBody>
         {#each weapons as w (w.weapon.id)}
-          <tr>
-            <th scope="row">{w.weapon.name}{#if w.quantity > 1}{` ×${w.quantity}`}{/if}</th>
-            <td title={w.attack?.label}>{shown(w.attack, true)}</td>
-            <td>
+          <TableBodyRow>
+            <TableHeadCell scope="row" class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">{w.weapon.name}{#if w.quantity > 1}{` ×${w.quantity}`}{/if}</TableHeadCell>
+            <TableBodyCell title={w.attack?.label} class="px-2 py-2">{shown(w.attack, true)}</TableBodyCell>
+            <TableBodyCell class="px-2 py-2">
               {damage(w.damage)}{#if w.damage}<Marks notes={valueMarks(w.damage.id)} />{/if}
-            </td>
-            <td>
+            </TableBodyCell>
+            <TableBodyCell class="px-2 py-2">
               {range(w.range)}{#if w.bonus?.total !== undefined}{` · ${signed(w.bonus.total)}`}{/if}
-            </td>
-          </tr>
+            </TableBodyCell>
+          </TableBodyRow>
         {/each}
-      </tbody>
-    </table>
-  </section>
+      </TableBody>
+    </Table>
+  </Block>
 
-  <section class="block">
-    <h3>Voies<Marks notes={marksAt(notes, ...steps("voies"))} /></h3>
+  <Block title="Voies" notes={marksAt(notes, ...steps("voies"))}>
     <VoieRanks voies={choices.voies ?? []} names={namesOf(catalog.voies)} {notes} />
-  </section>
+  </Block>
 
-  <section class="block">
-    <h3>Traits distinctifs<Marks notes={marksAt(notes, ...steps("traits"))} /></h3>
+  <Block title="Traits distinctifs" notes={marksAt(notes, ...steps("traits"))}>
     {#each [true, false] as advantage (advantage)}
       {@const listed = traits.filter((t) => t.advantage === advantage)}
-      <h4>
+      <Heading tag="h4" class="text-base text-gray-500 dark:text-gray-400">
         {advantage ? "Avantages" : "Désavantages"}
         {signed(advantage ? details.advantages : details.disadvantages)}
-      </h4>
+      </Heading>
       {#if listed.length > 0}
-        <ul class="listing">
+        <ul class="space-y-1">
           {#each listed as t (t.id)}
             <li>{t.name} ({signed(t.points)})</li>
           {/each}
         </ul>
       {:else}
-        <p class="hint">Aucun.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Aucun.</p>
       {/if}
     {/each}
-  </section>
+  </Block>
 
   <EquipmentSection
     notes={marksAt(notes, ...steps("equipment"))}
@@ -232,18 +242,16 @@
   >
     {#snippet worn(editing: boolean)}
       {#if editing}
-        <fieldset class="field">
-          <legend>Protections</legend>
+        <fieldset class="flex flex-col gap-2">
+          <legend class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Protections</legend>
           {#each catalog.protections as protection (protection.id)}
-            <label>
-              <input
-                type="checkbox"
-                checked={equipment.protections?.includes(protection.id) ?? false}
-                onchange={(e) =>
-                  wear(protection.id, e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked)}
-              />
+            <Checkbox
+              checked={equipment.protections?.includes(protection.id) ?? false}
+              onchange={(e) =>
+                wear(protection.id, e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked)}
+            >
               {protection.name}
-            </label>
+            </Checkbox>
           {/each}
         </fieldset>
       {:else}

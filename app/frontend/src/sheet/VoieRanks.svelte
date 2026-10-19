@@ -1,6 +1,8 @@
 <script lang="ts">
   // The voies of a character with the ranks acquired in each. Ranks beyond
   // 1 to 5 are written out, since nothing hides what the document holds.
+  import { Indicator, Listgroup, ListgroupItem, P } from "flowbite-svelte";
+
   import type { VoieEntry } from "../wasm/palimpseste_wasm";
   import Marks from "./Marks.svelte";
   import { type Note, marksAt } from "./notes";
@@ -15,64 +17,28 @@
 </script>
 
 {#if voies.some((voie) => voie.ranks.length > 0)}
-  <ul class="voie-ranks">
+  <Listgroup class="flex-col">
     {#each voies.filter((voie) => voie.ranks.length > 0) as voie (voie.id)}
       {@const others = voie.ranks.filter((rank) => !RANKS.includes(rank))}
-      <li>
+      <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
         <span>
           {names.get(voie.id) ?? voie.id}<Marks notes={marksAt(notes, { kind: "voie", id: voie.id })} />
         </span>
-        <span class="ranks">
-          <span class="visually-hidden">Rangs {voie.ranks.join(", ")}</span>
+        <span class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+          <span class="sr-only">Rangs {voie.ranks.join(", ")}</span>
           {#each RANKS as rank (rank)}
-            <span class={["pip", voie.ranks.includes(rank) && "acquired"]} aria-hidden="true"></span>
+            <Indicator
+              size="md"
+              color={voie.ranks.includes(rank) ? "primary" : "gray"}
+              class={voie.ranks.includes(rank) ? undefined : "dark:bg-gray-600"}
+              aria-hidden="true"
+            />
           {/each}
           {#if others.length > 0}<span aria-hidden="true">+ rang {others.join(", ")}</span>{/if}
         </span>
-      </li>
+      </ListgroupItem>
     {/each}
-  </ul>
+  </Listgroup>
 {:else}
-  <p class="hint">Aucune voie.</p>
+  <P size="sm" class="text-gray-500 dark:text-gray-400">Aucune voie.</P>
 {/if}
-
-<style>
-  li {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.5rem;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.3rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
-  }
-
-  .ranks {
-    display: inline-flex;
-    gap: 0.3rem;
-    align-items: center;
-    color: var(--muted);
-    font-size: 0.85rem;
-  }
-
-  .pip {
-    width: 0.8rem;
-    height: 0.8rem;
-    border: 1.5px solid var(--muted);
-    border-radius: 50%;
-  }
-
-  .pip.acquired {
-    border-color: var(--accent);
-    background: var(--accent);
-  }
-
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-</style>

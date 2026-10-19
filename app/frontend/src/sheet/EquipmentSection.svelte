@@ -4,13 +4,14 @@
   // in the editor. It replaces the creation equipment on this device only; the
   // engine computes the values from it and reports the rules that hold in
   // play.
+  import { Alert, Button, Heading, Helper } from "flowbite-svelte";
   import type { Snippet } from "svelte";
 
   import Items from "../character/Items.svelte";
   import { message } from "../messages";
   import type { ItemEntry, ReportedViolation } from "../wasm/palimpseste_wasm";
+  import Block from "./Block.svelte";
   import Inventory from "./Inventory.svelte";
-  import Marks from "./Marks.svelte";
   import type { Note } from "./notes";
 
   let {
@@ -43,69 +44,48 @@
   const warnings = $derived(findings.filter((finding) => !finding.waived));
 </script>
 
-<section class="block">
-  <h3>Équipement<Marks {notes} /></h3>
-  <button type="button" class="edit" aria-pressed={editing} onclick={() => (editing = !editing)}>
+<Block title="Équipement" {notes}>
+  <Button
+    color={editing ? "primary" : "alternative"}
+    class="min-h-11 self-start print:hidden"
+    aria-pressed={editing}
+    onclick={() => (editing = !editing)}
+  >
     Modifier l’équipement
-  </button>
+  </Button>
   {#if editing}
-    <div class="fields">{@render worn(true)}</div>
+    <div class="flex flex-col gap-2">{@render worn(true)}</div>
     <Items {items} {weapons} onchange={onitems} />
   {:else}
-    <ul class="listing">
+    <ul class="space-y-1">
       {@render worn(false)}
       <Inventory {items} {names} onchange={onitems} />
     </ul>
   {/if}
 
   {#if warnings.length > 0}
-    <h4>À savoir</h4>
-    <ul class="warnings">
-      {#each warnings as warning, i (i)}
-        <li>{message(warning)}</li>
-      {/each}
-    </ul>
+    <Alert color="red" role="status">
+      <Heading tag="h4" class="mb-1 text-base text-red-800 dark:text-red-400">À savoir</Heading>
+      <ul class="list-inside list-disc">
+        {#each warnings as warning, i (i)}
+          <li>{message(warning)}</li>
+        {/each}
+      </ul>
+    </Alert>
   {/if}
 
   {#if kept}
-    <p class="hint">
+    <Helper class="flex flex-wrap items-center gap-2 text-sm">
       Équipement de la partie, gardé sur cet appareil.
-      <button
-        type="button"
+      <Button
+        size="xs"
+        color="alternative"
         onclick={() => {
           if (confirm("Reprendre l’équipement choisi à la création ?")) onforget();
         }}
       >
         Reprendre l’équipement de création
-      </button>
-    </p>
+      </Button>
+    </Helper>
   {/if}
-</section>
-
-<style>
-  .edit {
-    min-height: 2.75rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .edit[aria-pressed="true"] {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .fields {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .warnings li {
-    padding: 0.15rem 0;
-    color: var(--error);
-  }
-
-  .hint button {
-    margin-top: 0.25rem;
-  }
-</style>
+</Block>

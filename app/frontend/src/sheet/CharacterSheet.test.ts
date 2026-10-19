@@ -233,9 +233,9 @@ describe("the equipment in play", () => {
     await edit();
     await choose("Armure", "cof.armour.cuir-renforce");
     const worn = { ...equipmentOf(lhagva()), armour: "cof.armour.cuir-renforce" };
-    expect(tile("Défense").textContent).toBe(String(engineValue(lhagva(), worn, "cof.defence")));
-    const breakdown = document_(tile("Défense").getAttribute("popovertarget"));
-    expect(within(breakdown).getByText(/^Cuir renforcé/)).toBeTruthy();
+    expect(tile("Défense").textContent?.trim()).toBe(String(engineValue(lhagva(), worn, "cof.defence")));
+    await fireEvent.click(tile("Défense"));
+    expect(within(screen.getByRole("dialog")).getByText(/^Cuir renforcé/)).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "À savoir" })).toBeNull();
     expect(screen.queryByRole("note") === null).toBe(finished);
 
@@ -290,14 +290,7 @@ describe("the equipment in play", () => {
     const init = Number(tile("Initiative").textContent);
     await edit();
     await fireEvent.click(screen.getByRole("checkbox", { name: "Gilet souple" }));
-    expect(tile("Réduction des dommages").textContent).toBe("4");
+    expect(tile("Réduction des dommages").textContent?.trim()).toBe("4");
     expect(Number(tile("Initiative").textContent)).toBe(init - 2);
   });
 });
-
-/** The element of the page with identifier `id`. */
-function document_(id: string | null): HTMLElement {
-  const element = id ? document.getElementById(id) : null;
-  if (!element) throw new Error(`no element ${id}`);
-  return element;
-}

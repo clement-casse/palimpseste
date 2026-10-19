@@ -4,6 +4,8 @@
   // the resources and the equipment in play kept on this device, the screen
   // kept on. Meant for finished characters; an unfinished one shows what is
   // left to settle.
+  import { A, Alert, Badge, Button, Heading } from "flowbite-svelte";
+  import { ArrowLeftOutline } from "flowbite-svelte-icons";
   import { untrack } from "svelte";
 
   import type { Character } from "../api";
@@ -86,45 +88,46 @@
   });
 </script>
 
-<section class="character-sheet">
-  <header>
-    <a href="/" onclick={follow}>← Personnages</a>
-    <h2>{initial.name}</h2>
-    <span class="engine">{ENGINES[initial.engine]}</span>
-    <span class="tools">
-      <a class="button" href={characterPath(initial.id)} onclick={follow}>Modifier</a>
+<section>
+  <header class="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <A href="/" onclick={follow} class="gap-1 print:hidden"><ArrowLeftOutline size="sm" /> Personnages</A>
+    <Heading tag="h2" class="w-auto text-2xl">{initial.name}</Heading>
+    <Badge color="gray">{ENGINES[initial.engine]}</Badge>
+    <span class="ms-auto flex flex-wrap items-center gap-2 print:hidden">
+      <Button color="alternative" class="min-h-11" href={characterPath(initial.id)} onclick={follow}>Modifier</Button>
       {#if wakeLock.supported}
-        <button
-          type="button"
+        <Button
+          color={wakeLock.wanted ? "primary" : "alternative"}
+          class="min-h-11"
           aria-pressed={wakeLock.wanted}
           title="Empêche l’écran de se mettre en veille"
           onclick={() => keepAwake(!wakeLock.wanted)}
         >
           Écran toujours allumé
-        </button>
+        </Button>
       {/if}
       <ThemePicker />
     </span>
   </header>
 
   {#if open > 0}
-    <p class="unfinished" role="note">
+    <Alert color="yellow" role="note" class="my-3">
       Création inachevée : {open} point{open > 1 ? "s" : ""} à régler.
-      <a href={characterPath(initial.id)} onclick={follow}>Reprendre la création</a>
-    </p>
+      <A href={characterPath(initial.id)} onclick={follow}>Reprendre la création</A>
+    </Alert>
   {/if}
 
   {#if "error" in evaluation}
-    <p class="error">Le document ne peut pas être évalué : {evaluation.error}</p>
+    <Alert color="red" class="my-3">Le document ne peut pas être évalué : {evaluation.error}</Alert>
   {:else}
     {#if evaluation.unreadable}
-      <p class="error" role="alert">
+      <Alert color="red" class="my-3 flex flex-wrap items-center gap-2">
         L’équipement de la partie gardé sur cet appareil ne peut plus être lu : la fiche montre
         celui de la création.
-        <button type="button" onclick={() => play.forgetEquipment()}>
+        <Button size="xs" color="alternative" onclick={() => play.forgetEquipment()}>
           Reprendre l’équipement de création
-        </button>
-      </p>
+        </Button>
+      </Alert>
     {/if}
     {#if view?.engine === "fantasy"}
       <FantasySheet
@@ -150,45 +153,3 @@
   {/if}
 </section>
 
-<style>
-  header {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
-    align-items: center;
-  }
-
-  h2 {
-    margin: 0;
-  }
-
-  .engine {
-    color: var(--muted);
-    font-size: 0.9em;
-  }
-
-  .tools {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-    margin-left: auto;
-  }
-
-  .tools button,
-  .tools a.button {
-    min-height: 2.75rem;
-  }
-
-  [aria-pressed="true"] {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .unfinished {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--error);
-    border-radius: 0.4rem;
-    color: var(--error);
-  }
-</style>
