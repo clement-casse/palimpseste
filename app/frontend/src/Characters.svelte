@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Button, Heading, Input, Listgroup, P, Select, Spinner } from "flowbite-svelte";
+
   import { type User, createCharacter, listCharacters } from "./api";
   import CharacterItem from "./CharacterItem.svelte";
   import { ENGINES } from "./engines";
@@ -9,6 +11,7 @@
   let { user }: { user: User } = $props();
 
   const characters = listCharacters();
+  const engines = Object.entries(ENGINES).map(([value, name]) => ({ value: value as Engine, name }));
   let name = $state("");
   let engine = $state<Engine>("fantasy");
   let failure = $state<unknown>(null);
@@ -22,33 +25,32 @@
   }
 </script>
 
-<section>
-  <header class="user">
-    <h2>Personnages de {user.nickname}</h2>
-  </header>
+<section class="flex flex-col gap-4">
+  <Heading tag="h2" class="text-2xl">Personnages de {user.nickname}</Heading>
   {#await characters}
-    <p>Chargement…</p>
+    <p class="flex items-center gap-2"><Spinner size="4" /> Chargement…</p>
   {:then characters}
     {#if characters.length === 0}
-      <p class="hint">Aucun personnage pour l'instant : créez le premier.</p>
+      <P class="text-gray-500 dark:text-gray-400">Aucun personnage pour l'instant : créez le premier.</P>
     {:else}
-      <ul class="characters">
+      <Listgroup class="flex-col">
         {#each characters as character (character.id)}
           <CharacterItem {character} />
         {/each}
-      </ul>
+      </Listgroup>
     {/if}
   {:catch error}
     <ErrorMessage {error} />
   {/await}
   {#if failure}<ErrorMessage error={failure} />{/if}
-  <form onsubmit={submit}>
-    <input aria-label="Nom du personnage" placeholder="Nom du personnage" bind:value={name} />
-    <select aria-label="Jeu" bind:value={engine}>
-      {#each Object.entries(ENGINES) as [id, label] (id)}
-        <option value={id}>{label}</option>
-      {/each}
-    </select>
-    <button type="submit" disabled={!name.trim()}>Créer</button>
+  <form class="flex flex-wrap gap-2" onsubmit={submit}>
+    <Input
+      class="min-w-48 flex-1"
+      aria-label="Nom du personnage"
+      placeholder="Nom du personnage"
+      bind:value={name}
+    />
+    <Select class="w-auto" placeholder="" aria-label="Jeu" items={engines} bind:value={engine} />
+    <Button type="submit" disabled={!name.trim()}>Créer</Button>
   </form>
 </section>

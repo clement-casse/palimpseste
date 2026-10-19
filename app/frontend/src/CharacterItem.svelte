@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { A, Badge, Button, ListgroupItem } from "flowbite-svelte";
+
   import type { Character } from "./api";
   import { ENGINES, unsettled } from "./engines";
   import { characterPath, characterSheetPath, follow } from "./router.svelte";
@@ -16,24 +18,17 @@
   });
 </script>
 
-<li>
-  <a href={characterPath(character.id)} onclick={follow}>
-    <strong>{character.name}</strong>
-  </a>
-  · {ENGINES[character.engine]} ·
+<ListgroupItem class="flex-wrap gap-x-3 gap-y-2 py-3">
+  <A href={characterPath(character.id)} onclick={follow} class="font-semibold">{character.name}</A>
+  <Badge color="gray">{ENGINES[character.engine]}</Badge>
   {#if open === null}
-    document illisible
+    <Badge color="red">document illisible</Badge>
   {:else if open === 0}
-    terminé
+    <Badge color="green">terminé</Badge>
   {:else}
-    {open} point{open > 1 ? "s" : ""} à régler
+    <Badge color="yellow">{open} point{open > 1 ? "s" : ""} à régler</Badge>
   {/if}
-  · <a href={characterSheetPath(character.id)} onclick={follow}>Fiche</a>
-</li>
-
-<style>
-  li {
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--muted);
-  }
-</style>
+  <Button size="xs" color="alternative" class="ms-auto" href={characterSheetPath(character.id)} onclick={follow}>
+    Fiche
+  </Button>
+</ListgroupItem>

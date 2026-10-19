@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Alert, Button, Card, Heading, P, Spinner } from "flowbite-svelte";
+
   import { ApiError, cancelRegistration, getRegistration, register } from "./api";
   import ErrorMessage from "./ErrorMessage.svelte";
   import { describe } from "./errors";
@@ -49,44 +51,33 @@
   }
 </script>
 
-<section>
-  <h2>Créer un compte</h2>
+<Card size="lg" class="mx-auto gap-4 p-6">
+  <Heading tag="h2" class="text-2xl">Créer un compte</Heading>
   {#await registration}
-    <p>Chargement…</p>
+    <p class="flex items-center gap-2"><Spinner size="4" /> Chargement…</p>
   {:then registration}
-    <p>
+    <P>
       Première connexion avec <strong>{registration.provider}</strong>{#if registration.label}
         ({registration.label}){/if} : choisissez votre pseudonyme et présentez-vous avant de créer
       vos personnages.
-    </p>
-    <form onsubmit={create}>
+    </P>
+    <form class="flex flex-col gap-4" onsubmit={create}>
       <ProfileFields bind:nickname bind:profile />
-      <div class="actions">
-        <button type="submit" disabled={busy || !nickname.trim()}>Créer le compte</button>
-        <button type="button" disabled={busy} onclick={cancel}>Annuler</button>
+      <div class="flex gap-2">
+        <Button type="submit" disabled={busy || !nickname.trim()}>Créer le compte</Button>
+        <Button color="alternative" disabled={busy} onclick={cancel}>Annuler</Button>
       </div>
     </form>
-    <p class="hint">Annuler abandonne la création : aucun compte n’est créé et votre compte {registration.provider} reste libre.</p>
-    {#if failure}<p class="error" role="alert">{failure}</p>{/if}
+    <P size="sm" class="text-gray-500 dark:text-gray-400">
+      Annuler abandonne la création : aucun compte n’est créé et votre compte {registration.provider} reste libre.
+    </P>
+    {#if failure}<Alert color="red">{failure}</Alert>{/if}
   {:catch error}
     {#if error instanceof ApiError && error.status === 404}
-      <p>Aucune création de compte en cours, ou elle a expiré.</p>
-      <a class="button" href={LOGIN} onclick={follow}>Se connecter</a>
+      <P>Aucune création de compte en cours, ou elle a expiré.</P>
+      <Button href={LOGIN} onclick={follow} class="self-start">Se connecter</Button>
     {:else}
       <ErrorMessage {error} />
     {/if}
   {/await}
-</section>
-
-<style>
-  form {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-  }
-
-  .actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-</style>
+</Card>

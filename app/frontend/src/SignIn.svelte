@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Alert, Button, Card, Heading, P, Spinner } from "flowbite-svelte";
+
   import { listProviders, signInUrl } from "./api";
   import ErrorMessage from "./ErrorMessage.svelte";
   import { takeQuery } from "./router.svelte";
@@ -8,23 +10,25 @@
   const providers = listProviders();
 </script>
 
-<section>
-  <h2>Connexion</h2>
-  {#if failed}<p class="error" role="alert">La connexion a échoué.</p>{/if}
-  <p class="hint">Première connexion ? Vous créerez votre compte à l’étape suivante.</p>
+<Card size="md" class="mx-auto gap-4 p-6">
+  <Heading tag="h2" class="text-2xl">Connexion</Heading>
+  {#if failed}<Alert color="red">La connexion a échoué.</Alert>{/if}
+  <P size="sm" class="text-gray-500 dark:text-gray-400">
+    Première connexion ? Vous créerez votre compte à l’étape suivante.
+  </P>
   {#await providers}
-    <p>Chargement…</p>
+    <p class="flex items-center gap-2"><Spinner size="4" /> Chargement…</p>
   {:then providers}
     {#if providers.length === 0}
-      <p>Aucun fournisseur d’identité n’est configuré.</p>
+      <P>Aucun fournisseur d’identité n’est configuré.</P>
     {/if}
-    <ul class="choices">
+    <ul class="flex flex-col gap-2">
       {#each providers as provider (provider.id)}
         <!-- Signing in leaves the app for the provider: a link, not a script. -->
-        <li><a class="button" href={signInUrl(provider.id)}>Se connecter avec {provider.name}</a></li>
+        <li><Button class="w-full" href={signInUrl(provider.id)}>Se connecter avec {provider.name}</Button></li>
       {/each}
     </ul>
   {:catch error}
     <ErrorMessage {error} />
   {/await}
-</section>
+</Card>

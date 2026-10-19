@@ -1,22 +1,17 @@
 <script lang="ts">
   // The public nickname and presentation of a user, in the form that holds them.
+  import { Helper, Input, Label, Textarea } from "flowbite-svelte";
+
   let { nickname = $bindable(), profile = $bindable() }: { nickname: string; profile: string } =
     $props();
 </script>
 
-<label class="field">
+<Label class="flex flex-col gap-2">
   Pseudonyme
-  <input bind:value={nickname} maxlength="32" required />
-</label>
-<label class="field">
+  <Input bind:value={nickname} maxlength={32} required />
+</Label>
+<Label class="flex flex-col gap-2">
   Présentation
-  <textarea bind:value={profile} maxlength="2000" rows="5"></textarea>
-</label>
-<p class="hint">Votre pseudonyme et votre présentation sont publics.</p>
-
-<style>
-  .field {
-    flex-direction: column;
-    align-items: stretch;
-  }
-</style>
+  <Textarea bind:value={profile} maxlength={2000} rows={5} class="w-full" />
+</Label>
+<Helper>Votre pseudonyme et votre présentation sont publics.</Helper>
