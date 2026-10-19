@@ -1,6 +1,7 @@
 //! The repository in one SQLite database (ADR BE-STORE), through
 //! `rusqlite`. Queries block, so each runs off the async runtime, on
-//! `spawn_blocking`, behind one connection.
+//! `spawn_blocking`, behind one connection. The schema is versioned by
+//! `PRAGMA user_version` and migrated when the database opens.
 
 use std::{
     path::Path,
@@ -8,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::Context as _;
+use anyhow::{Context as _, anyhow};
 use async_trait::async_trait;
 use palimpseste_document::{Document, Engine};
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, params};
@@ -19,8 +20,8 @@ use crate::{
     repo::PalimpsesteRepository, user::nickname_candidates,
 };
 
+/// The tables of schema version 1, created where missing.
 const SCHEMA: &str = "
-    PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY,
         nickname TEXT NOT NULL,
@@ -65,11 +66,12 @@ const SCHEMA: &str = "
     );
 ";
 
-/// Brings a database of an earlier schema to the current one, then indexes
-/// it. Before nicknames and linked identities (ADR BE-USERS and
-/// ADR BE-IDENTITIES), a user had a `name` (not unique), an identity no
-/// label, and a sign-in nothing to link.
-const MIGRATIONS: [(&str, &str, &str); 3] = [
+/// Brings a database older than the versioned schema to version 1, each
+/// migration when its column is missing, before indexing it. Before
+/// nicknames and linked identities (ADR BE-USERS and ADR BE-IDENTITIES), a
+/// user had a `name` (not unique), an identity no label, and a sign-in
+/// nothing to link.
+const UNVERSIONED_MIGRATIONS: [(&str, &str, &str); 3] = [
     (
         "users",
         "profile",
@@ -90,10 +92,20 @@ const MIGRATIONS: [(&str, &str, &str); 3] = [
     ),
 ];
 
+/// The indexes of schema version 1, created where missing.
 const INDEXES: &str = "
     CREATE UNIQUE INDEX IF NOT EXISTS users_nickname ON users (nickname COLLATE NOCASE);
     CREATE UNIQUE INDEX IF NOT EXISTS identities_user_issuer ON identities (user_id, issuer);
 ";
+
+/// The schema changes after version 1, in order: `MIGRATIONS[i]` brings a
+/// database at version `i + 1` to version `i + 2`. A change to the schema
+/// appends one; a migration once released is never edited. They run in the
+/// opening transaction with foreign keys enforced, which SQLite does not let
+/// a migration turn off: rebuilding a table others reference (`users`)
+/// first makes `SqliteRepo::with` turn them off around `migrate`, and check
+/// them with `PRAGMA foreign_key_check` before the commit.
+const MIGRATIONS: [&str; 0] = [];
 
 const USER_COLUMNS: &str = "users.id, users.nickname, users.profile";
 
@@ -112,10 +124,11 @@ impl SqliteRepo {
     ///
     /// # Errors
     ///
-    /// [`Error::Underlying`] when the database cannot be opened or migrated.
+    /// [`Error::Underlying`] when the database cannot be opened or migrated,
+    /// or its schema is newer than this server's.
     pub async fn open(path: &Path) -> Result<Self, Error> {
         let path = path.to_owned();
-        let repo = tokio::task::spawn_blocking(move || Connection::open(path).and_then(Self::with))
+        let repo = tokio::task::spawn_blocking(move || Self::with(Connection::open(path)?))
             .await
             .context("opening the database off the async runtime")?
             .context("opening and migrating the database")?;
@@ -128,21 +141,12 @@ impl SqliteRepo {
         Self::with(Connection::open_in_memory().unwrap()).unwrap()
     }
 
-    fn with(mut connection: Connection) -> rusqlite::Result<Self> {
-        let transaction = connection.transaction()?;
-        transaction.execute_batch(SCHEMA)?;
-        for (table, column, migration) in MIGRATIONS {
-            let current: bool = transaction.query_row(
-                "SELECT EXISTS (SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2)",
-                params![table, column],
-                |row| row.get(0),
-            )?;
-            if !current {
-                transaction.execute_batch(migration)?;
-            }
-        }
-        transaction.execute_batch(INDEXES)?;
-        transaction.commit()?;
+    /// The repository on `connection`, its foreign keys enforced and its
+    /// schema migrated.
+    fn with(mut connection: Connection) -> anyhow::Result<Self> {
+        // Outside any transaction, where SQLite would ignore it.
+        connection.pragma_update(None, "foreign_keys", true)?;
+        migrate(&mut connection, &MIGRATIONS)?;
         Ok(Self {
             connection: Arc::new(Mutex::new(connection)),
         })
@@ -161,6 +165,57 @@ impl SqliteRepo {
             .context(what)?;
         Ok(result.context(what)?)
     }
+}
+
+/// Brings the database to the last version `migrations` lead to, in one
+/// transaction: from no version (a new database, or one older than the
+/// versioned schema) to version 1, then through each migration after the
+/// version it is at. A database at a later version than `migrations` know is
+/// refused, rather than read by a server that does not know its schema.
+fn migrate(connection: &mut Connection, migrations: &[&str]) -> anyhow::Result<()> {
+    let transaction = connection.transaction()?;
+    let stored: i64 = transaction.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    let latest = migrations.len() + 1;
+    let current = usize::try_from(stored)
+        .ok()
+        .filter(|current| *current <= latest)
+        .ok_or_else(|| {
+            anyhow!("database at schema version {stored}, this server knows up to {latest}")
+        })?;
+    if current == 0 {
+        unversioned_to_first(&transaction).context("migrating the schema to version 1")?;
+    }
+    for (index, migration) in migrations
+        .iter()
+        .enumerate()
+        .skip(current.saturating_sub(1))
+    {
+        transaction
+            .execute_batch(migration)
+            .with_context(|| format!("migrating the schema to version {}", index + 2))?;
+    }
+    transaction.pragma_update(None, "user_version", i64::try_from(latest)?)?;
+    transaction.commit()?;
+    Ok(())
+}
+
+/// Brings a database of no version to version 1: creates the tables and
+/// indexes missing, after migrating each earlier schema whose column is
+/// missing. Applied to a database already at the shape of version 1, it
+/// changes nothing.
+fn unversioned_to_first(transaction: &Transaction<'_>) -> rusqlite::Result<()> {
+    transaction.execute_batch(SCHEMA)?;
+    for (table, column, migration) in UNVERSIONED_MIGRATIONS {
+        let current: bool = transaction.query_row(
+            "SELECT EXISTS (SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2)",
+            params![table, column],
+            |row| row.get(0),
+        )?;
+        if !current {
+            transaction.execute_batch(migration)?;
+        }
+    }
+    transaction.execute_batch(INDEXES)
 }
 
 fn lock(connection: &Mutex<Connection>) -> MutexGuard<'_, Connection> {
@@ -801,6 +856,91 @@ mod tests {
         Nickname::parse(value).unwrap()
     }
 
+    fn schema_version(connection: &Connection) -> i64 {
+        connection
+            .pragma_query_value(None, "user_version", |row| row.get(0))
+            .unwrap()
+    }
+
+    /// The version `SqliteRepo` migrates a database to.
+    fn last_version() -> i64 {
+        i64::try_from(MIGRATIONS.len()).unwrap() + 1
+    }
+
+    #[test]
+    fn a_new_database_is_at_the_last_version() {
+        let repo = SqliteRepo::in_memory();
+        assert_eq!(schema_version(&lock(&repo.connection)), last_version());
+    }
+
+    #[test]
+    fn migrations_run_once_in_order() {
+        let first = ["CREATE TABLE notes (id INTEGER PRIMARY KEY)"];
+        let second = [first[0], "ALTER TABLE notes ADD COLUMN text TEXT"];
+        // From version 1, where `open` leaves a database today: one
+        // migration at a time, then both in one opening.
+        let one_by_one: [&[&str]; 3] = [&[], &first, &second];
+        let at_once: [&[&str]; 2] = [&[], &second];
+        for steps in [&one_by_one[..], &at_once[..]] {
+            let mut connection = Connection::open_in_memory().unwrap();
+            for migrations in steps {
+                // Run again, a migration would fail: its table or column exists.
+                migrate(&mut connection, migrations).unwrap();
+                migrate(&mut connection, migrations).unwrap();
+                assert_eq!(
+                    schema_version(&connection),
+                    i64::try_from(migrations.len()).unwrap() + 1
+                );
+            }
+            connection
+                .execute("INSERT INTO notes (text) VALUES ('kept')", [])
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn a_failed_migration_changes_nothing() {
+        let mut connection = Connection::open_in_memory().unwrap();
+        let failing = ["CREATE TABLE notes (id INTEGER PRIMARY KEY)", "NOT SQL"];
+        let error = migrate(&mut connection, &failing).unwrap_err();
+        assert!(error.to_string().contains("version 3"), "{error}");
+        assert_eq!(schema_version(&connection), 0);
+        let tables: i64 = connection
+            .query_row("SELECT COUNT(*) FROM sqlite_schema", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(tables, 0);
+    }
+
+    #[test]
+    fn a_database_newer_than_the_server_is_refused() {
+        let mut connection = Connection::open_in_memory().unwrap();
+        migrate(
+            &mut connection,
+            &["CREATE TABLE notes (id INTEGER PRIMARY KEY)"],
+        )
+        .unwrap();
+        let error = migrate(&mut connection, &[]).unwrap_err();
+        assert!(error.to_string().contains("schema version 2"), "{error}");
+        assert_eq!(schema_version(&connection), 2);
+    }
+
+    #[test]
+    fn foreign_keys_are_enforced() {
+        let connection = Connection::open_in_memory().unwrap();
+        // Whatever the default of the SQLite build.
+        connection
+            .pragma_update(None, "foreign_keys", false)
+            .unwrap();
+        let repo = SqliteRepo::with(connection).unwrap();
+        let orphan = lock(&repo.connection)
+            .execute(
+                "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ('t', 9, 0)",
+                [],
+            )
+            .unwrap_err();
+        assert!(orphan.to_string().contains("FOREIGN KEY"), "{orphan}");
+    }
+
     #[tokio::test]
     async fn an_open_database_answers() {
         SqliteRepo::in_memory().ping().await.unwrap();
@@ -1186,6 +1326,7 @@ mod tests {
             .unwrap();
         for _ in 0..2 {
             let repo = SqliteRepo::open(&path).await.unwrap();
+            assert_eq!(schema_version(&lock(&repo.connection)), last_version());
             let ana = repo.identity_user(ISSUER, "a", "").await.unwrap().unwrap();
             assert_eq!(ana.nickname.as_str(), "Ana");
             assert_eq!(
@@ -1199,6 +1340,38 @@ mod tests {
                 ));
             }
         }
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_database_from_before_the_versioning_keeps_its_data() {
+        let path = std::env::temp_dir().join(format!(
+            "palimpseste-store-unversioned-{}.sqlite3",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&path);
+        let (ana, brune) = {
+            // The schema of version 1, as opened before the version was kept.
+            let mut connection = Connection::open(&path).unwrap();
+            migrate(&mut connection, &[]).unwrap();
+            connection.pragma_update(None, "user_version", 0).unwrap();
+            let repo = SqliteRepo {
+                connection: Arc::new(Mutex::new(connection)),
+            };
+            let ana = sign_up(&repo, "a", "Ana").await;
+            let brune = repo
+                .create_character(ana.id, &brune_name(), &Document::empty(Engine::Fantasy))
+                .await
+                .unwrap();
+            (ana, brune)
+        };
+        let reopened = SqliteRepo::open(&path).await.unwrap();
+        assert_eq!(schema_version(&lock(&reopened.connection)), last_version());
+        assert_eq!(
+            reopened.character(ana.id, brune.id).await.unwrap(),
+            Some(brune)
+        );
+        drop(reopened);
         std::fs::remove_file(&path).unwrap();
     }
 

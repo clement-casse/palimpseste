@@ -111,10 +111,19 @@ computes violations.
 **BE-STORE: SQLite through `rusqlite`.** `rusqlite` (`bundled`), one
 connection, each query on `spawn_blocking`. Tables `users`, `identities`,
 `sessions`, `logins`, `registrations` and `characters`; a document is stored as JSON text
-next to a version counter, its `ETag`. Opening the store creates the
-tables and migrates an older schema in place, each migration running when
-its column is missing. *Why not `sqlx`:* a handful of queries, and no
-database at build time.
+next to a version counter, its `ETag`. Foreign keys are enforced on the
+connection. The schema version is `PRAGMA user_version`, and opening the
+store migrates in one transaction: a database of no version (new, or older
+than the versioning) reaches version 1 by creating what is missing and
+migrating its earlier schema in place, each of those migrations running
+when its column is missing; each later change is a numbered migration,
+run once, in order. A database at a version the server does not know is
+refused. Migrations run with foreign keys enforced, so one that rebuilds a
+table others reference also needs the opening to turn them off around the
+transaction and check them before the commit. *Why not `sqlx`:* a handful
+of queries, and no database at build time. *Why a version number:* an
+index, a constraint or a data change adds no column whose absence could
+trigger it.
 
 ## Sign-in and users
 

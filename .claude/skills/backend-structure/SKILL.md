@@ -229,10 +229,11 @@ adapters and the re-export of the adapter type. No logic.
   here (`428` without `If-Match`, `ETag` formatting, cookie flags,
   redirect targets).
 - **`repo/sqlite.rs`** owns the SQL: the schema and its migrations
-  (idempotent, applied by `SqliteRepo::open`), the queries, and running
-  them on `spawn_blocking` behind one connection (`call`). It decides only
-  what needs a transaction: compare-and-swap of a version, find-or-create,
-  uniqueness. Such outcomes become named variants (§7).
+  (versioned by `PRAGMA user_version`, applied by `SqliteRepo::open`), the
+  queries, and running them on `spawn_blocking` behind one connection
+  (`call`). It decides only what needs a transaction: compare-and-swap of a
+  version, find-or-create, uniqueness. Such outcomes become named variants
+  (§7).
 - **`provider/oidc.rs`** owns the protocol: discovery, the authorization
   URL with PKCE, `state` and `nonce`, the code exchange, ID token
   verification. It returns raw claims (`VerifiedIdentity`); what they mean
@@ -418,7 +419,9 @@ tests); `mise run test` for the tests alone. Four shapes:
   `MockIdentityProviders` with expectations, then
   `PalimpsesteServiceImpl::new(repo, providers)` and the use case.
 - **Repository tests** (`repo/sqlite.rs`): `SqliteRepo::in_memory()`, or a
-  temporary file for persistence and migrations, through the trait.
+  temporary file for persistence and migrations, through the trait. The
+  migration mechanics run `migrate` on an in-memory `Connection` with
+  made-up migrations, and read the schema version from the connection.
 - **HTTP tests** (`api/http*.rs`):
   - with `MockPalimpsesteService` for one mapping (an `Underlying` is a
     bare `500`);
@@ -461,11 +464,17 @@ Put the type in the file of its concept, or a new file named after it;
 declare the module in `lib.rs` and re-export only what a trait signature or
 `main.rs` uses.
 
-### Add a column or a table
+### Change the schema
 
-Change `SCHEMA` in `repo/sqlite.rs` and add a migration to `MIGRATIONS`,
-applied when its column is missing, so existing databases open; add a
-test migrating a database of the previous schema.
+Append the SQL of the change to `MIGRATIONS` in `repo/sqlite.rs`: it runs
+once, on every database at the version before it, when the store opens.
+Never edit a released migration, nor `SCHEMA`, `UNVERSIONED_MIGRATIONS`
+and `INDEXES`, which bring a database of no version to version 1. Add a
+test migrating a database of the previous version, reached with
+`migrate(&mut connection, &MIGRATIONS[..MIGRATIONS.len() - 1])`. A new
+table joins the list of ADR BE-STORE. Migrations run in one transaction
+with foreign keys enforced: rebuilding a table others reference (`users`)
+also changes `SqliteRepo::with`, as the doc of `MIGRATIONS` says.
 
 ### Add a configuration option
 
