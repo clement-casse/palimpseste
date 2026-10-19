@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { follow, match, navigate, route, setHash, takeQuery } from "./router.svelte";
+import {
+  follow,
+  invitationLink,
+  match,
+  navigate,
+  rememberReturn,
+  route,
+  setHash,
+  takeQuery,
+  takeReturn,
+} from "./router.svelte";
 
 describe("match", () => {
   it("names the page of each path", () => {
@@ -10,7 +20,17 @@ describe("match", () => {
     expect(match("/profile")).toEqual({ name: "profile" });
     expect(match("/characters/12")).toEqual({ name: "character", id: 12 });
     expect(match("/characters/12/sheet")).toEqual({ name: "character-sheet", id: 12 });
-    for (const path of ["/characters/x", "/characters/1/more", "/nothing", "/login/"]) {
+    expect(match("/friends")).toEqual({ name: "friends" });
+    expect(match("/friends/3")).toEqual({ name: "friend", id: 3 });
+    expect(match("/friends/3/characters/12")).toEqual({ name: "friend-sheet", friend: 3, id: 12 });
+    expect(match("/invitation")).toEqual({ name: "invitation" });
+    for (const path of [
+      "/characters/x",
+      "/characters/1/more",
+      "/friends/3/characters",
+      "/nothing",
+      "/login/",
+    ]) {
       expect(match(path), path).toEqual({ name: "not-found" });
     }
   });
@@ -41,6 +61,18 @@ describe("the URL", () => {
     expect(takeQuery("link")).toBe("done");
     expect(location.search).toBe("?x=1");
     expect(takeQuery("link")).toBeNull();
+  });
+
+  it("comes back once to the page remembered", () => {
+    navigate("/invitation#token");
+    rememberReturn();
+    navigate("/login", { replace: true });
+    expect(takeReturn()).toBe("/invitation#token");
+    expect(takeReturn()).toBeNull();
+  });
+
+  it("puts an invitation token in the hash of its link", () => {
+    expect(invitationLink("abc")).toBe(`${location.origin}/invitation#abc`);
   });
 
   it("follows a link of the app, keeping its query and hash", () => {

@@ -194,6 +194,31 @@ describe("a shorter échelle de santé", () => {
   });
 });
 
+describe("a friend's sheet", () => {
+  const BEN = { id: 3, nickname: "Ben", profile: "" };
+
+  it("is only read: nothing counted, edited or kept on the device", async () => {
+    const pv = maximum(lhagva(), "cof.vigour-points");
+    render(CharacterSheet, { character: character(lhagva()), friend: BEN });
+    expect(screen.getByText("Personnage de Ben")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Ben" }).getAttribute("href")).toBe("/friends/3");
+    expect(left("Points de vigueur (PV)")).toBe(`${pv} / ${pv}`);
+    for (const name of ["Modifier", "Retirer 1 PV", "Tout restaurer", "Modifier l’équipement", "Retirer 1 Javelot"]) {
+      expect(screen.queryByRole("button", { name }), name).toBeNull();
+    }
+    expect(screen.queryByRole("link", { name: "Modifier" })).toBeNull();
+    expect(screen.getByText(/Bourse : 7 pa/)).toBeTruthy();
+    expect(localStorage.length).toBe(0);
+  });
+
+  it("shows a COC échelle de santé without filling it", () => {
+    render(CharacterSheet, { character: character(amelia(), "Amelia"), friend: BEN });
+    const scale = screen.getByRole("group", { name: "Échelle de santé" });
+    expect(within(scale).queryAllByRole("button")).toEqual([]);
+    expect(within(scale).getByRole("status").textContent).toMatch(/^0 \//);
+  });
+});
+
 describe("the sheet page", () => {
   it("loads the character", async () => {
     stubBackend((request) =>

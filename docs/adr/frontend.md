@@ -33,11 +33,15 @@ scans every flowbite-svelte component.
 **FE-PAGES: One page per path.** `/` lists the user's characters,
 `/characters/{id}` edits one (the current step in the hash),
 `/characters/{id}/sheet` shows its sheet for play (ADR FE-SHEET),
-`/profile` shows the user's profile, `/login` the sign-in page,
-`/register` creates an account; any other path is `NotFound.svelte`.
+`/profile` shows the user's profile, `/friends` their friends and
+invitations, `/friends/{id}` a friend and their characters,
+`/friends/{id}/characters/{character}` a friend's character read only,
+`/invitation` an invitation link (ADR FE-FRIENDS), `/login` the sign-in
+page, `/register` creates an account; any other path is `NotFound.svelte`.
 
 **FE-SHARED-STATE: Shared state in `.svelte.ts` modules.** The session
-(`session.svelte.ts`), the URL (`router.svelte.ts`), the PWA status
+(`session.svelte.ts`), the URL and the page to come back to after
+signing in (`router.svelte.ts`), the PWA status
 (`pwa.svelte.ts`), the theme (`theme.svelte.ts`) and the screen wake lock
 (`wakelock.svelte.ts`). Only the router reads and changes the URL: `match`
 names the page of a path, `takeQuery` reads once a message the backend
@@ -77,9 +81,12 @@ signed in; a signed-out user, or any request answered `401`, goes to
 `/login`, which lists the providers and leaves for
 `/api/auth/{id}/login`. The first sign-in of an identity comes back to
 `/register` ("Créer un compte", ADR BE-FIRST-SIGN-IN), shown signed in or
-not: the suggested nickname and an empty presentation to change, "Créer le
-compte" to sign in to the new account, "Annuler" to abandon it and go back
-to `/login`. Both it and the profile page hold the nickname and profile in
+not. A signed-out user sent to `/login` from another page (an invitation
+link) comes back to it once signed in, through `/register` or not: the
+router keeps it in `sessionStorage` for the tab (`rememberReturn`,
+`takeReturn`). On `/register`: the suggested nickname and an empty
+presentation to change, "Créer le compte" to sign in to the new account,
+"Annuler" to abandon it and go back to `/login`. Both it and the profile page hold the nickname and profile in
 `ProfileFields.svelte`. The profile page lists each provider with the
 identity linked there (one at most), or a button to link one, then the
 identities of providers no longer offered.
@@ -124,8 +131,23 @@ notes) and the values with the equipment in play, and the sheet shows the
 findings of the rules that hold in play (`inPlay`) under "À savoir"
 (ADR ENG-IN-PLAY). The screen is kept on through the Screen Wake Lock API
 while the sheet shows, with a toggle. An unfinished character still
-shows, under a banner that leads back to the editor. *Why the amounts
-used:* a maximum changed in the editor keeps the count sensible.
+shows, under a banner that leads back to the editor. A friend's character
+(`friend` given to `CharacterSheet`) is only read: its maxima, its
+creation equipment, no counter, edit, restoring nor wake lock, and
+nothing kept on the device (the engine sheets get no `PlayState`, and
+their controls show only with a callback). *Why the amounts used:* a
+maximum changed in the editor keeps the count sensible.
+
+**FE-FRIENDS: Friends, through links.** "Amis" in the navigation bar
+leads to `/friends`: the friends by nickname, each leading to their page,
+and a card to create an invitation link (ADR BE-INVITATIONS), shown once
+with "Copier" and, where the device offers it, "Partager…" (Web Share
+API), then listed as waiting with "Révoquer". The link opens
+`/invitation#{token}`: the sender's nickname and profile, "Accepter" (to
+the new friend's page, the token leaving the history) or "Ignorer"; one's
+own link, a link between friends and a link no longer valid each say so.
+A friend's page lists their characters, each to its sheet read only, and
+"Retirer des amis" ends the friendship for both once confirmed in a modal.
 
 ## PWA
 

@@ -3,14 +3,15 @@
   // creation read only, the waivers and adjustments marked where they apply,
   // the resources and the equipment in play kept on this device, the screen
   // kept on. Meant for finished characters; an unfinished one shows what is
-  // left to settle.
+  // left to settle. A friend's character is only read: no resource counted,
+  // its creation equipment, nothing kept on the device.
   import { A, Alert, Badge, Button, Heading } from "flowbite-svelte";
   import { ArrowLeftOutline } from "flowbite-svelte-icons";
   import { untrack } from "svelte";
 
-  import type { Character } from "../api";
+  import type { Character, Friend } from "../api";
   import { ENGINES, unsettled } from "../engines";
-  import { characterPath, follow } from "../router.svelte";
+  import { characterPath, follow, friendPath } from "../router.svelte";
   import ThemePicker from "../ThemePicker.svelte";
   import { keepAwake, wakeLock } from "../wakelock.svelte";
   import { type Equipment, type Sheet, catalog, evaluateInPlay } from "../wasm/palimpseste_wasm";
@@ -20,14 +21,22 @@
   import { notesOf } from "./notes";
   import { PlayState } from "./play.svelte";
 
-  let { character }: { character: Character } = $props();
+  let {
+    character,
+    friend,
+  }: {
+    character: Character;
+    /** The friend whose character it is, read only; none for the user's own. */
+    friend?: Friend;
+  } = $props();
 
   // The sheet shows the character as loaded; the page recreates it for
   // another character.
   const initial = untrack(() => $state.snapshot(character));
+  const owner = untrack(() => friend);
   const content = catalog(initial.engine);
   const choices = initial.document;
-  const play = new PlayState(initial.id, initial.engine);
+  const play = owner ? null : new PlayState(initial.id, initial.engine);
   const creation = equipmentOf(choices);
 
   type Evaluation =
@@ -38,7 +47,7 @@
   // equipment in play (ADR ENG-IN-PLAY). An equipment kept that the engine
   // cannot read gives way to the creation one.
   const evaluation = $derived.by((): Evaluation => {
-    const kept = play.equipment;
+    const kept = play?.equipment ?? null;
     if (kept) {
       try {
         return { sheet: evaluateInPlay(choices, kept), equipment: kept, unreadable: false };
@@ -81,8 +90,9 @@
   const notes = $derived(view ? notesOf(view.sheet, choices) : []);
   const open = $derived(view ? unsettled(view.sheet.steps) : 0);
 
-  // Cooking mode: the screen stays on while the sheet is shown.
+  // Cooking mode: the screen stays on while the user's own sheet is shown.
   $effect(() => {
+    if (owner) return;
     keepAwake(true);
     return () => keepAwake(false);
   });
@@ -90,12 +100,21 @@
 
 <section>
   <header class="flex flex-wrap items-center gap-x-4 gap-y-2">
-    <A href="/" onclick={follow} class="gap-1 print:hidden"><ArrowLeftOutline size="sm" /> Personnages</A>
+    {#if owner}
+      <A href={friendPath(owner.id)} onclick={follow} class="gap-1 print:hidden">
+        <ArrowLeftOutline size="sm" /> {owner.nickname}
+      </A>
+    {:else}
+      <A href="/" onclick={follow} class="gap-1 print:hidden"><ArrowLeftOutline size="sm" /> Personnages</A>
+    {/if}
     <Heading tag="h2" class="w-auto text-2xl">{initial.name}</Heading>
     <Badge color="gray">{ENGINES[initial.engine]}</Badge>
+    {#if owner}<span class="text-gray-500 dark:text-gray-400">Personnage de {owner.nickname}</span>{/if}
     <span class="ms-auto flex flex-wrap items-center gap-2 print:hidden">
-      <Button color="alternative" class="min-h-11" href={characterPath(initial.id)} onclick={follow}>Modifier</Button>
-      {#if wakeLock.supported}
+      {#if !owner}
+        <Button color="alternative" class="min-h-11" href={characterPath(initial.id)} onclick={follow}>Modifier</Button>
+      {/if}
+      {#if wakeLock.supported && !owner}
         <Button
           color={wakeLock.wanted ? "primary" : "alternative"}
           class="min-h-11"
@@ -113,14 +132,14 @@
   {#if open > 0}
     <Alert color="yellow" role="note" class="my-3">
       Création inachevée : {open} point{open > 1 ? "s" : ""} à régler.
-      <A href={characterPath(initial.id)} onclick={follow}>Reprendre la création</A>
+      {#if !owner}<A href={characterPath(initial.id)} onclick={follow}>Reprendre la création</A>{/if}
     </Alert>
   {/if}
 
   {#if "error" in evaluation}
     <Alert color="red" class="my-3">Le document ne peut pas être évalué : {evaluation.error}</Alert>
   {:else}
-    {#if evaluation.unreadable}
+    {#if evaluation.unreadable && play}
       <Alert color="red" class="my-3 flex flex-wrap items-center gap-2">
         L’équipement de la partie gardé sur cet appareil ne peut plus être lu : la fiche montre
         celui de la création.

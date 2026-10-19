@@ -33,7 +33,8 @@
     findings: ReportedViolation[];
     /** An equipment in play is kept, in place of the creation one. */
     kept: boolean;
-    onitems: (items: ItemEntry[]) => void;
+    /** Changes the items in play; none for a sheet only read. */
+    onitems?: (items: ItemEntry[]) => void;
     onforget: () => void;
     /** What is worn: list items when read, fields when `editing`. */
     worn: Snippet<[editing: boolean]>;
@@ -45,15 +46,17 @@
 </script>
 
 <Block title="Équipement" {notes}>
-  <Button
-    color={editing ? "primary" : "alternative"}
-    class="min-h-11 self-start print:hidden"
-    aria-pressed={editing}
-    onclick={() => (editing = !editing)}
-  >
-    Modifier l’équipement
-  </Button>
-  {#if editing}
+  {#if onitems}
+    <Button
+      color={editing ? "primary" : "alternative"}
+      class="min-h-11 self-start print:hidden"
+      aria-pressed={editing}
+      onclick={() => (editing = !editing)}
+    >
+      Modifier l’équipement
+    </Button>
+  {/if}
+  {#if editing && onitems}
     <div class="flex flex-col gap-2">{@render worn(true)}</div>
     <Items {items} {weapons} onchange={onitems} />
   {:else}

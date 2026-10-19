@@ -6,10 +6,24 @@
   import CharacterPage from "./character/CharacterPage.svelte";
   import Characters from "./Characters.svelte";
   import Disclaimer from "./Disclaimer.svelte";
+  import FriendPage from "./friends/FriendPage.svelte";
+  import FriendSheetPage from "./friends/FriendSheetPage.svelte";
+  import FriendsPage from "./friends/FriendsPage.svelte";
+  import InvitationPage from "./friends/InvitationPage.svelte";
   import NotFound from "./NotFound.svelte";
   import ProfilePage from "./ProfilePage.svelte";
   import Register from "./Register.svelte";
-  import { LOGIN, PROFILE, follow, match, navigate, route } from "./router.svelte";
+  import {
+    FRIENDS,
+    LOGIN,
+    PROFILE,
+    follow,
+    match,
+    navigate,
+    rememberReturn,
+    route,
+    takeReturn,
+  } from "./router.svelte";
   import { session, signedIn, signedOut } from "./session.svelte";
   import SheetPage from "./sheet/SheetPage.svelte";
   import SignIn from "./SignIn.svelte";
@@ -31,14 +45,23 @@
   }
 
   const page = $derived(match(route.path));
-  const wide = $derived(page.name === "character" || page.name === "character-sheet");
+  const wide = $derived(
+    page.name === "character" || page.name === "character-sheet" || page.name === "friend-sheet",
+  );
 
   // Signed out, only the sign-in page and creating an account; signed in,
-  // never the sign-in page.
+  // never the sign-in page. A page left to sign in (an invitation link) is
+  // shown once signed in.
   $effect(() => {
     if (page.name === "register") return;
-    if (session.user === null && page.name !== "login") navigate(LOGIN, { replace: true });
-    else if (session.user && page.name === "login") navigate("/", { replace: true });
+    if (session.user === null && page.name !== "login") {
+      if (page.name !== "characters") rememberReturn();
+      navigate(LOGIN, { replace: true });
+    } else if (session.user) {
+      const back = takeReturn();
+      if (back) navigate(back, { replace: true });
+      else if (page.name === "login") navigate("/", { replace: true });
+    }
   });
 </script>
 
@@ -53,6 +76,7 @@
     </div>
     <NavUl activeUrl={route.path}>
       <NavLi href="/" onclick={follow}>Personnages</NavLi>
+      <NavLi href={FRIENDS} onclick={follow}>Amis</NavLi>
       <NavLi href={PROFILE} onclick={follow}>Profil</NavLi>
     </NavUl>
   {/if}
@@ -74,6 +98,14 @@
       <SheetPage id={page.id} />
     {:else if page.name === "profile"}
       <ProfilePage user={session.user} />
+    {:else if page.name === "friends"}
+      <FriendsPage />
+    {:else if page.name === "friend"}
+      <FriendPage id={page.id} />
+    {:else if page.name === "friend-sheet"}
+      <FriendSheetPage friend={page.friend} id={page.id} />
+    {:else if page.name === "invitation"}
+      <InvitationPage />
     {:else if page.name === "characters"}
       <Characters user={session.user} />
     {:else}

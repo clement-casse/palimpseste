@@ -2,7 +2,8 @@
   // The COC2 échelle de santé during a session: damage fills its steps from
   // the first one not blackened (COC.DER.HEALTH-SCALE). The states come from
   // the engine; the one shown is the last whose step is filled, so a state
-  // on a blackened step never applies (COC.CNT.SCALES).
+  // on a blackened step never applies (COC.CNT.SCALES). Without `onchange`,
+  // only read.
   import { Button } from "flowbite-svelte";
   import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
 
@@ -24,7 +25,7 @@
     /** The steps filled. */
     damage: number;
     notes: Note[];
-    onchange: (damage: number) => void;
+    onchange?: (damage: number) => void;
   } = $props();
 
   const steps = $derived(Math.max(scale.steps, length));
@@ -37,7 +38,7 @@
   /** Fills up to `step`; the last step filled is emptied instead. */
   function fill(step: number) {
     const next = step - blackened;
-    onchange(next === damage ? next - 1 : next);
+    onchange?.(next === damage ? next - 1 : next);
   }
 </script>
 
@@ -48,26 +49,28 @@
     <span class={state ? "font-bold text-red-700 dark:text-red-500" : "text-gray-500 dark:text-gray-400"}>
       {state ? `${state.name} ${signed(state.malus)}` : "Aucun état"}
     </span>
-    <span class="ms-auto flex gap-1.5 print:hidden">
-      <Button
-        color="alternative"
-        class="h-11 w-11 p-0"
-        aria-label="Retirer 1 DM"
-        disabled={damage <= 0}
-        onclick={() => onchange(damage - 1)}
-      >
-        <MinusOutline />
-      </Button>
-      <Button
-        color="alternative"
-        class="h-11 w-11 p-0"
-        aria-label="Ajouter 1 DM"
-        disabled={damage >= length}
-        onclick={() => onchange(damage + 1)}
-      >
-        <PlusOutline />
-      </Button>
-    </span>
+    {#if onchange}
+      <span class="ms-auto flex gap-1.5 print:hidden">
+        <Button
+          color="alternative"
+          class="h-11 w-11 p-0"
+          aria-label="Retirer 1 DM"
+          disabled={damage <= 0}
+          onclick={() => onchange(damage - 1)}
+        >
+          <MinusOutline />
+        </Button>
+        <Button
+          color="alternative"
+          class="h-11 w-11 p-0"
+          aria-label="Ajouter 1 DM"
+          disabled={damage >= length}
+          onclick={() => onchange(damage + 1)}
+        >
+          <PlusOutline />
+        </Button>
+      </span>
+    {/if}
   </div>
   <div class="mt-1.5 grid grid-cols-[repeat(var(--steps),minmax(0,1fr))] gap-0.5" style:--steps={steps}>
     {#each { length: steps }, i (i)}
@@ -78,6 +81,8 @@
           class="h-8 rounded-sm border border-gray-400 bg-[repeating-linear-gradient(45deg,var(--color-gray-400)_0_2px,transparent_2px_6px)] nth-[5n]:border-2"
           title="Case {step} noircie"
         ></span>
+      {:else if !onchange}
+        <span class="h-8 rounded-sm border border-gray-400 nth-[5n]:border-2 dark:border-gray-500"></span>
       {:else}
         <!-- Every fifth step ends a state. -->
         <button

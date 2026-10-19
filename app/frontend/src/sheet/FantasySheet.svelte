@@ -48,7 +48,8 @@
     catalog: FantasyCatalog;
     sheet: Sheet;
     details: FantasyDetails;
-    play: PlayState;
+    /** What is kept on the device; none for a sheet only read. */
+    play: PlayState | null;
     notes: Note[];
     /** The equipment in play, or the creation one. */
     equipment: FantasyEquipment;
@@ -76,7 +77,7 @@
 
   /** Wears and carries `change` in play, the rest of the equipment kept. */
   function equip(change: Partial<FantasyEquipment>) {
-    play.equip({ engine: "fantasy", ...equipment, ...change });
+    play?.equip({ engine: "fantasy", ...equipment, ...change });
   }
 
   const COMBAT = [
@@ -130,13 +131,13 @@
       label={resource.short}
       title={resource.label}
       max={resource.total}
-      used={play.used(resource.id, resource.total)}
+      used={play?.used(resource.id, resource.total) ?? 0}
       die={resource.dice}
       notes={valueMarks(resource.id)}
-      onchange={(used) => play.set(resource.id, used, resource.total)}
+      onchange={play ? (used) => play.set(resource.id, used, resource.total) : undefined}
     />
   {/each}
-  <Restore {play} />
+  {#if play}<Restore {play} />{/if}
 </div>
 
 <div class="mt-4 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -195,9 +196,9 @@
     items={equipment.items ?? []}
     weapons={catalog.weapons}
     findings={sheet.inPlay}
-    kept={play.equipment !== null}
-    onitems={(items) => equip({ items })}
-    onforget={() => play.forgetEquipment()}
+    kept={play !== null && play.equipment !== null}
+    onitems={play ? (items) => equip({ items }) : undefined}
+    onforget={() => play?.forgetEquipment()}
   >
     {#snippet worn(editing: boolean)}
       {#if editing}

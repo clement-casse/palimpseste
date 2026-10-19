@@ -1,6 +1,6 @@
 <script lang="ts">
   // A resource counted during a session: what is left of its maximum, spent
-  // and recovered one at a time.
+  // and recovered one at a time; without `onchange`, only read.
   import { Button, Progressbar } from "flowbite-svelte";
   import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
 
@@ -25,7 +25,7 @@
     /** The die rolled with it, such as d10. */
     die?: string;
     notes: Note[];
-    onchange: (used: number) => void;
+    onchange?: (used: number) => void;
   } = $props();
 
   const left = $derived(max - used);
@@ -39,22 +39,24 @@
     {#if die}<span class="text-xs text-gray-500 dark:text-gray-400">{die}</span>{/if}
     <Progressbar progress={share} size="h-1" class="mt-1" />
   </span>
-  <Button
-    color="alternative"
-    class="h-11 w-11 p-0 print:hidden"
-    aria-label="Retirer 1 {label}"
-    disabled={left <= 0}
-    onclick={() => onchange(used + 1)}
-  >
-    <MinusOutline />
-  </Button>
-  <Button
-    color="alternative"
-    class="h-11 w-11 p-0 print:hidden"
-    aria-label="Ajouter 1 {label}"
-    disabled={used <= 0}
-    onclick={() => onchange(used - 1)}
-  >
-    <PlusOutline />
-  </Button>
+  {#if onchange}
+    <Button
+      color="alternative"
+      class="h-11 w-11 p-0 print:hidden"
+      aria-label="Retirer 1 {label}"
+      disabled={left <= 0}
+      onclick={() => onchange(used + 1)}
+    >
+      <MinusOutline />
+    </Button>
+    <Button
+      color="alternative"
+      class="h-11 w-11 p-0 print:hidden"
+      aria-label="Ajouter 1 {label}"
+      disabled={used <= 0}
+      onclick={() => onchange(used - 1)}
+    >
+      <PlusOutline />
+    </Button>
+  {/if}
 </div>
