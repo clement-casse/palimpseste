@@ -99,6 +99,8 @@ app/backend/
     ├── sign_in.rs         # model: ProviderId, PendingSignIn, VerifiedIdentity, SignInEnd, ...
     ├── registration.rs    # model: RegistrationToken, Registration, PendingRegistration
     ├── character.rs       # model: CharacterId, CharacterName, Version, Character
+    ├── invitation.rs      # model: InvitationToken, Invitation, ReceivedInvitation, INVITATION_TTL
+    ├── friend.rs          # model: FriendshipId, Friend, the ordered pair
     ├── service.rs         # PalimpsesteServiceImpl<R: PalimpsesteRepository, P: IdentityProviders>
     ├── repo.rs            # PalimpsesteRepository trait
     ├── repo/
@@ -111,6 +113,7 @@ app/backend/
     │   ├── http.rs        # HttpApi: router, error → status, session extractor, views, handlers
     │   └── http/
     │       ├── sign_in.rs # /api/auth/*: redirects, cookies
+    │       ├── friends.rs # invitations and friends
     │       └── frontend.rs# the built PWA, cache headers
 ```
 
@@ -148,6 +151,8 @@ the name says *which* concept.
 | `sign_in.rs` | `ProviderId`, `ProviderSummary`, `SignInId`, `Authorization`, `PendingSignIn`, `ProviderAnswer`, `VerifiedIdentity` (nickname and label from claims), `Linking`, `SignInEnd`, `LinkedIdentity`, `SIGN_IN_TTL` |
 | `registration.rs` | `RegistrationToken`, `Registration`, `PendingRegistration`, `REGISTRATION_TTL` |
 | `character.rs` | `CharacterId`, `CharacterName`, `Version`, `Character` |
+| `invitation.rs` | `InvitationToken`, `InvitationId`, `UnixTime`, `Invitation`, `ReceivedInvitation`, `InvitationStatus`, `INVITATION_TTL` |
+| `friend.rs` | `FriendshipId`, `Friend`, `pair` (the order a friendship is kept in) |
 
 ### Rules live in the model
 
@@ -288,7 +293,8 @@ this section spells out the compromise.
   `NoSession`, `UnknownProvider`, `BlankNickname`, `NicknameTooLong`,
   `ProfileTooLong`, `NicknameTaken`, `IdentityTaken`,
   `ProviderAlreadyLinked`, `NoRegistration`, `CharacterNotFound`,
-  `BlankName`, `UnreadableDocument`, `OtherEngine`, `Stale`, `SignInFailed`.
+  `BlankName`, `UnreadableDocument`, `OtherEngine`, `Stale`, `SignInFailed`,
+  `InvitationNotFound`, `OwnInvitation`, `AlreadyFriends`, `FriendNotFound`.
   The user can change what they do: pick another nickname, reload, sign in
   again.
 - **Technical → `Error::Underlying(anyhow::Error)`**: the database, a
@@ -402,7 +408,10 @@ Dependencies are **type parameters**, not `Arc<dyn ...>`. Use cases are
 The trait *is* the use-case surface.
 
 There is **no authorizer** yet: with no roles, ownership through
-`ActionContext` is the whole policy. An `authorizer` role (trait
+`ActionContext`, and friendship joined in the same scoped query to read a
+friend's characters (`friend_character(user, friendship, character)`), are
+the whole policy. Reaching another user's data through a relation follows
+that shape: the relation is a path segment, and the SQL joins it. An `authorizer` role (trait
 `PalimpsesteAuthorizer`, domain-typed checks, a permissive implementation)
 arrives with parties or roles, by a change to ADR BE-ACTION-CONTEXT.
 

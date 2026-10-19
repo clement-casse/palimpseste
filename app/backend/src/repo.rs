@@ -1,6 +1,7 @@
 //! What the service keeps: users, identities, sessions, sign-ins and
-//! registrations in progress, and characters. The repository keeps what it is given and
-//! never reads the rules; it decides only what needs a transaction.
+//! registrations in progress, characters, invitations and friendships. The
+//! repository keeps what it is given and never reads the rules; it decides
+//! only what needs a transaction.
 
 pub mod sqlite;
 
@@ -11,12 +12,13 @@ use palimpseste_document::Document;
 
 pub use self::sqlite::SqliteRepo;
 use crate::{
-    Character, CharacterId, CharacterName, Error, Identity, Linking, Nickname, PendingSignIn,
-    Profile, Registration, SignInId, TokenHash, User, UserId, Version,
+    Character, CharacterId, CharacterName, Error, Friend, FriendshipId, Identity, Invitation,
+    InvitationId, Linking, Nickname, PendingSignIn, Profile, Registration, SignInId, TokenHash,
+    User, UserId, Version,
 };
 
 /// The persistence the service needs. Every character is reached through
-/// its owner.
+/// its owner, or read through a friendship of the user asking.
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait PalimpsesteRepository: Send + Sync + 'static {
@@ -110,7 +112,7 @@ pub trait PalimpsesteRepository: Send + Sync + 'static {
     /// unknown or expired: a sign-in is completed once at most.
     async fn take_sign_in(&self, id: &SignInId) -> Result<Option<PendingSignIn>, Error>;
 
-    /// Removes the expired sessions, sign-ins and registrations.
+    /// Removes the expired sessions, sign-ins, registrations and invitations.
     async fn purge_expired(&self) -> Result<(), Error>;
 
     /// Whether the database answers, by a trivial read.
@@ -153,4 +155,68 @@ pub trait PalimpsesteRepository: Send + Sync + 'static {
         expected: Version,
         document: &Document,
     ) -> Result<Version, Error>;
+
+    /// Keeps for `ttl`, known by the hash `token`, an invitation of
+    /// `inviter`.
+    async fn create_invitation(
+        &self,
+        inviter: UserId,
+        token: &TokenHash,
+        ttl: Duration,
+    ) -> Result<Invitation, Error>;
+
+    /// The invitations of `inviter` that have not expired, the first to
+    /// expire first.
+    async fn invitations(&self, inviter: UserId) -> Result<Vec<Invitation>, Error>;
+
+    /// Removes `inviter`'s invitation `id`; `false` when it is unknown or not
+    /// theirs.
+    async fn delete_invitation(&self, inviter: UserId, id: InvitationId) -> Result<bool, Error>;
+
+    /// The sender of the invitation `token`, unless it is unknown or
+    /// expired.
+    async fn invitation_inviter(&self, token: &TokenHash) -> Result<Option<User>, Error>;
+
+    /// The friendship of `one` and `other`, if they are friends.
+    async fn friendship_between(
+        &self,
+        one: UserId,
+        other: UserId,
+    ) -> Result<Option<FriendshipId>, Error>;
+
+    /// Makes `user` and the sender of the invitation `token` friends, and
+    /// removes it; gives the sender as `user`'s friend.
+    /// [`Error::InvitationNotFound`] when it is unknown or expired;
+    /// [`Error::OwnInvitation`] when `user` sent it, and
+    /// [`Error::AlreadyFriends`] when they are friends, keeping it.
+    async fn accept_invitation(&self, user: UserId, token: &TokenHash) -> Result<Friend, Error>;
+
+    /// The friends of `user`, by nickname regardless of ASCII case.
+    async fn friends(&self, user: UserId) -> Result<Vec<Friend>, Error>;
+
+    /// The friend of `user` through friendship `id`, unless it is unknown or
+    /// not theirs.
+    async fn friend(&self, user: UserId, id: FriendshipId) -> Result<Option<Friend>, Error>;
+
+    /// Ends the friendship `id` of `user`, for both friends; `false` when it
+    /// is unknown or not theirs.
+    async fn delete_friendship(&self, user: UserId, id: FriendshipId) -> Result<bool, Error>;
+
+    /// The characters of the friend of `user` through friendship `id`;
+    /// `None` when it is unknown or not theirs.
+    async fn friend_characters(
+        &self,
+        user: UserId,
+        id: FriendshipId,
+    ) -> Result<Option<Vec<Character>>, Error>;
+
+    /// Character `character` of the friend of `user` through friendship
+    /// `id`, unless the friendship is unknown or not theirs, or the
+    /// character is not the friend's.
+    async fn friend_character(
+        &self,
+        user: UserId,
+        id: FriendshipId,
+        character: CharacterId,
+    ) -> Result<Option<Character>, Error>;
 }

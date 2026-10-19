@@ -4,10 +4,12 @@
 //! The API serves, checks and stores (ADR BE-CHECKS): it rejects a request
 //! it cannot read, never a character breaking a rule. Signing in is under
 //! `/api/auth` (ADR BE-SIGN-IN); every other route needs a session and
-//! reaches the signed-in user's profile, identities (ADR BE-IDENTITIES) and
-//! characters only. Each request is logged with its status and latency,
+//! reaches the signed-in user's profile, identities (ADR BE-IDENTITIES),
+//! characters, invitations and friends only, and reads their friends'
+//! characters (ADR BE-FRIENDS). Each request is logged with its status and latency,
 //! each rejected request with why (ADR BE-LOGS).
 
+mod friends;
 mod frontend;
 mod sign_in;
 
@@ -81,6 +83,7 @@ impl HttpApi {
                     .delete(delete_character),
             )
             .route("/characters/{character_id}/document", put(put_document))
+            .merge(friends::routes())
             .fallback(not_found)
             .with_state(state.clone());
         Router::new()
@@ -133,20 +136,26 @@ impl IntoResponse for Rejection {
         };
         match error {
             Error::NoSession => StatusCode::UNAUTHORIZED.into_response(),
-            Error::UnknownProvider | Error::CharacterNotFound | Error::NoRegistration => {
-                StatusCode::NOT_FOUND.into_response()
-            }
+            Error::UnknownProvider
+            | Error::CharacterNotFound
+            | Error::NoRegistration
+            | Error::InvitationNotFound
+            | Error::FriendNotFound => StatusCode::NOT_FOUND.into_response(),
             Error::BlankNickname
             | Error::NicknameTooLong
             | Error::ProfileTooLong
             | Error::BlankName
             | Error::UnreadableDocument(_)
-            | Error::OtherEngine => {
+            | Error::OtherEngine
+            | Error::OwnInvitation => {
                 let reason = error.to_string();
                 tracing::warn!(%reason, "unprocessable request");
                 (StatusCode::UNPROCESSABLE_ENTITY, reason).into_response()
             }
-            Error::NicknameTaken | Error::IdentityTaken | Error::ProviderAlreadyLinked => {
+            Error::NicknameTaken
+            | Error::IdentityTaken
+            | Error::ProviderAlreadyLinked
+            | Error::AlreadyFriends => {
                 let reason = error.to_string();
                 tracing::info!(%reason, "conflicting request");
                 (StatusCode::CONFLICT, reason).into_response()
@@ -457,17 +466,19 @@ mod tests {
         format!("palimpseste_session={}", token.as_str())
     }
 
-    /// The application, with users Ana (1) and Ben (2) signed in.
-    struct App {
-        router: Router,
-        ana: String,
-        ben: String,
+    /// The application, with users Ana (1), Ben (2) and Cy (3) signed in:
+    /// the `Cookie` header of each.
+    pub(super) struct App {
+        pub(super) router: Router,
+        pub(super) ana: String,
+        pub(super) ben: String,
+        pub(super) cy: String,
     }
 
-    async fn app(test: &str) -> App {
+    pub(super) async fn app(test: &str) -> App {
         let repo = SqliteRepo::in_memory();
         let mut cookies = Vec::new();
-        for name in ["Ana", "Ben"] {
+        for name in ["Ana", "Ben", "Cy"] {
             let token = SessionToken::random().hash();
             let label = format!("{name}@mail.test");
             repo.create_registration(
@@ -491,17 +502,19 @@ mod tests {
             ProviderConfig::new("dex", "Dex", "https://issuer.test", "client", "secret").unwrap();
         let providers = OidcProviders::new("http://localhost:3000", vec![provider]).unwrap();
         let service = Arc::new(PalimpsesteServiceImpl::new(repo, providers));
+        let cy = cookies.pop().unwrap();
         let ben = cookies.pop().unwrap();
         let ana = cookies.pop().unwrap();
         App {
             router: HttpApi::new(service, &frontend_dir(test), "http://localhost:3000").router(),
             ana,
             ben,
+            cy,
         }
     }
 
     /// Sends a request with `cookie`, if any, and `headers`.
-    async fn send_with(
+    pub(super) async fn send_with(
         router: &Router,
         cookie: Option<&str>,
         method: Method,
@@ -697,7 +710,7 @@ mod tests {
     }
 
     /// Ana's fantasy character 1.
-    async fn with_character(test: &str) -> App {
+    pub(super) async fn with_character(test: &str) -> App {
         let app = app(test).await;
         app.send(
             Method::POST,
@@ -708,7 +721,7 @@ mod tests {
         app
     }
 
-    fn lhagva() -> Value {
+    pub(super) fn lhagva() -> Value {
         serde_json::from_str(include_str!("../../../document/tests/fixtures/lhagva.json")).unwrap()
     }
 
@@ -725,6 +738,16 @@ mod tests {
             (Method::PATCH, "/api/characters/1"),
             (Method::DELETE, "/api/characters/1"),
             (Method::PUT, "/api/characters/1/document"),
+            (Method::GET, "/api/me/invitations"),
+            (Method::POST, "/api/me/invitations"),
+            (Method::DELETE, "/api/me/invitations/1"),
+            (Method::POST, "/api/invitations/lookup"),
+            (Method::GET, "/api/me/friends"),
+            (Method::POST, "/api/me/friends"),
+            (Method::GET, "/api/me/friends/1"),
+            (Method::DELETE, "/api/me/friends/1"),
+            (Method::GET, "/api/me/friends/1/characters"),
+            (Method::GET, "/api/me/friends/1/characters/1"),
         ];
         for (method, uri) in routes {
             for cookie in [None, Some("palimpseste_session=unknown")] {
