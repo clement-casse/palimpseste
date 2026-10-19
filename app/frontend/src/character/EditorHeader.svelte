@@ -1,6 +1,9 @@
 <script lang="ts">
   // The character's name, renamed when the field is left, its engine, how
   // saving goes, and its deletion.
+  import { A, Badge, Button, Input, Spinner } from "flowbite-svelte";
+  import { ArrowLeftOutline } from "flowbite-svelte-icons";
+
   import { type Character, deleteCharacter, renameCharacter } from "../api";
   import { ENGINES } from "../engines";
   import ErrorMessage from "../ErrorMessage.svelte";
@@ -57,44 +60,25 @@
   }
 </script>
 
-<header>
-  <a href="/" onclick={follow}>← Personnages</a>
-  <input class="name" aria-label="Nom du personnage" bind:value={name} onchange={rename} />
-  <span class="engine">{ENGINES[character.engine]}</span>
-  <a href={characterSheetPath(character.id)} onclick={follow}>Fiche</a>
-  <span
-    class={["status", saver.status]}
+<header class="flex flex-wrap items-center gap-x-4 gap-y-2">
+  <A href="/" onclick={follow} class="gap-1"><ArrowLeftOutline size="sm" /> Personnages</A>
+  <Input
+    class="min-w-48 flex-1 text-xl font-bold"
+    aria-label="Nom du personnage"
+    bind:value={name}
+    onchange={rename}
+  />
+  <Badge color="gray">{ENGINES[character.engine]}</Badge>
+  <Button size="sm" color="alternative" href={characterSheetPath(character.id)} onclick={follow}>Fiche</Button>
+  <Badge
+    color={saver.status === "conflict" || saver.status === "error" ? "red" : saver.status === "saved" ? "green" : "gray"}
     title={saver.failure === null ? undefined : detail(saver.failure)}
+    class="gap-1"
   >
+    {#if saver.status === "saving"}<Spinner size="4" />{/if}
     {STATUS[saver.status]}
-  </span>
-  <button type="button" class="danger" onclick={remove}>Supprimer</button>
+  </Badge>
+  <Button size="sm" color="red" outline onclick={remove}>Supprimer</Button>
 </header>
 {#if saver.failure !== null && saver.status !== "saved"}<ErrorMessage error={saver.failure} />{/if}
 {#if failure !== null}<ErrorMessage error={failure} />{/if}
-
-<style>
-  header {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
-    align-items: center;
-  }
-
-  .name {
-    flex: 1 1 12rem;
-    font-size: 1.3em;
-    font-weight: bold;
-  }
-
-  .status {
-    font-size: 0.85em;
-    color: var(--muted);
-  }
-
-  .status.conflict,
-  .status.error,
-  .danger {
-    color: var(--error);
-  }
-</style>

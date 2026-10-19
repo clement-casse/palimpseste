@@ -2,6 +2,7 @@
   // Edits a character following its engine's rules (ADR FE-EDITOR). The choices
   // document is the only state: the engine, compiled to WebAssembly,
   // evaluates it on every edit, locally, and `DocumentSaver` saves it.
+  import { Alert, Heading } from "flowbite-svelte";
   import { onDestroy, untrack } from "svelte";
 
   import type { Character } from "../api";
@@ -99,17 +100,17 @@
   }}
 />
 
-<section class="editor">
+<section class="flex flex-col gap-4">
   <EditorHeader character={initial} {saver} ondeleted={deleted} />
 
   {#if "error" in evaluation}
-    <p class="error">Le document ne peut pas être évalué : {evaluation.error}</p>
+    <Alert color="red">Le document ne peut pas être évalué : {evaluation.error}</Alert>
   {:else}
     {@const sheet = evaluation.sheet}
-    <div class="layout">
+    <div class="grid items-start gap-6 md:grid-cols-[16rem_1fr]">
       <StepNav steps={sheet.steps} current={step} onselect={setHash} />
-      <div class="step">
-        <h2>{sheet.steps.find((s) => s.id === step)?.name}</h2>
+      <div class="flex min-w-0 flex-col gap-4">
+        <Heading tag="h2" class="text-2xl">{sheet.steps.find((s) => s.id === step)?.name}</Heading>
         {#if choices.engine === "fantasy" && content.engine === "fantasy" && sheet.details.engine === "fantasy"}
           <FantasyEditor bind:choices catalog={content} details={sheet.details} {step} />
         {:else if choices.engine === "contemporain" && content.engine === "contemporain" && sheet.details.engine === "contemporain"}
@@ -117,14 +118,14 @@
         {/if}
 
         {#if step === "characteristics"}
-          <h3>Caractéristiques</h3>
+          <Heading tag="h3" class="text-lg">Caractéristiques</Heading>
           <CharacteristicSheet characteristics={sheet.characteristics} onadjust={adjust} />
         {/if}
         {#if step === lastStep}
           <ValueSheet values={sheet.values} onadjust={adjust} />
         {/if}
 
-        <h3>À régler</h3>
+        <Heading tag="h3" class="text-lg">À régler</Heading>
         <Violations
           violations={sheet.violations.filter((v) => v.step === step)}
           onwaive={(violation) => (request = { kind: "waiver", violation })}
@@ -143,18 +144,3 @@
 </section>
 
 <OverrideDialog {request} {author} onconfirm={confirmOverride} oncancel={() => (request = null)} />
-
-<style>
-  .layout {
-    display: grid;
-    grid-template-columns: minmax(12rem, 16rem) 1fr;
-    gap: 1.5rem;
-    align-items: start;
-  }
-
-  @media (max-width: 40rem) {
-    .layout {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>

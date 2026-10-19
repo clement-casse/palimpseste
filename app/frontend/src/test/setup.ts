@@ -21,3 +21,23 @@ window.matchMedia ??= (query: string) =>
     removeListener: () => {},
     dispatchEvent: () => false,
   }) satisfies MediaQueryList;
+
+// Nor the Web Animations API, which Svelte's transitions (Flowbite's modals
+// and accordions) play: an animation that ends at once.
+Element.prototype.animate ??= function () {
+  const animation = {
+    onfinish: null as (() => void) | null,
+    cancel: () => {},
+    finish: () => {},
+  };
+  void Promise.resolve().then(() => animation.onfinish?.());
+  return animation as unknown as Animation;
+};
+
+// Nor modal dialogs: one shown is open, one closed is not.
+HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
+  this.open = true;
+};
+HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
+  this.open = false;
+};

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Accordion, AccordionItem, Button } from "flowbite-svelte";
+
   import type { CharacteristicLine, Target } from "../wasm/palimpseste_wasm";
   import Breakdown from "./Breakdown.svelte";
   import { signed } from "./edits";
@@ -12,23 +14,23 @@
   } = $props();
 </script>
 
-<ul class="sheet">
+<Accordion flush multiple>
   {#each characteristics as line (line.characteristic)}
-    <li>
-      <details>
-        <summary>
+    <AccordionItem headingTag="div" classes={{ content: "space-y-2 py-2" }}>
+      {#snippet header()}
+        <span class="flex flex-1 justify-between gap-2 pe-3">
           <span>{line.characteristic}</span>
-          <strong>{signed(line.total)}</strong>
-        </summary>
-        <Breakdown contributions={line.contributions} />
-        <button
-          type="button"
-          onclick={() =>
-            onadjust({ kind: "characteristic", id: line.characteristic }, line.characteristic)}
-        >
-          Ajuster…
-        </button>
-      </details>
-    </li>
+          <strong class="text-gray-900 dark:text-white">{signed(line.total)}</strong>
+        </span>
+      {/snippet}
+      <Breakdown contributions={line.contributions} />
+      <Button
+        size="xs"
+        color="alternative"
+        onclick={() => onadjust({ kind: "characteristic", id: line.characteristic }, line.characteristic)}
+      >
+        Ajuster…
+      </Button>
+    </AccordionItem>
   {/each}
-</ul>
+</Accordion>

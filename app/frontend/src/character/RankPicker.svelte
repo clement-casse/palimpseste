@@ -1,6 +1,8 @@
 <script lang="ts">
   // The ranks acquired in a voie, as a set: a gap or a rank beyond 5 can be
   // entered, and the engine reports it.
+  import { Checkbox } from "flowbite-svelte";
+
   let { ranks, onchange }: { ranks: number[]; onchange: (ranks: number[]) => void } = $props();
 
   const shown = $derived([...new Set([1, 2, 3, 4, 5, ...ranks])].sort((a, b) => a - b));
@@ -13,18 +15,10 @@
   }
 </script>
 
-<span class="ranks">
+<span class="inline-flex gap-3">
   {#each shown as rank (rank)}
-    <label title="Rang {rank}">
-      <input type="checkbox" checked={ranks.includes(rank)} onchange={() => toggle(rank)} />
+    <Checkbox title="Rang {rank}" checked={ranks.includes(rank)} onchange={() => toggle(rank)}>
       {rank}
-    </label>
+    </Checkbox>
   {/each}
 </span>
-
-<style>
-  .ranks {
-    display: inline-flex;
-    gap: 0.5rem;
-  }
-</style>
