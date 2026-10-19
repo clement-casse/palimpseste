@@ -3,10 +3,10 @@
   import CharacterItem from "./CharacterItem.svelte";
   import { ENGINES } from "./engines";
   import ErrorMessage from "./ErrorMessage.svelte";
-  import { PROFILE, characterPath, follow, navigate } from "./router.svelte";
+  import { characterPath, navigate } from "./router.svelte";
   import type { Engine } from "./wasm/palimpseste_wasm";
 
-  let { user, onSignOut }: { user: User; onSignOut: () => void } = $props();
+  let { user }: { user: User } = $props();
 
   const characters = listCharacters();
   let name = $state("");
@@ -25,8 +25,6 @@
 <section>
   <header class="user">
     <h2>Personnages de {user.nickname}</h2>
-    <a href={PROFILE} onclick={follow}>Profil</a>
-    <button type="button" onclick={onSignOut}>Se déconnecter</button>
   </header>
   {#await characters}
     <p>Chargement…</p>

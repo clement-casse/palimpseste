@@ -1,301 +1,63 @@
-/* Design tokens, element defaults and the utilities several components
-   share. Anything else is styled in its component. */
+/* Tailwind CSS and Flowbite (ADR FE-STYLES): components come from
+   flowbite-svelte, layout from Tailwind utilities. This file only sets
+   them up, with the app's primary colour and its themes. */
 
-/* Themes (ADR FE-THEMES): light by default, dark when the system asks for
-   it, or the one chosen on this device (`data-theme`, `theme.svelte.ts`).
-   OLED keeps the page black and the ink a little dimmed; nothing may paint
-   a lighter surface behind content. Printing is always light. */
+@import "tailwindcss";
+@plugin "flowbite/plugin";
+@source "../node_modules/flowbite-svelte/dist";
+@source "../node_modules/flowbite-svelte-icons/dist";
 
-:root {
-  font-family: system-ui, sans-serif;
-  line-height: 1.5;
-}
-
-:root,
-:root[data-theme="light"] {
-  --ink: #2b2620;
-  --page: #efe6d2;
-  --accent: #5c3a21;
-  --muted: #8a7a62;
-  --error: #9b2c2c;
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    --ink: #efe6d2;
-    --page: #2b2620;
-    --accent: #d6b98c;
-    --muted: #a8977c;
-    --error: #e08080;
-    color-scheme: dark;
+/* Themes (ADR FE-THEMES): `theme.svelte.ts` puts `dark` on the root for
+   Sombre, OLED, or Système on a dark device. Printing is always light. */
+@custom-variant dark {
+  @media not print {
+    &:where(.dark, .dark *) {
+      @slot;
+    }
   }
 }
 
-:root[data-theme="dark"] {
-  --ink: #efe6d2;
-  --page: #2b2620;
-  --accent: #d6b98c;
-  --muted: #a8977c;
-  --error: #e08080;
-  color-scheme: dark;
+/* The app's brown, around its former accents (#5c3a21 light, #d6b98c
+   dark); every other colour is Flowbite's. */
+@theme {
+  --color-primary-50: #faf6ef;
+  --color-primary-100: #f2e9d8;
+  --color-primary-200: #e6d4b5;
+  --color-primary-300: #d6b98c;
+  --color-primary-400: #c49b66;
+  --color-primary-500: #ad7f4a;
+  --color-primary-600: #8f6339;
+  --color-primary-700: #744c2c;
+  --color-primary-800: #5c3a21;
+  --color-primary-900: #452b18;
+  --color-primary-950: #2b1a0e;
 }
 
-:root[data-theme="oled"] {
-  --ink: #d9cfbd;
-  --page: #000;
-  --accent: #c9ab7c;
-  --muted: #8f826d;
-  --error: #e08080;
-  color-scheme: dark;
+/* OLED keeps the page black: the dark surfaces paint nothing, the borders
+   (gray-700) stay. */
+@media not print {
+  :root[data-theme="oled"] {
+    --color-gray-800: #000;
+    --color-gray-900: #000;
+  }
 }
 
-@media print {
-  :root:root {
-    --ink: #000;
-    --page: #fff;
-    --accent: #5c3a21;
-    --muted: #6b5e4a;
-    --error: #9b2c2c;
+@layer base {
+  :root {
     color-scheme: light;
   }
-}
 
-body {
-  margin: 0;
-  background: var(--page);
-  color: var(--ink);
-}
-
-main {
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 1rem;
-}
-
-main.wide {
-  max-width: 64rem;
-}
-
-h1 {
-  color: var(--accent);
-}
-
-a {
-  color: var(--accent);
-}
-
-ul {
-  padding: 0;
-  list-style: none;
-}
-
-form,
-.user {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: space-between;
-}
-
-input,
-select {
-  flex: 1 1 10rem;
-}
-
-input,
-select,
-button,
-textarea {
-  font: inherit;
-  padding: 0.4rem 0.6rem;
-}
-
-textarea {
-  resize: vertical;
-}
-
-/* A link that leaves the app (signing in, linking an identity), shown as a
-   button. */
-a.button {
-  display: inline-block;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--muted);
-  border-radius: 0.25rem;
-  color: inherit;
-  text-decoration: none;
-}
-
-.choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.error {
-  color: var(--error);
-}
-
-.hint {
-  color: var(--muted);
-  font-size: 0.9em;
-}
-
-.field {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  align-items: center;
-  margin: 0.5rem 0;
-  border: none;
-  padding: 0;
-}
-
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-}
-
-/* Shared by both engine editors. */
-
-.assign th {
-  text-align: left;
-  padding-right: 1rem;
-}
-
-.assign small {
-  color: var(--muted);
-  font-weight: normal;
-}
-
-.assign input {
-  width: 5rem;
-}
-
-.voies li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.2rem 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
-}
-
-/* Shared by the characteristic and value sheets. */
-
-.sheet summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  padding: 0.2rem 0;
-}
-
-/* Shared by both character sheets (ADR FE-SHEET): the resource bar stays in
-   reach while the sections, in columns, scroll under it. */
-
-.character-sheet :where(button, select) {
-  border: 1px solid var(--muted);
-  border-radius: 0.4rem;
-  background: none;
-  color: var(--ink);
-}
-
-.character-sheet :where(button:disabled) {
-  opacity: 0.4;
-}
-
-.identity {
-  margin: 0.25rem 0 0.75rem;
-  color: var(--muted);
-}
-
-.play-bar {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.5rem;
-  align-items: center;
-  margin: 0 -1rem;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
-  background: var(--page);
-}
-
-.play-sections {
-  columns: 3 17rem;
-  column-gap: 1.5rem;
-  margin-top: 1rem;
-}
-
-.block {
-  break-inside: avoid;
-  margin-bottom: 1.25rem;
-}
-
-.block h3 {
-  margin: 0 0 0.5rem;
-  color: var(--accent);
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.block h4 {
-  margin: 0.75rem 0 0.25rem;
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: normal;
-}
-
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr));
-  gap: 0.4rem;
-  margin: 0;
-}
-
-.weapons {
-  width: 100%;
-  margin-top: 0.75rem;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-}
-
-.weapons th {
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: normal;
-  text-align: left;
-}
-
-.weapons th,
-.weapons td {
-  padding: 0.25rem 0.5rem 0.25rem 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
-  vertical-align: top;
-}
-
-.listing li {
-  padding: 0.15rem 0;
-}
-
-@media print {
-  .character-sheet button:not(.mark, .box),
-  .character-sheet select,
-  .character-sheet .tools {
-    display: none;
+  :root.dark {
+    color-scheme: dark;
   }
 
-  .play-bar {
-    position: static;
+  body {
+    @apply bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+  }
+
+  @media print {
+    :root.dark {
+      color-scheme: light;
+    }
   }
 }

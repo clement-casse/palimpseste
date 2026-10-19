@@ -17,6 +17,17 @@ gzipped against Svelte's 19 kB in the first bootstrap. Costs accepted: a
 smaller ecosystem, and coding agents that know runes less well (review
 their components for Svelte 4 syntax).
 
+**FE-COMPONENTS: flowbite-svelte on Tailwind CSS.** The interface is
+built from flowbite-svelte's standard components (forms, buttons, cards,
+lists, tables, badges, alerts, accordions, modals, the navigation bar),
+with flowbite-svelte-icons, on Tailwind CSS 4 (`@tailwindcss/vite`).
+flowbite-svelte declares no `sideEffects`, so `vite.config.ts` marks its
+modules side-effect free for tree shaking. *Why:* accessible components
+written for Svelte 5 with runes, in place of hand-written CSS. Costs
+accepted: about 60 kB gzipped more JavaScript (the components,
+tailwind-variants and tailwind-merge) and 30 kB more CSS, as Tailwind
+scans every flowbite-svelte component.
+
 ## Structure
 
 **FE-PAGES: One page per path.** `/` lists the user's characters,
@@ -39,19 +50,25 @@ syncs with the outside world. `describe` (`errors.ts`) says in French what
 an error means, and `ErrorMessage.svelte` shows it, the technical detail
 on hover.
 
-**FE-STYLES: Components style themselves.** `index.css` holds the design
-tokens (one set per theme, ADR FE-THEMES), element defaults and the
-utilities several components share; each component styles itself in its
-`<style>`.
+**FE-STYLES: Flowbite first, utilities for layout.** A component uses a
+Flowbite component wherever one fits, and Tailwind utility classes only
+to lay it out (flex, grid, gaps, widths); it keeps Flowbite's look, with
+as little style of its own as possible, and has no `<style>` block.
+Where no Flowbite component fits (the échelle de santé), Tailwind
+utilities draw it. `index.css` only sets Tailwind and Flowbite up, with
+the `primary` colour scale (the app's brown) and the themes (ADR
+FE-THEMES).
 
 **FE-THEMES: Four themes, chosen per device.** "Système" (the default)
 follows the device between light and dark; "Clair", "Sombre" and "OLED"
 are chosen on the profile page or the sheet (`ThemePicker.svelte`),
 kept in `localStorage` and applied as `data-theme` on the root before
-the app shows. OLED keeps the page black with a dimmed ink, and no
-component paints a lighter surface behind content (borders mix
-`--muted` instead), so an OLED screen lights almost nothing. Printing is
-always light. *Why:* the app stays open on the table for hours.
+the app shows, with the `dark` class that turns Flowbite's components
+dark (Sombre, OLED, or Système on a dark device, followed as it
+changes). OLED makes Flowbite's dark surfaces (`gray-800`, `gray-900`)
+black, so an OLED screen lights almost nothing but text and borders.
+Printing is always light: the `dark` variant holds on screen only.
+*Why:* the app stays open on the table for hours.
 
 ## Pages
 
@@ -130,7 +147,9 @@ on the previous build, and a reload must never interrupt an edit.
 
 **FE-TESTS: Vitest, jsdom and Testing Library.** Components run in their
 browser build (`svelteTesting()`) inside jsdom; the engines load from the
-`.wasm` bytes (`src/test/setup.ts`); `fetch` is stubbed per test
+`.wasm` bytes (`src/test/setup.ts`), which also stands in for the
+browser APIs jsdom lacks and Svelte or Flowbite use (media queries, Web
+Animations, modal dialogs); `fetch` is stubbed per test
 (`src/test/backend.ts`). Tests sit next to the code as `*.test.ts` and
 query what users see (roles, labels, text). `@types/node` is referenced by
 test files only, so the app cannot use Node APIs. `mise run
