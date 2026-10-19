@@ -25,6 +25,26 @@ export type Identity = {
   /** Private: the email or username at the provider; may be empty. */
   label: string;
 };
+/** A friend of the signed-in user, named by their friendship (ADR BE-FRIENDS). */
+export type Friend = { id: number; nickname: string; profile: string };
+/** An invitation of the signed-in user, waiting to be accepted. */
+export type Invitation = {
+  id: number;
+  /** When it expires, in seconds since the Unix epoch. */
+  expires: number;
+};
+/** A new invitation: its token is given this once (ADR BE-INVITATIONS). */
+export type CreatedInvitation = Invitation & { token: string };
+/** An invitation as the user who opened its link sees it. */
+export type ReceivedInvitation = {
+  /** Who sent it. */
+  nickname: string;
+  profile: string;
+  /** What accepting it would do: make friends, nothing (their own), nothing (friends already). */
+  status: "open" | "own" | "friends";
+  /** The friendship, when they are friends already. */
+  friend: number | null;
+};
 export type Character = {
   id: number;
   name: string;
@@ -142,3 +162,49 @@ export async function putDocument(id: number, document: string, version: number)
   });
   return Number(response.headers.get("ETag")?.replaceAll('"', "") ?? version + 1);
 }
+
+export const listInvitations = () => request<Invitation[]>("/me/invitations");
+
+/** Creates an invitation: the only time its token is given. */
+export const createInvitation = () =>
+  request<CreatedInvitation>("/me/invitations", { method: "POST" });
+
+export const revokeInvitation = async (id: number) => {
+  await send(`/me/invitations/${id}`, { method: "DELETE" });
+};
+
+/**
+ * The invitation of a link, and its sender. Throws an `ApiError` with status
+ * 404 when it expired, was used or revoked. The token travels in the body,
+ * never in a URL.
+ */
+export const lookupInvitation = (token: string) =>
+  request<ReceivedInvitation>("/invitations/lookup", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+
+/**
+ * Accepts the invitation of a link: gives its sender, now a friend. Throws
+ * an `ApiError` with status 404 as `lookupInvitation`, 409 between friends,
+ * 422 for one's own invitation.
+ */
+export const acceptInvitation = (token: string) =>
+  request<Friend>("/me/friends", { method: "POST", body: JSON.stringify({ token }) });
+
+export const listFriends = () => request<Friend[]>("/me/friends");
+
+export const getFriend = (id: number) => request<Friend>(`/me/friends/${id}`);
+
+/** Ends a friendship, for both friends. */
+export const removeFriend = async (id: number) => {
+  await send(`/me/friends/${id}`, { method: "DELETE" });
+};
+
+/** The characters of a friend, to read. */
+export const listFriendCharacters = (id: number) =>
+  request<Character[]>(`/me/friends/${id}/characters`);
+
+/** A character of a friend, to read. */
+export const getFriendCharacter = (friend: number, id: number) =>
+  request<Character>(`/me/friends/${friend}/characters/${id}`);

@@ -1,6 +1,7 @@
 <script lang="ts">
   // The items carried in play, counted up and down as they are used (torches,
   // javelots…). An item used up stays, struck out, until it is removed.
+  // Without `onchange`, only read.
   import { Button } from "flowbite-svelte";
   import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
 
@@ -14,7 +15,7 @@
     items: ItemEntry[];
     /** Weapon names by identifier. */
     names: Map<string, string>;
-    onchange: (items: ItemEntry[]) => void;
+    onchange?: (items: ItemEntry[]) => void;
   } = $props();
 
   function label(item: ItemEntry): string {
@@ -22,7 +23,7 @@
   }
 
   function count(index: number, quantity: number) {
-    onchange(items.map((item, i) => (i === index ? { ...item, quantity } : item)));
+    onchange?.(items.map((item, i) => (i === index ? { ...item, quantity } : item)));
   }
 </script>
 
@@ -36,22 +37,24 @@
     >
       ×{item.quantity}
     </span>
-    <Button
-      color="alternative"
-      class="h-10 w-10 p-0 print:hidden"
-      aria-label="Retirer 1 {label(item)}"
-      disabled={item.quantity === 0}
-      onclick={() => count(i, item.quantity - 1)}
-    >
-      <MinusOutline size="sm" />
-    </Button>
-    <Button
-      color="alternative"
-      class="h-10 w-10 p-0 print:hidden"
-      aria-label="Ajouter 1 {label(item)}"
-      onclick={() => count(i, item.quantity + 1)}
-    >
-      <PlusOutline size="sm" />
-    </Button>
+    {#if onchange}
+      <Button
+        color="alternative"
+        class="h-10 w-10 p-0 print:hidden"
+        aria-label="Retirer 1 {label(item)}"
+        disabled={item.quantity === 0}
+        onclick={() => count(i, item.quantity - 1)}
+      >
+        <MinusOutline size="sm" />
+      </Button>
+      <Button
+        color="alternative"
+        class="h-10 w-10 p-0 print:hidden"
+        aria-label="Ajouter 1 {label(item)}"
+        onclick={() => count(i, item.quantity + 1)}
+      >
+        <PlusOutline size="sm" />
+      </Button>
+    {/if}
   </li>
 {/each}

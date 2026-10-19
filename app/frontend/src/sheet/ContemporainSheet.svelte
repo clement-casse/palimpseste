@@ -48,7 +48,8 @@
     catalog: ContemporainCatalog;
     sheet: Sheet;
     details: ContemporainDetails;
-    play: PlayState;
+    /** What is kept on the device; none for a sheet only read. */
+    play: PlayState | null;
     notes: Note[];
     /** The equipment in play, or the creation one. */
     equipment: ContemporainEquipment;
@@ -86,7 +87,7 @@
 
   /** Wears and carries `change` in play, the rest of the equipment kept. */
   function equip(change: Partial<ContemporainEquipment>) {
-    play.equip({ engine: "contemporain", ...equipment, ...change });
+    play?.equip({ engine: "contemporain", ...equipment, ...change });
   }
 
   function wear(id: string, worn: boolean) {
@@ -141,12 +142,12 @@
     <HealthTrack
       scale={catalog.healthScale}
       length={health}
-      damage={play.used(HEALTH, health)}
+      damage={play?.used(HEALTH, health) ?? 0}
       notes={valueMarks(HEALTH)}
-      onchange={(damage) => play.set(HEALTH, damage, health)}
+      onchange={play ? (damage) => play.set(HEALTH, damage, health) : undefined}
     />
   {/if}
-  <Restore {play} />
+  {#if play}<Restore {play} />{/if}
 </div>
 
 <div class="mt-4 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -236,9 +237,9 @@
     items={equipment.items ?? []}
     weapons={catalog.weapons.filter((w) => w.attackMode.id !== "unarmed")}
     findings={sheet.inPlay}
-    kept={play.equipment !== null}
-    onitems={(items) => equip({ items })}
-    onforget={() => play.forgetEquipment()}
+    kept={play !== null && play.equipment !== null}
+    onitems={play ? (items) => equip({ items }) : undefined}
+    onforget={() => play?.forgetEquipment()}
   >
     {#snippet worn(editing: boolean)}
       {#if editing}
