@@ -12,6 +12,7 @@ async function load() {
 afterEach(() => {
   localStorage.clear();
   delete root.dataset.theme;
+  root.classList.remove("dark");
   document.head.querySelector('meta[name="theme-color"]')?.remove();
   vi.restoreAllMocks();
 });
@@ -45,6 +46,26 @@ describe("the theme", () => {
       throw new Error("denied");
     });
     expect((await load()).theme.choice).toBe("system");
+  });
+
+  it("switches the components to dark for Sombre and OLED", async () => {
+    const { setTheme } = await load();
+    setTheme("dark");
+    expect(root.classList.contains("dark")).toBe(true);
+    setTheme("oled");
+    expect(root.classList.contains("dark")).toBe(true);
+    setTheme("light");
+    expect(root.classList.contains("dark")).toBe(false);
+  });
+
+  it("follows a dark device under Système", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(prefers-color-scheme: dark)",
+      addEventListener: () => {},
+    }));
+    await load();
+    expect(root.classList.contains("dark")).toBe(true);
+    vi.unstubAllGlobals();
   });
 
   it("darkens the browser bar under OLED only", async () => {

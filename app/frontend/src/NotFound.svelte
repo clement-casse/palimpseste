@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { A, Heading, P } from "flowbite-svelte";
+
   import { follow } from "./router.svelte";
 </script>
 
-<section>
-  <h2>Page introuvable</h2>
-  <p>Cette adresse ne correspond à aucune page.</p>
-  <a href="/" onclick={follow}>← Personnages</a>
+<section class="space-y-4">
+  <Heading tag="h2" class="text-2xl">Page introuvable</Heading>
+  <P>Cette adresse ne correspond à aucune page.</P>
+  <A href="/" onclick={follow}>← Personnages</A>
 </section>

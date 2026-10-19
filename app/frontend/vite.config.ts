@@ -1,16 +1,19 @@
 /// <reference types="vitest/config" />
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 // The backend serves the built app and the API on the same origin. In
 // development, Vite serves the app and forwards `/api` to the backend.
-// Tests run the components' browser build in jsdom, without the PWA.
+// Tests run the components' browser build in jsdom, without the PWA or
+// the styles.
 const testing = Boolean(process.env.VITEST);
 
 export default defineConfig({
   plugins: [
+    !testing && tailwindcss(),
     svelte(),
     svelteTesting(),
     !testing &&
@@ -46,6 +49,15 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    // flowbite-svelte declares no `sideEffects`: without this, importing one
+    // component bundles every component's theme.
+    rollupOptions: {
+      treeshake: {
+        moduleSideEffects: (id) => !/flowbite-svelte\/dist\/.*\.js$/.test(id),
+      },
+    },
+  },
   server: {
     proxy: { "/api": "http://127.0.0.1:3000" },
   },

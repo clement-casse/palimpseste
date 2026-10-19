@@ -150,6 +150,6 @@ describe("renaming", () => {
     stubBackend(storing());
     open("profil");
     await rename("Échec");
-    expect(screen.getByRole("alert").textContent).toMatch(/^Le serveur a rencontré une erreur/);
+    expect(screen.getByRole("alert").textContent?.trim()).toMatch(/^Le serveur a rencontré une erreur/);
   });
 });

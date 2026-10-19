@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { A, Spinner } from "flowbite-svelte";
+
   import { getCharacter } from "../api";
   import ErrorMessage from "../ErrorMessage.svelte";
   import { follow } from "../router.svelte";
@@ -10,11 +12,11 @@
 <!-- Another character is another sheet, loaded anew. -->
 {#key id}
   {#await getCharacter(id)}
-    <p>Chargement…</p>
+    <p class="flex items-center gap-2"><Spinner size="4" /> Chargement…</p>
   {:then character}
     <CharacterSheet {character} />
   {:catch error}
     <ErrorMessage {error} />
-    <a href="/" onclick={follow}>← Personnages</a>
+    <A href="/" onclick={follow}>← Personnages</A>
   {/await}
 {/key}

@@ -28,15 +28,22 @@ let choice = $state<ThemeChoice>(stored());
 // The browser bar takes the page's colour under OLED, the app's otherwise.
 const bar = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
 const brand = bar?.content;
+// The device's preference, which "Système" follows as it changes.
+const system = window.matchMedia?.("(prefers-color-scheme: dark)");
 
+// `data-theme` names the choice (OLED blackens the surfaces); the `dark`
+// class switches Flowbite's components to their dark colours.
 function apply() {
   const root = document.documentElement;
   if (choice === "system") delete root.dataset.theme;
   else root.dataset.theme = choice;
+  const dark = choice === "system" ? Boolean(system?.matches) : choice !== "light";
+  root.classList.toggle("dark", dark);
   if (bar && brand) bar.content = choice === "oled" ? "#000000" : brand;
 }
 
 apply();
+system?.addEventListener("change", apply);
 
 export const theme = {
   get choice() {
