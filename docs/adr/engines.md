@@ -240,8 +240,10 @@ peuple voie's rank-1 ability as source. A demi-elfe's upbringing is not
 recorded, so its kept effect is left to an adjustment, as are the effects
 of higher ranks.
 
-**ENG-COF-PM: Documented spells only (D-23).** PM is `None` without any
-spell; a negative total is a `standard` deviation of COF.DER.PM (D-11).
+**ENG-COF-PM: Every spell counts (D-23).** `Voie::is_spell` follows the
+spell markers of the co-rules catalogue for every voie and rank. PM is
+`None` without any spell; a negative total is a `standard` deviation of
+COF.DER.PM (D-11).
 
 **ENG-COF-FAMILY: No family, no family values.** PV, DR, PC and
 `recovery_die` are `None` without a profil, rather than computed without
