@@ -9,9 +9,10 @@ use co_kernel::{
 };
 
 use crate::{
-    AbilityOption, Armour, Equipment, Family, InPlay, Item, Level, LevelUp, Money, OrphanExchange,
-    Peuple, Profil, RecoveryDie, Series, Shield, Voie, Weapon, WeaponUse, ability, armour,
-    characteristics, derived, equipment, level, money, peuple, profil, voie, weapon,
+    AbilityOption, Armour, Equipment, Family, InPlay, Item, Level, LevelOffer, LevelUp, Money,
+    OrphanExchange, Peuple, Placement, Profil, RecoveryDie, Series, Shield, Voie, Weapon,
+    WeaponUse, ability, armour, characteristics, derived, equipment, level, money, peuple, profil,
+    step, voie, weapon,
 };
 
 /// The kind of attack an attack value applies to.
@@ -439,12 +440,58 @@ impl Character {
         options
     }
 
+    /// Returns what the level-up that reached `level` offers within the
+    /// rules (ADR ENG-COF-PROGRESSION); `None` for level 1 or a level not
+    /// reached.
+    #[must_use]
+    pub fn level_offer(&self, level: Level) -> Option<LevelOffer> {
+        level::offer(self, level)
+    }
+
+    /// Returns where `violation` is settled: a creation step, or a step of
+    /// the level-up it is about (ADR ENG-COF-PLACEMENT).
+    #[must_use]
+    pub fn placement(&self, violation: &Violation) -> Placement {
+        step::placement(self, violation)
+    }
+
+    /// Returns the capacités held now, in voie and rank order: the ranks
+    /// chosen at creation, then each level-up's, forgetting before
+    /// acquiring.
+    #[must_use]
+    pub fn ranks(&self) -> Vec<(Voie, Rank)> {
+        self.voies()
+            .into_iter()
+            .flat_map(|(voie, ranks)| ranks.into_iter().map(move |rank| (voie, rank)))
+            .collect()
+    }
+
+    /// Returns the level whose level-up acquired the capacité at `rank` in
+    /// `voie`, the last one when several did; `None` when it comes from
+    /// creation or is not held.
+    #[must_use]
+    pub fn acquired_at(&self, voie: Voie, rank: impl Into<Rank>) -> Option<Level> {
+        let rank = rank.into();
+        self.levels()
+            .filter(|(_, level_up)| level_up.ranks().any(|acquired| acquired == (voie, rank)))
+            .map(|(level, _)| level)
+            .last()
+    }
+
     /// Returns the options the capacité at `rank` in `voie` offers the
     /// character, empty when it offers none. A capacité raising the lowest
     /// characteristic offers the lowest starting values, ties included.
     #[must_use]
     pub fn ability_options_offered(&self, voie: Voie, rank: impl Into<Rank>) -> Vec<AbilityOption> {
         ability::options(self, voie, rank.into())
+    }
+
+    /// Whether the capacité at `rank` in `voie` has no effect until one of its
+    /// [`ability_options_offered`](Self::ability_options_offered) is chosen;
+    /// a capacité offering options with a default keeps it.
+    #[must_use]
+    pub fn ability_option_required(&self, voie: Voie, rank: impl Into<Rank>) -> bool {
+        ability::option_required(voie, rank.into())
     }
 
     /// Whether the character masters `weapon`: through the profil
@@ -600,6 +647,19 @@ impl Character {
     /// The ranks chosen at creation, in voie order.
     pub(crate) fn creation_voies(&self) -> impl Iterator<Item = (Voie, &BTreeSet<Rank>)> {
         self.voies.iter().map(|(voie, ranks)| (*voie, ranks))
+    }
+
+    /// The last level-up acquiring or forgetting a rank in `voie`.
+    pub(crate) fn last_change(&self, voie: Voie) -> Option<Level> {
+        self.levels()
+            .filter(|(_, level_up)| {
+                level_up
+                    .ranks()
+                    .chain(level_up.forgotten())
+                    .any(|(changed, _)| changed == voie)
+            })
+            .map(|(level, _)| level)
+            .last()
     }
 
     /// The level-ups, with the level each one reached.

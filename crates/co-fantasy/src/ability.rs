@@ -36,6 +36,56 @@ pub enum AbilityOption {
     Thrown,
 }
 
+impl AbilityOption {
+    /// Every option, the characteristics first in their kernel order.
+    pub const ALL: [Self; 10] = [
+        Self::Characteristic(Characteristic::Agi),
+        Self::Characteristic(Characteristic::Con),
+        Self::Characteristic(Characteristic::For),
+        Self::Characteristic(Characteristic::Per),
+        Self::Characteristic(Characteristic::Cha),
+        Self::Characteristic(Characteristic::Int),
+        Self::Characteristic(Characteristic::Vol),
+        Self::RecoveryDice,
+        Self::Armour,
+        Self::Thrown,
+    ];
+
+    /// Returns the option whose [`id`](Self::id) is `id`.
+    #[must_use]
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|option| option.id() == id)
+    }
+
+    /// Returns the stable identifier of the option.
+    #[must_use]
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::Characteristic(Characteristic::Agi) => "cof.option.agi",
+            Self::Characteristic(Characteristic::Con) => "cof.option.con",
+            Self::Characteristic(Characteristic::For) => "cof.option.for",
+            Self::Characteristic(Characteristic::Per) => "cof.option.per",
+            Self::Characteristic(Characteristic::Cha) => "cof.option.cha",
+            Self::Characteristic(Characteristic::Int) => "cof.option.int",
+            Self::Characteristic(Characteristic::Vol) => "cof.option.vol",
+            Self::RecoveryDice => "cof.option.recovery-dice",
+            Self::Armour => "cof.option.armour",
+            Self::Thrown => "cof.option.thrown",
+        }
+    }
+
+    /// The French display name of the option.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Characteristic(c) => c.abbreviation(),
+            Self::RecoveryDice => "1 DR au lieu du PC de la famille",
+            Self::Armour => "L'armure plus lourde",
+            Self::Thrown => "La variante armes de jet",
+        }
+    }
+}
+
 /// Whether a capacité's option must be chosen, or replaces a default.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Need {
@@ -92,6 +142,15 @@ pub(crate) fn options(character: &Character, voie: Voie, rank: Rank) -> Vec<Abil
                 .collect()
         }
     }
+}
+
+/// Whether the capacité at `rank` in `voie` has no effect until one of its
+/// options is chosen (the raises); a capacité with a default keeps it.
+pub(crate) fn option_required(voie: Voie, rank: Rank) -> bool {
+    matches!(
+        offer(voie, rank.get()),
+        Some(Offer::Lowest | Offer::Options(Need::Required, _))
+    )
 }
 
 /// Whether the character holds the capacité at `rank` in `voie`: acquired,
@@ -711,11 +770,7 @@ pub(crate) fn raise(value: DerivedValue, character: &Character, c: Characteristi
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     for (voie, ranks) in character.voies() {
         for rank in ranks {
-            let required = matches!(
-                offer(voie, rank.get()),
-                Some(Offer::Lowest | Offer::Options(Need::Required, _))
-            );
-            if required && character.ability_option(voie, rank).is_none() {
+            if option_required(voie, rank) && character.ability_option(voie, rank).is_none() {
                 violations.push(Violation::incomplete(
                     CONTENT_VOIE,
                     ABILITY_MECHANIC,
@@ -1091,5 +1146,22 @@ mod tests {
         };
         assert_eq!(on(Weapon::ArcCourt), 2);
         assert_eq!(on(Weapon::Dague), 0);
+    }
+
+    #[test]
+    fn options_are_listed_and_named() {
+        for option in AbilityOption::ALL {
+            assert_eq!(AbilityOption::from_id(option.id()), Some(option));
+            assert_ne!(option.name(), "");
+        }
+        assert_eq!(AbilityOption::from_id("cof.option.unknown"), None);
+        assert_eq!(
+            AbilityOption::Characteristic(Characteristic::Int).name(),
+            "INT"
+        );
+        let character = zero();
+        assert!(character.ability_option_required(Voie::ElfeHaut, 5));
+        assert!(!character.ability_option_required(Voie::Pagne, 2));
+        assert!(!character.ability_option_required(Voie::Rage, 1));
     }
 }

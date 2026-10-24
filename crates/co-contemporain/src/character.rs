@@ -9,10 +9,10 @@ use co_kernel::{
 };
 
 use crate::{
-    Age, AgeBracket, Domaine, Equipment, Experience, InPlay, Item, Protection, Sequel, SocialClass,
-    Trait, TraitPoints, Voie, Weapon, XpSpending, age,
+    Age, AgeBracket, Domaine, Equipment, Experience, InPlay, Item, Placement, Protection, Sequel,
+    SocialClass, SpendingOffer, Trait, TraitPoints, Voie, Weapon, XpSpending, age,
     characteristics::{self, Scope},
-    domaine, equipment, experience, protection, secondary, traits, voie, weapon,
+    domaine, equipment, experience, protection, secondary, step, traits, voie, weapon,
 };
 
 /// The weapon category an attack value applies to.
@@ -458,6 +458,43 @@ impl Character {
         Some(self.adjusted(Target::Value(value), base))
     }
 
+    /// Returns what the spending of XP numbered `number`, from 1, offers
+    /// within the rules (ADR ENG-COC-EXPERIENCE); `None` when there is no
+    /// such spending.
+    #[must_use]
+    pub fn spending_offer(&self, number: usize) -> Option<SpendingOffer> {
+        experience::offer(self, number)
+    }
+
+    /// Returns where `violation` is settled: a creation step, or a step of
+    /// the spending it is about (ADR ENG-COC-PLACEMENT).
+    #[must_use]
+    pub fn placement(&self, violation: &Violation) -> Placement {
+        step::placement(self, violation)
+    }
+
+    /// Returns the capacités held now, in voie and rank order: the ranks
+    /// chosen at creation and those bought with XP.
+    #[must_use]
+    pub fn ranks(&self) -> Vec<(Voie, Rank)> {
+        self.voies()
+            .into_iter()
+            .flat_map(|(voie, ranks)| ranks.into_iter().map(move |rank| (voie, rank)))
+            .collect()
+    }
+
+    /// Returns the number, from 1, of the spending that bought the capacité
+    /// at `rank` in `voie`, the last one when several did; `None` when it
+    /// comes from creation or is not held.
+    #[must_use]
+    pub fn bought_in(&self, voie: Voie, rank: impl Into<Rank>) -> Option<usize> {
+        let rank = rank.into();
+        self.spendings
+            .iter()
+            .rposition(|spending| spending.ranks().any(|bought| bought == (voie, rank)))
+            .map(|index| index + 1)
+    }
+
     /// Returns the dice rolled for the DM of `weapon`: the table's, 1d6
     /// unarmed with the combat à mains nues rank 2, 1d6 more with heavy
     /// weapons with the armes lourdes rank 4.
@@ -595,6 +632,19 @@ impl Character {
 
     pub(crate) const fn experience(&self) -> Experience {
         self.experience
+    }
+
+    /// The number of spendings of XP.
+    pub(crate) fn spending_count(&self) -> usize {
+        self.spendings.len()
+    }
+
+    /// The number, from 1, of the last spending buying a rank of `voie`.
+    pub(crate) fn last_spending_on(&self, voie: Voie) -> Option<usize> {
+        self.spendings
+            .iter()
+            .rposition(|spending| spending.ranks().any(|(bought, _)| bought == voie))
+            .map(|index| index + 1)
     }
 
     /// The XP spendings, in order.

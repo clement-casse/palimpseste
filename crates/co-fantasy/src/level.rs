@@ -216,14 +216,19 @@ impl LevelUp {
 
     /// The capacity points spent: the ranks acquired (COF.PRG.COST) and the
     /// orphan point exchanged.
-    fn points_spent(&self) -> i32 {
-        self.ranks().map(|(_, rank)| cost(rank)).sum::<i32>() + i32::from(self.orphan.is_some())
+    pub(crate) fn points_spent(&self) -> i32 {
+        self.ranks().map(|(_, rank)| rank_cost(rank)).sum::<i32>()
+            + i32::from(self.orphan.is_some())
     }
 
     /// The capacity points to spend: the level's 2, and those the ranks
     /// forgotten refund.
-    fn points_available(&self) -> i32 {
-        POINTS_PER_LEVEL + self.forgotten().map(|(_, rank)| cost(rank)).sum::<i32>()
+    pub(crate) fn points_available(&self) -> i32 {
+        POINTS_PER_LEVEL
+            + self
+                .forgotten()
+                .map(|(_, rank)| rank_cost(rank))
+                .sum::<i32>()
     }
 
     /// Applies the level-up to the ranks held before it: forgets, then
@@ -236,7 +241,7 @@ impl LevelUp {
     }
 
     /// Removes the ranks forgotten at this level from those held.
-    fn forget(&self, held: &mut BTreeMap<Voie, BTreeSet<Rank>>) {
+    pub(crate) fn forget(&self, held: &mut BTreeMap<Voie, BTreeSet<Rank>>) {
         for (voie, rank) in self.forgotten() {
             if let Some(ranks) = held.get_mut(&voie) {
                 ranks.remove(&rank);
@@ -249,13 +254,15 @@ impl LevelUp {
 }
 
 /// The capacity points `rank` costs: 1 up to rank 2, then 2 (COF.PRG.COST).
-const fn cost(rank: Rank) -> i32 {
+#[must_use]
+pub const fn rank_cost(rank: Rank) -> i32 {
     if rank.get() <= 2 { 1 } else { 2 }
 }
 
 /// The level required to acquire `rank` (COF.PRG.LEVEL-REQ), if the table
 /// gives one. Ranks 6 to 8 belong to prestige voies, out of scope.
-pub(crate) const fn required_level(rank: Rank) -> Option<i32> {
+#[must_use]
+pub const fn required_level(rank: Rank) -> Option<i32> {
     match rank.get() {
         1 => Some(1),
         2 => Some(2),
@@ -275,7 +282,9 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
         .map(|(voie, ranks)| (voie, ranks.clone()))
         .collect();
     let level_ups: Vec<(Level, &LevelUp)> = character.levels().collect();
-    let mut opened_peuple_slot = false;
+    // The last level-up opening a voie, and one opening a voie de peuple.
+    let mut opened: Option<Level> = None;
+    let mut opened_peuple_slot: Option<Level> = None;
     for (index, (level, level_up)) in level_ups.iter().copied().enumerate() {
         check_forgotten(character, level, level_up, &held, violations);
         check_points(level, level_up, violations);
@@ -304,14 +313,17 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
                 );
             }
             if !held.contains_key(&voie) {
-                opened_peuple_slot |= voie.is_peuple_slot();
+                opened = Some(level);
+                if voie.is_peuple_slot() {
+                    opened_peuple_slot = Some(level);
+                }
                 check_opened(character, level, voie, violations);
             }
         }
         level_up.apply(&mut held);
         check_orphan(character, level, level_up, &held, violations);
     }
-    check_voie_count(&held, opened_peuple_slot, violations);
+    check_voie_count(&held, opened, opened_peuple_slot, violations);
 }
 
 /// COF.PRG.POINTS: the 2 points of a level, and those refunded by the
@@ -346,12 +358,7 @@ fn check_forgotten(
     violations: &mut Vec<Violation>,
 ) {
     let count = level_up.forgotten.len();
-    let int = character.characteristics()[Characteristic::Int].get();
-    let max = if int >= FORGETFUL_INT {
-        FORGOTTEN_MAX_INT
-    } else {
-        FORGOTTEN_MAX
-    };
+    let max = forget_max(character);
     let as_parameter = |count: usize| i32::try_from(count).unwrap_or(i32::MAX);
     if count > max {
         violations.push(
@@ -365,24 +372,12 @@ fn check_forgotten(
             .with_parameter("max", as_parameter(max)),
         );
     }
-    let first_rank = Rank::new(1);
-    let at_creation = |voie: Voie, rank: Rank| {
-        character
-            .creation_voies()
-            .any(|(created, ranks)| created == voie && ranks.contains(&rank))
-    };
     for (voie, rank) in level_up.forgotten() {
         let ranks = held.get(&voie);
         let reason = if !ranks.is_some_and(|ranks| ranks.contains(&rank)) {
             "not-held"
-        } else if rank == first_rank && voie.is_peuple_slot() && at_creation(voie, rank) {
-            "free"
-        } else if rank == first_rank
-            && at_creation(voie, rank)
-            && voie.profil().is_some()
-            && voie.profil() == character.profil()
-        {
-            "level-one"
+        } else if let Some(protected) = protection(character, voie, rank) {
+            protected
         } else if ranks.is_some_and(|ranks| {
             ranks
                 .iter()
@@ -487,31 +482,10 @@ fn check_orphan(
     held: &BTreeMap<Voie, BTreeSet<Rank>>,
     violations: &mut Vec<Violation>,
 ) {
-    let Some(profil) = character.profil() else {
-        return;
-    };
     if level_up.orphan.is_none() {
         return;
     }
-    let profil_voies = held.keys().filter(|voie| !voie.is_peuple_slot()).count();
-    let held_slot: Vec<Voie> = held
-        .keys()
-        .copied()
-        .filter(|voie| voie.is_peuple_slot())
-        .collect();
-    let slot = if held_slot.is_empty() {
-        character.peuple_slot_options()
-    } else {
-        held_slot
-    };
-    let (first, second) = (Rank::new(1), Rank::new(2));
-    let left = profil.voies().iter().chain(slot.iter()).any(|voie| {
-        held.get(voie).map_or(
-            voie.is_peuple_slot() || profil_voies < MAX_PROFIL_VOIES,
-            |ranks| !ranks.contains(&first) || !ranks.contains(&second),
-        )
-    });
-    if left {
+    if rank_one_or_two_left(character, held) == Some(true) {
         violations.push(Violation::deviation(
             ORPHAN,
             PROGRESSION_MECHANIC,
@@ -526,13 +500,16 @@ fn check_orphan(
 /// only when a level-up opens one.
 fn check_voie_count(
     current: &BTreeMap<Voie, BTreeSet<Rank>>,
-    opened_peuple_slot: bool,
+    opened: Option<Level>,
+    opened_peuple_slot: Option<Level>,
     violations: &mut Vec<Violation>,
 ) {
     let peuple_slot = current.keys().filter(|voie| voie.is_peuple_slot()).count();
     let profil_voies = current.len() - peuple_slot;
     let count = |count: usize| i32::try_from(count).unwrap_or(i32::MAX);
-    if profil_voies > MAX_PROFIL_VOIES {
+    if let Some(level) = opened
+        && profil_voies > MAX_PROFIL_VOIES
+    {
         violations.push(
             Violation::deviation(
                 MAX_VOIES,
@@ -541,10 +518,13 @@ fn check_voie_count(
                 Severity::Standard,
             )
             .with_parameter("voies", count(profil_voies))
-            .with_parameter("max", count(MAX_PROFIL_VOIES)),
+            .with_parameter("max", count(MAX_PROFIL_VOIES))
+            .with_parameter("level", i32::from(level.get())),
         );
     }
-    if opened_peuple_slot && peuple_slot > 1 {
+    if let Some(level) = opened_peuple_slot
+        && peuple_slot > 1
+    {
         violations.push(
             Violation::deviation(
                 MAX_VOIES,
@@ -553,9 +533,212 @@ fn check_voie_count(
                 Severity::Standard,
             )
             .with_parameter("voies", count(peuple_slot))
-            .with_parameter("max", 1),
+            .with_parameter("max", 1)
+            .with_parameter("level", i32::from(level.get())),
         );
     }
+}
+
+/// The capacités one level-up may forget: 1, or 2 with INT +2 or more (the
+/// current INT, COF.PRG.REORIENT).
+fn forget_max(character: &Character) -> usize {
+    if character.characteristics()[Characteristic::Int].get() >= FORGETFUL_INT {
+        FORGOTTEN_MAX_INT
+    } else {
+        FORGOTTEN_MAX
+    }
+}
+
+/// Why the capacité at `rank` in `voie` can never be forgotten
+/// (COF.PRG.REORIENT), if it cannot: the free rank 1 of the voie de peuple
+/// slot, or a rank-1 capacité of the main profil chosen at creation.
+fn protection(character: &Character, voie: Voie, rank: Rank) -> Option<&'static str> {
+    let at_creation = character
+        .creation_voies()
+        .any(|(created, ranks)| created == voie && ranks.contains(&rank));
+    if rank != Rank::new(1) || !at_creation {
+        None
+    } else if voie.is_peuple_slot() {
+        Some("free")
+    } else if voie.profil().is_some() && voie.profil() == character.profil() {
+        Some("level-one")
+    } else {
+        None
+    }
+}
+
+/// Whether a capacité of rank 1 or 2 is left to acquire with the ranks
+/// `held`, in the main profil's voies or the voie de peuple slot, a voie
+/// still to open counting while fewer than six are held (COF.PRG.ORPHAN);
+/// `None` without a profil.
+fn rank_one_or_two_left(
+    character: &Character,
+    held: &BTreeMap<Voie, BTreeSet<Rank>>,
+) -> Option<bool> {
+    let profil = character.profil()?;
+    let profil_voies = held.keys().filter(|voie| !voie.is_peuple_slot()).count();
+    let held_slot: Vec<Voie> = held
+        .keys()
+        .copied()
+        .filter(|voie| voie.is_peuple_slot())
+        .collect();
+    let slot = if held_slot.is_empty() {
+        character.peuple_slot_options()
+    } else {
+        held_slot
+    };
+    let (first, second) = (Rank::new(1), Rank::new(2));
+    Some(profil.voies().iter().chain(slot.iter()).any(|voie| {
+        held.get(voie).map_or(
+            voie.is_peuple_slot() || profil_voies < MAX_PROFIL_VOIES,
+            |ranks| !ranks.contains(&first) || !ranks.contains(&second),
+        )
+    }))
+}
+
+/// What a level-up offers within the rules, given the ranks held before it
+/// and what it already acquires and forgets: the points to spend, the
+/// capacités to acquire, those to forget, and whether the orphan point may
+/// be exchanged. The capacités are named by voie and rank; their
+/// identifier is [`Voie::ability`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LevelOffer {
+    points_available: i32,
+    points_spent: i32,
+    acquirable: Vec<(Voie, Rank)>,
+    forgettable: Vec<(Voie, Rank)>,
+    protected: Vec<(Voie, Rank, &'static str)>,
+    forget_max: usize,
+    orphan_allowed: bool,
+}
+
+impl LevelOffer {
+    /// The points to spend at this level: its 2, and those the ranks
+    /// forgotten refund (COF.PRG.POINTS).
+    #[must_use]
+    pub const fn points_available(&self) -> i32 {
+        self.points_available
+    }
+
+    /// The points spent: the ranks acquired ([`rank_cost`]) and the orphan
+    /// point exchanged.
+    #[must_use]
+    pub const fn points_spent(&self) -> i32 {
+        self.points_spent
+    }
+
+    /// The capacités the level may acquire within the rules, in voie order:
+    /// the next rank of each voie held, rank 1 of a main-profil voie not
+    /// opened while fewer than six are held, rank 1 of the voie de peuple
+    /// slot when empty; each at the level it requires and within the points
+    /// left (COF.PRG.COST, LEVEL-REQ, ORDER, NEW-VOIES, MAX-VOIES).
+    #[must_use]
+    pub fn acquirable(&self) -> &[(Voie, Rank)] {
+        &self.acquirable
+    }
+
+    /// The capacités the level may forget within the rules: the top rank of
+    /// each voie held before it, protected ones apart (COF.PRG.REORIENT).
+    #[must_use]
+    pub fn forgettable(&self) -> &[(Voie, Rank)] {
+        &self.forgettable
+    }
+
+    /// The top ranks the rules never let forget, with the reason: `free`
+    /// (the rank 1 of the voie de peuple slot) or `level-one` (a main-profil
+    /// rank 1 chosen at creation).
+    #[must_use]
+    pub fn protected(&self) -> &[(Voie, Rank, &'static str)] {
+        &self.protected
+    }
+
+    /// How many capacités the level may forget: 1, or 2 with INT +2.
+    #[must_use]
+    pub const fn forget_max(&self) -> usize {
+        self.forget_max
+    }
+
+    /// Whether the orphan point may be exchanged: no capacité of rank 1 or
+    /// 2 is left to acquire once the level's ranks are acquired
+    /// (COF.PRG.ORPHAN).
+    #[must_use]
+    pub const fn orphan_allowed(&self) -> bool {
+        self.orphan_allowed
+    }
+}
+
+/// The offer of the level-up that reached `level`, if there is one.
+pub(crate) fn offer(character: &Character, level: Level) -> Option<LevelOffer> {
+    let index = usize::from(level.get().checked_sub(2)?);
+    let mut held: BTreeMap<Voie, BTreeSet<Rank>> = character
+        .creation_voies()
+        .map(|(voie, ranks)| (voie, ranks.clone()))
+        .collect();
+    let level_ups: Vec<&LevelUp> = character.levels().map(|(_, level_up)| level_up).collect();
+    for level_up in level_ups.get(..index)? {
+        level_up.apply(&mut held);
+    }
+    let level_up = *level_ups.get(index)?;
+    let before = held.clone();
+    level_up.apply(&mut held);
+    let points_left = level_up.points_available() - level_up.points_spent();
+
+    let mut candidates: BTreeSet<Voie> = held.keys().copied().collect();
+    if let Some(profil) = character.profil() {
+        candidates.extend(profil.voies().iter().copied());
+    }
+    if !held.keys().any(|voie| voie.is_peuple_slot()) {
+        candidates.extend(character.peuple_slot_options());
+    }
+    let profil_voies = held.keys().filter(|voie| !voie.is_peuple_slot()).count();
+    let acquirable = candidates
+        .into_iter()
+        .filter_map(|voie| {
+            let ranks = held.get(&voie);
+            let next = (1..=5)
+                .map(Rank::new)
+                .find(|rank| !ranks.is_some_and(|ranks| ranks.contains(rank)))?;
+            let opens = ranks.is_none();
+            let may_open = !opens
+                || if voie.is_peuple_slot() {
+                    character.peuple_slot_options().contains(&voie)
+                } else {
+                    voie.profil().is_some()
+                        && voie.profil() == character.profil()
+                        && profil_voies < MAX_PROFIL_VOIES
+                };
+            let within = may_open
+                && required_level(next).is_some_and(|required| required <= i32::from(level.get()))
+                && rank_cost(next) <= points_left
+                && !level_up.forgotten.contains(&(voie, next));
+            within.then_some((voie, next))
+        })
+        .collect();
+
+    let mut forgettable = Vec::new();
+    let mut protected = Vec::new();
+    for (voie, ranks) in &before {
+        let top = ranks
+            .iter()
+            .rev()
+            .copied()
+            .find(|rank| !level_up.forgotten.contains(&(*voie, *rank)));
+        let Some(top) = top else { continue };
+        match protection(character, *voie, top) {
+            Some(reason) => protected.push((*voie, top, reason)),
+            None => forgettable.push((*voie, top)),
+        }
+    }
+
+    Some(LevelOffer {
+        points_available: level_up.points_available(),
+        points_spent: level_up.points_spent(),
+        acquirable,
+        forgettable,
+        protected,
+        forget_max: forget_max(character),
+        orphan_allowed: rank_one_or_two_left(character, &held) == Some(false),
+    })
 }
 
 #[cfg(test)]
@@ -1070,5 +1253,91 @@ mod tests {
             level_violations(&orphan),
             [("COF.PRG.ORPHAN".to_owned(), level(2), DEVIATION)]
         );
+    }
+
+    fn pairs(list: &[(Voie, Rank)]) -> Vec<(Voie, u8)> {
+        list.iter()
+            .map(|(voie, rank)| (*voie, rank.get()))
+            .collect()
+    }
+
+    #[test]
+    fn a_level_offers_the_next_ranks_within_its_points() {
+        let character = guerrier().with_level_up(LevelUp::new());
+        assert_eq!(character.level_offer(Level::from(1)), None);
+        assert_eq!(character.level_offer(Level::from(3)), None);
+        let Some(offer) = character.level_offer(Level::from(2)) else {
+            panic!("level 2 has an offer");
+        };
+        assert_eq!((offer.points_available(), offer.points_spent()), (2, 0));
+        // The next rank of each voie held, rank 1 of the other guerrier
+        // voies; no rank 3 before level 3, no voie of another profil.
+        assert_eq!(
+            pairs(offer.acquirable()),
+            [
+                (Voie::Bouclier, 2),
+                (Voie::Combat, 1),
+                (Voie::MaitreDArmes, 1),
+                (Voie::Resistance, 1),
+                (Voie::Soldat, 2),
+                (Voie::Humain, 2),
+            ]
+        );
+        assert!(!offer.orphan_allowed());
+        // Once its points are spent, a level offers nothing more.
+        let spent = guerrier().with_level_up(two_points());
+        let offer = spent.level_offer(Level::from(2));
+        assert_eq!(offer.map(|offer| offer.acquirable().to_vec()), Some(vec![]));
+        // A rank acquired at the level opens the next one, when the level
+        // allows it.
+        let third = spent.with_level_up(LevelUp::new().with_rank(Voie::Bouclier, 3));
+        let offer = third.level_offer(Level::from(3));
+        assert_eq!(
+            offer.map(|offer| (offer.points_spent(), pairs(offer.acquirable()))),
+            Some((2, vec![]))
+        );
+    }
+
+    #[test]
+    fn a_level_offers_the_top_ranks_to_forget() {
+        let character = guerrier()
+            .with_level_up(two_points())
+            .with_level_up(LevelUp::new());
+        let Some(offer) = character.level_offer(Level::from(3)) else {
+            panic!("level 3 has an offer");
+        };
+        assert_eq!(
+            pairs(offer.forgettable()),
+            [(Voie::Bouclier, 2), (Voie::Soldat, 2)]
+        );
+        assert_eq!(offer.protected(), [(Voie::Humain, Rank::new(1), "free")]);
+        assert_eq!(offer.forget_max(), 1);
+        // Forgetting Soldat 2 refunds a point and shows Soldat 1, protected.
+        let forgetting = guerrier()
+            .with_level_up(two_points())
+            .with_level_up(LevelUp::new().with_forgotten(Voie::Soldat, 2));
+        let Some(offer) = forgetting.level_offer(Level::from(3)) else {
+            panic!("level 3 has an offer");
+        };
+        assert_eq!(offer.points_available(), 3);
+        assert!(
+            offer
+                .protected()
+                .contains(&(Voie::Soldat, Rank::new(1), "level-one"))
+        );
+        assert!(!offer.acquirable().contains(&(Voie::Soldat, Rank::new(2))));
+        let clever = forgetting.with_series_value(Characteristic::Int, 2);
+        assert_eq!(
+            clever.level_offer(Level::from(3)).map(|o| o.forget_max()),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn a_level_offers_the_orphan_point_once_nothing_is_left() {
+        let character =
+            every_rank_two_but_one().with_level_up(LevelUp::new().with_rank(Voie::Humain, 2));
+        let offer = character.level_offer(Level::from(6));
+        assert_eq!(offer.map(|offer| offer.orphan_allowed()), Some(true));
     }
 }

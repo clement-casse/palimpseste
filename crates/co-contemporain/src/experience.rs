@@ -113,7 +113,8 @@ impl XpSpending {
 }
 
 /// The XP a rank costs: its rank (COC.PRG.COST).
-fn rank_cost(rank: Rank) -> i32 {
+#[must_use]
+pub fn xp_cost(rank: Rank) -> i32 {
     i32::from(rank.get())
 }
 
@@ -192,7 +193,7 @@ pub(crate) fn experience(character: &Character) -> DerivedValue {
     let mut traits = character.creation_traits();
     for spending in character.spendings() {
         for (voie, rank) in spending.ranks() {
-            value = value.with(Source::Ability(voie.ability(rank)), -rank_cost(rank));
+            value = value.with(Source::Ability(voie.ability(rank)), -xp_cost(rank));
         }
         for change in trait_changes(spending, &traits) {
             value = match change {
@@ -230,26 +231,34 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
         .map(|(voie, ranks)| (voie, ranks.clone()))
         .collect();
     let mut traits = character.creation_traits();
-    let mut opened = false;
+    // The last spending opening a voie.
+    let mut opened: Option<i32> = None;
     for (index, spending) in spendings.iter().enumerate() {
-        check_ranks(spending, &held, &spendings[index + 1..], violations);
-        opened |= spending.ranks().any(|(voie, _)| !held.contains_key(&voie));
+        let number = spending_number(index);
+        check_ranks(spending, number, &held, &spendings[index + 1..], violations);
+        if spending.ranks().any(|(voie, _)| !held.contains_key(&voie)) {
+            opened = Some(number);
+        }
         for change in trait_changes(spending, &traits) {
             if let TraitChange::NotBought(t) = change {
-                violations.push(Violation::deviation(
-                    XP_USE,
-                    EXPERIENCE_MECHANIC,
-                    Subject::Value(t.id()),
-                    Severity::Standard,
-                ));
+                violations.push(
+                    Violation::deviation(
+                        XP_USE,
+                        EXPERIENCE_MECHANIC,
+                        Subject::Value(t.id()),
+                        Severity::Standard,
+                    )
+                    .with_parameter("spending", number),
+                );
             }
         }
         spending.apply_ranks(&mut held);
         spending.apply_traits(&mut traits);
     }
     let count = held.len();
-    if opened && count > MAX_VOIES {
-        let as_parameter = |count: usize| i32::try_from(count).unwrap_or(i32::MAX);
+    if let Some(number) = opened
+        && count > MAX_VOIES
+    {
         violations.push(
             Violation::deviation(
                 PRG_LIMITS,
@@ -258,15 +267,27 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
                 Severity::Standard,
             )
             .with_parameter("voies", as_parameter(count))
-            .with_parameter("max", as_parameter(MAX_VOIES)),
+            .with_parameter("max", as_parameter(MAX_VOIES))
+            .with_parameter("spending", number),
         );
     }
+}
+
+/// `count` as a violation parameter.
+fn as_parameter(count: usize) -> i32 {
+    i32::try_from(count).unwrap_or(i32::MAX)
+}
+
+/// The number of the spending at `index`, from 1.
+fn spending_number(index: usize) -> i32 {
+    as_parameter(index).saturating_add(1)
 }
 
 /// COC.PRG.ONE-RANK (D-09: per voie per spending) and COC.PRG.COST: one rank
 /// of a voie per spending, never before the rank below, never bought again.
 fn check_ranks(
     spending: &XpSpending,
+    number: i32,
     held: &BTreeMap<Voie, BTreeSet<Rank>>,
     later: &[&XpSpending],
     violations: &mut Vec<Violation>,
@@ -275,12 +296,10 @@ fn check_ranks(
     for (voie, rank) in spending.ranks() {
         let ability = || Subject::Ability(voie.ability(rank));
         if held.get(&voie).is_some_and(|ranks| ranks.contains(&rank)) {
-            violations.push(Violation::deviation(
-                PRG_COST,
-                EXPERIENCE_MECHANIC,
-                ability(),
-                Severity::Standard,
-            ));
+            violations.push(
+                Violation::deviation(PRG_COST, EXPERIENCE_MECHANIC, ability(), Severity::Standard)
+                    .with_parameter("spending", number),
+            );
         }
         // Ranks come in order, so the first of a voie is its lowest.
         let second = !voies_seen.insert(voie);
@@ -297,14 +316,118 @@ fn check_ranks(
                     .any(|spending| spending.ranks.contains(&(voie, below)))
         });
         if second || bought_later {
-            violations.push(Violation::deviation(
-                ONE_RANK,
-                EXPERIENCE_MECHANIC,
-                ability(),
-                Severity::Standard,
-            ));
+            violations.push(
+                Violation::deviation(ONE_RANK, EXPERIENCE_MECHANIC, ability(), Severity::Standard)
+                    .with_parameter("spending", number),
+            );
         }
     }
+}
+
+/// What a spending of XP offers within the rules, given what was held
+/// before it and what it already buys: the XP left, the ranks to buy, the
+/// next social class and the cure of Toxicomane, each with its cost. The
+/// capacités are named by voie and rank; their identifier is
+/// [`Voie::ability`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpendingOffer {
+    xp_left: i32,
+    acquirable: Vec<(Voie, Rank)>,
+    class_rise: Option<(Trait, Option<TraitPoints>, i32)>,
+    cure: Option<i32>,
+}
+
+impl SpendingOffer {
+    /// The XP left once every spending is paid (`Value::Experience`).
+    #[must_use]
+    pub const fn xp_left(&self) -> i32 {
+        self.xp_left
+    }
+
+    /// The ranks the spending may buy within the rules, in voie order: the
+    /// next rank of each voie it does not advance yet, rank 1 of a voie not
+    /// held while fewer than six are, each within the XP left
+    /// ([`xp_cost`], COC.PRG.ONE-RANK, LIMITS).
+    #[must_use]
+    pub fn acquirable(&self) -> &[(Voie, Rank)] {
+        &self.acquirable
+    }
+
+    /// The trait change raising the social class one class, its points
+    /// (`None` to give the Classe inférieure up) and its XP cost; `None` at
+    /// the highest class or when the class traits contradict each other.
+    #[must_use]
+    pub const fn class_rise(&self) -> Option<(Trait, Option<TraitPoints>, i32)> {
+        self.class_rise
+    }
+
+    /// The XP the cure of Toxicomane costs, when the trait is held.
+    #[must_use]
+    pub const fn cure(&self) -> Option<i32> {
+        self.cure
+    }
+}
+
+/// The offer of the spending numbered `number`, from 1, if there is one.
+pub(crate) fn offer(character: &Character, number: usize) -> Option<SpendingOffer> {
+    let index = number.checked_sub(1)?;
+    let spendings: Vec<&XpSpending> = character.spendings().collect();
+    let spending = *spendings.get(index)?;
+    let mut held: BTreeMap<Voie, BTreeSet<Rank>> = character
+        .creation_voies()
+        .map(|(voie, ranks)| (voie, ranks.clone()))
+        .collect();
+    let mut traits = character.creation_traits();
+    for earlier in spendings.get(..index)? {
+        earlier.apply_ranks(&mut held);
+        earlier.apply_traits(&mut traits);
+    }
+    let xp_left = character
+        .value(Value::Experience)
+        .map_or(0, |value| value.total());
+    let advanced: BTreeSet<Voie> = spending.ranks().map(|(voie, _)| voie).collect();
+    let mut after = held.clone();
+    spending.apply_ranks(&mut after);
+    let acquirable = Voie::ALL
+        .into_iter()
+        .filter(|voie| !advanced.contains(voie))
+        .filter_map(|voie| {
+            let ranks = held.get(&voie);
+            let next = (1..=5)
+                .map(Rank::new)
+                .find(|rank| !ranks.is_some_and(|ranks| ranks.contains(rank)))?;
+            let may_open = ranks.is_some() || after.len() < MAX_VOIES;
+            (may_open && xp_cost(next) <= xp_left).then_some((voie, next))
+        })
+        .collect();
+    let class_rise = class_level(&traits)
+        .filter(|level| *level < 3)
+        .map(|level| {
+            let next = level + 1;
+            let cost = class_cost(level, next);
+            match next {
+                ..0 => (
+                    Trait::ClasseInferieure,
+                    Some(TraitPoints::new(u8::try_from(-next).unwrap_or(u8::MAX))),
+                    cost,
+                ),
+                0 => (Trait::ClasseInferieure, None, cost),
+                _ => (
+                    Trait::ClasseSuperieure,
+                    Some(TraitPoints::new(u8::try_from(next).unwrap_or(u8::MAX))),
+                    cost,
+                ),
+            }
+        });
+    let cure = traits
+        .get(&Trait::Toxicomane)
+        .map(|points| 2 * i32::from(points.get()));
+    Some(SpendingOffer {
+        xp_left,
+        acquirable,
+        class_rise,
+        cure,
+    })
 }
 
 #[cfg(test)]
@@ -554,5 +677,101 @@ mod tests {
         assert_eq!(spending, XpSpending::new());
         let character = criminal().with_experience(3).with_xp_spending(spending);
         assert_eq!(total(&character, Value::Experience), Some(3));
+    }
+
+    fn pairs(list: &[(Voie, Rank)]) -> Vec<(Voie, u8)> {
+        list.iter()
+            .map(|(voie, rank)| (*voie, rank.get()))
+            .collect()
+    }
+
+    #[test]
+    fn a_spending_offers_the_next_ranks_within_the_xp_left() {
+        let character = criminal()
+            .with_experience(3)
+            .with_xp_spending(XpSpending::new());
+        assert_eq!(character.spending_offer(0), None);
+        assert_eq!(character.spending_offer(2), None);
+        let Some(offer) = character.spending_offer(1) else {
+            panic!("spending 1 has an offer");
+        };
+        assert_eq!(offer.xp_left(), 3);
+        let acquirable = pairs(offer.acquirable());
+        // Crime 3 and Survie 2 cost 3 and 2; any other voie opens at rank 1.
+        assert!(acquirable.contains(&(Voie::Crime, 3)));
+        assert!(acquirable.contains(&(Voie::Survie, 2)));
+        assert!(acquirable.contains(&(Voie::Medecine, 1)));
+        assert!(!acquirable.contains(&(Voie::Crime, 4)));
+        // A voie advanced by the spending offers nothing more; the XP left
+        // drops with what is bought.
+        let bought = criminal()
+            .with_experience(3)
+            .with_xp_spending(XpSpending::new().with_rank(Voie::Survie, 2));
+        let Some(offer) = bought.spending_offer(1) else {
+            panic!("spending 1 has an offer");
+        };
+        assert_eq!(offer.xp_left(), 1);
+        let acquirable = pairs(offer.acquirable());
+        assert!(!acquirable.iter().any(|(voie, _)| *voie == Voie::Survie));
+        assert!(!acquirable.contains(&(Voie::Crime, 3)));
+        assert!(acquirable.contains(&(Voie::Medecine, 1)));
+    }
+
+    #[test]
+    fn a_spending_offers_the_next_class_and_the_cure() {
+        let middle = Character::new()
+            .with_experience(10)
+            .with_xp_spending(XpSpending::new());
+        assert_eq!(
+            middle
+                .spending_offer(1)
+                .and_then(|offer| offer.class_rise()),
+            Some((Trait::ClasseSuperieure, Some(TraitPoints::new(1)), 2))
+        );
+        let populaire = middle.clone().with_trait(Trait::ClasseInferieure, 1);
+        assert_eq!(
+            populaire
+                .spending_offer(1)
+                .and_then(|offer| offer.class_rise()),
+            Some((Trait::ClasseInferieure, None, 2))
+        );
+        let fortune = middle.clone().with_trait(Trait::ClasseSuperieure, 3);
+        assert_eq!(
+            fortune
+                .spending_offer(1)
+                .and_then(|offer| offer.class_rise()),
+            None
+        );
+        let addict = middle.with_trait(Trait::Toxicomane, 3);
+        assert_eq!(
+            addict.spending_offer(1).and_then(|offer| offer.cure()),
+            Some(6)
+        );
+    }
+
+    #[test]
+    fn a_seventh_voie_is_not_offered() {
+        let six = [
+            Voie::Crime,
+            Voie::Discours,
+            Voie::Furtivite,
+            Voie::Langues,
+            Voie::Medecine,
+            Voie::Sciences,
+        ]
+        .into_iter()
+        .fold(Character::new(), |c, voie| c.with_rank(voie, 1))
+        .with_experience(9)
+        .with_xp_spending(XpSpending::new());
+        let Some(offer) = six.spending_offer(1) else {
+            panic!("spending 1 has an offer");
+        };
+        assert!(
+            offer
+                .acquirable()
+                .iter()
+                .all(|(voie, _)| *voie != Voie::Survie)
+        );
+        assert!(offer.acquirable().contains(&(Voie::Crime, Rank::new(2))));
     }
 }
