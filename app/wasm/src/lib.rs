@@ -540,4 +540,169 @@ mod tests {
                 .any(|held| held.ability == "coc.crime.2" && held.progression == Some(1))
         );
     }
+
+    #[test]
+    fn contemporain_in_play_values_follow_the_equipment() {
+        let mut document = ContemporainDocument::empty();
+        document.items = vec![
+            ItemEntry::Weapon {
+                id: "coc.weapon.couteau".into(),
+                quantity: 1,
+            },
+            ItemEntry::Other {
+                name: "Lampe".into(),
+                quantity: 1,
+            },
+        ];
+        let equipment = palimpseste_document::ContemporainEquipment {
+            protections: vec!["coc.protection.gilet-souple".into()],
+            items: vec![ItemEntry::Weapon {
+                id: "coc.weapon.couteau".into(),
+                quantity: 0,
+            }],
+        };
+        let creation = contemporain(document.clone());
+        let sheet = evaluate_in_play(
+            &Document::Contemporain(document),
+            &Equipment::Contemporain(equipment),
+        )
+        .unwrap();
+        let reduction = |sheet: &Sheet| value(sheet, "coc.damage-reduction").total;
+        assert!(reduction(&sheet) > reduction(&creation));
+        assert!(creation.values.iter().any(|l| l.id == "coc.damage.couteau"));
+        // A weapon put down in play is no longer listed; bare hands stay.
+        assert!(sheet.values.iter().all(|l| l.id != "coc.damage.couteau"));
+        assert!(sheet.values.iter().any(|l| l.id == "coc.damage.mains-nues"));
+        assert_eq!(sheet.violations, creation.violations);
+        assert_eq!(sheet.in_play, []);
+    }
+
+    #[test]
+    fn every_category_and_subject_kind_is_reported() {
+        let mut document = ContemporainDocument::empty();
+        document.age = Some(8);
+        document.carac_points.agi = -1;
+        document.carac_points.con = -1;
+        document.carac_points.r#for = 10;
+        let sheet = contemporain(document);
+        let find = |rule: &str| sheet.violations.iter().find(|v| v.rule == rule).unwrap();
+        let bracket = find("COC.CRE.AGE-BRACKET");
+        assert_eq!(bracket.category, Category::Uncomputable);
+        let limits = find("COC.CRE.CARAC-LIMITS");
+        assert_eq!(
+            (&limits.subject, limits.subject_label.as_deref()),
+            (&Subject::Characteristic(Characteristic::For), Some("FOR"))
+        );
+        assert_eq!(
+            limits.category,
+            Category::Deviation {
+                severity: Severity::Absolute
+            }
+        );
+        let lowered = find("COC.CRE.CARAC-LOWERED");
+        assert_eq!(
+            (&lowered.subject, &lowered.subject_label),
+            (&Subject::Character, &None)
+        );
+        assert_eq!(
+            lowered.category,
+            Category::Deviation {
+                severity: Severity::Recommended
+            }
+        );
+
+        // A capacité whose option is required, without one, is named.
+        let mut document = FantasyDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "cof.combat-a-deux-armes".into(),
+            ranks: vec![1, 2, 3, 4],
+        }];
+        let sheet = fantasy(document);
+        let option = sheet
+            .violations
+            .iter()
+            .find(|v| v.rule == "COF.CNT.VOIE")
+            .unwrap();
+        assert_eq!(
+            (&option.subject, option.subject_label.as_deref()),
+            (
+                &Subject::Ability("cof.combat-a-deux-armes.4".into()),
+                Some("Voie du combat à deux armes, rang 4")
+            )
+        );
+    }
+
+    #[test]
+    fn capacites_offering_options_are_listed() {
+        let mut document = FantasyDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "cof.archer".into(),
+            ranks: vec![1],
+        }];
+        let Details::Fantasy(details) = fantasy(document).details else {
+            panic!("fantasy details expected");
+        };
+        assert_eq!(
+            details.ability_options,
+            [sheet::AbilityOptionLine {
+                ability: "cof.archer.1".into(),
+                offered: vec!["cof.option.thrown".into()],
+                required: false,
+                progression: None,
+            }]
+        );
+    }
+
+    #[test]
+    fn rank_five_capacites_say_what_they_raise() {
+        let mut document = ContemporainDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "coc.crime".into(),
+            ranks: vec![1, 2, 3, 4],
+        }];
+        document.experience = 5;
+        document.xp_spendings = vec![XpSpendingEntry {
+            abilities: vec!["coc.crime.5".into()],
+            traits: Vec::new(),
+        }];
+        let Details::Contemporain(details) = contemporain(document).details else {
+            panic!("contemporain details expected");
+        };
+        let [line] = details.rank_five.as_slice() else {
+            panic!("one rank 5 capacité expected");
+        };
+        assert_eq!(
+            (line.voie.as_str(), line.choice.as_slice(), line.progression),
+            (
+                "coc.crime",
+                [Characteristic::Per, Characteristic::Cha].as_slice(),
+                Some(1)
+            )
+        );
+    }
+
+    #[test]
+    fn a_spending_offers_the_class_rise() {
+        let mut document = ContemporainDocument::empty();
+        document.traits = vec![palimpseste_document::TraitEntry {
+            id: "coc.trait.classe-inferieure".into(),
+            points: 2,
+        }];
+        document.experience = 4;
+        document.xp_spendings = vec![XpSpendingEntry {
+            abilities: Vec::new(),
+            traits: Vec::new(),
+        }];
+        let Details::Contemporain(details) = contemporain(document).details else {
+            panic!("contemporain details expected");
+        };
+        assert_eq!(
+            details.spendings[0].class_rise,
+            Some(sheet::ClassRise {
+                id: "coc.trait.classe-inferieure".into(),
+                points: Some(1),
+                cost: 4,
+            })
+        );
+    }
 }
