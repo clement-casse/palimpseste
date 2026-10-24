@@ -58,6 +58,15 @@ const MESSAGES: Record<string, Message> = {
   "COF.CRE.VOIE-DU-MAGE": (s) => `${s} : réservée à la famille des mages.`,
   "COF.PRG.LEVEL-REQ": (s, p) =>
     `${s} : le rang ${p.rank} demande le niveau ${p.required ?? "?"} (niveau ${p.level}).`,
+  "COF.PRG.POINTS": (s, p, v) =>
+    v.category.kind === "incomplete"
+      ? `${s} : ${p.spent} point(s) de capacité dépensé(s) sur ${p.expected}.`
+      : `${s} : ${p.spent} points de capacité dépensés au lieu de ${p.expected}.`,
+  "COF.PRG.COST": (s, p) => `${s} : déjà acquise, achetée de nouveau au niveau ${p.level}.`,
+  "COF.PRG.ORDER": (s, p) => `${s} : acquise au niveau ${p.level} avant le rang inférieur.`,
+  "COF.PRG.NEW-VOIES": (s, p) => `${s} : cette voie ne peut pas être ouverte (niveau ${p.level}).`,
+  "COF.PRG.HYBRID": (s, p) => `${s} : voie d'un autre profil ouverte au niveau ${p.level} (hybride).`,
+  "COF.PRG.MAX-VOIES": (s, p) => `${s} : ${p.voies} voies, ${p.max} au plus.`,
   "COF.DER.ARMOUR-LIMIT": (s) => `${s} : au-delà de ce que le profil permet.`,
   "COF.CRE.EQUIPMENT": (s, p) =>
     p.min === undefined
