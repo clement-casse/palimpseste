@@ -21,7 +21,7 @@ complete nain guerrier. Read it first.
 | `peuple.rs` | `Peuple` (8), its modifiers and voie de peuple | COF.CRE.PEUPLE, COF.CNT.PEUPLES |
 | `characteristics.rs` | `Series` (3), the series assignment, peuple modifiers, bounds, `SERIES_VALUE` | COF.CRE.CARAC-* |
 | `voie.rs` | `Voie` (the 78 reachable at level 1), the checks on the ranks chosen at creation | CO.VOIE.* (the kernel's `voie_rank_violations`), COF.PRG.LEVEL-REQ, COF.CRE.MAGE-EXTRA |
-| `level.rs` | `Level` (with its dé évolutif), `LevelUp`, the checks on each level-up | COF.PRG.POINTS, COST, LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES, COF.DER.D4 |
+| `level.rs` | `Level` (with its dé évolutif), `LevelUp` (ranks acquired and forgotten, orphan point), `OrphanExchange`, the checks on each level-up | COF.PRG.POINTS, COST, LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES, REORIENT, ORPHAN, COF.DER.D4 |
 | `derived.rs` | PV, DR, PC, PM, Init, DEF, RD, attacks, each adding its table of capacité effects | COF.DER.*, COF.PRG.PV |
 | `ability.rs` | `AbilityOption`, the options capacités offer, the per-value tables of capacité effects and characteristic raises (D-13, D-22) | COF.CNT.VOIE, COF.CNT.EFFECT-SHAPES |
 | `armour.rs` | `Armour`, `Shield`, the profil's armour limits | COF.EQP.ARMOUR, COF.DER.ARMOUR-LIMIT |

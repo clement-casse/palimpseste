@@ -73,7 +73,7 @@ pub use character::{AttackMode, Character, Target, Value};
 pub use characteristics::{SERIES_VALUE, Series};
 pub use equipment::{Gear, Item, StartingItem, StartingLine};
 pub use label::{label, term_label};
-pub use level::{Level, LevelUp};
+pub use level::{Level, LevelUp, OrphanExchange};
 pub use money::{Money, purse_dice};
 pub use peuple::Peuple;
 pub use play::{Equipment, InPlay};

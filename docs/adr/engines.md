@@ -202,15 +202,18 @@ the voie du mage (COF.CRE.MAGE-EXTRA), never in another profil's voie,
 waived or not.
 
 **ENG-COF-PROGRESSION: Level-ups are an ordered history.** A `LevelUp`
-holds the ranks acquired at one level; `Character` keeps its level-ups in
-order (`with_level_up` appends one, `without_level_up` gives up the last),
-the n-th reaching level n + 1. The current ranks join the creation ranks
-and those of every level-up, and feed the derived values and the voie
-structure (CO.VOIE.*); the creation rules (COF.CRE.VOIES, MAGE-EXTRA,
+holds the ranks acquired at one level, the ranks forgotten at it
+(`with_forgotten`, the changement d'orientation) and the exchange of its
+orphan point (`with_orphan`); `Character` keeps its level-ups in order
+(`with_level_up` appends one, `without_level_up` gives up the last), the
+n-th reaching level n + 1. The current ranks are the creation ranks, then
+each level-up in order, forgetting before acquiring; they feed the derived
+values and the voie structure (CO.VOIE.*); the creation rules (COF.CRE.VOIES, MAGE-EXTRA,
 VOIE-DU-MAGE, the starting equipment) read the creation ranks only. Each
-level-up is checked where it happened: its 2 points spent at once at 1
-point up to rank 2 and 2 above (COF.PRG.POINTS: fewer is `Incomplete`,
-more a deviation, the level-up `cof.level.<n>` as subject), each rank
+level-up is checked where it happened: its 2 points, plus those the ranks
+forgotten refund, spent at once at 1 point up to rank 2 and 2 above, the
+orphan point exchanged counting as one (COF.PRG.POINTS: fewer is
+`Incomplete`, more a deviation, the level-up `cof.level.<n>` as subject), each rank
 against the level it was acquired at (COF.PRG.LEVEL-REQ, the capacité as
 subject), a rank bought again (COF.PRG.COST) or before the rank below
 (COF.PRG.ORDER, only when that rank comes at a later level: one never
@@ -219,7 +222,17 @@ main profil, or the voie de peuple slot's options: another profil's is a
 deviation of COF.PRG.HYBRID, another voie de peuple or the voie du mage
 outside the mage family one of COF.PRG.NEW-VOIES. Beyond six voies, or a
 second voie in the voie de peuple slot opened by a level-up, is a
-deviation of COF.PRG.MAX-VOIES. The progression findings sit in
+deviation of COF.PRG.MAX-VOIES. The changement d'orientation forgets one
+capacité per level, two with INT +2 or more (the current INT), each held,
+from the top rank of its voie down, never the free rank 1 of the voie de
+peuple slot nor a rank-1 capacité of the main profil chosen at creation:
+any other is a deviation of COF.PRG.REORIENT, the capacité as subject and
+the reason as parameter (the count beyond the limit takes the level-up). The
+orphan point is exchanged (`OrphanExchange`: 1 PC, 1 DR, 2 PV or 2 PM, the
+level-up as source) once no rank 1 or 2 is left in the main profil's voies
+or the voie de peuple slot, a voie still to open counting while fewer than
+six are held; earlier, it is a deviation of COF.PRG.ORPHAN. The 2 PM add
+to nothing without a spell. The progression findings sit in
 `Step::Voies`. *Why a history, not the current ranks and a level:* the
 points of each level, the level a rank was acquired at, and the changement
 d'orientation (the rank-1 capacités of level 1 are never forgotten) are
@@ -309,8 +322,7 @@ and displays with the fewest coins (COF.EQP.CURRENCY). The purse is the
   campaign concept lives.
 - The demi-elfe upbringing as a choice, and capacité names per voie and
   rank, each with a decision entry in the co-rules skill.
-- The rest of COF2 progression: the orphan point (COF.PRG.ORPHAN), the
-  changement d'orientation (COF.PRG.REORIENT), hybrids after level 1 and
-  their PV per level; then COC2 experience (COC.PRG.*, D-09, D-20).
+- Hybrids after level 1 and their PV per level, prestige voies, and the
+  capacités calling other capacités (COF.PRG.CALL), all out of scope.
 - Per-weapon attack values, for the capacités changing one weapon's attack;
   the weapon categories of Armes de prédilection, from the co-rules skill.
