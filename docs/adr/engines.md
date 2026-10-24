@@ -26,7 +26,8 @@ string: `cof.epee-longue`, `coc.crime`), `from_id()` and `name()` (the
 French display name). The content tables the rules read are public
 read-only accessors; options depending on the current choices (the voies a
 peuple slot accepts) are `Character` methods. Values are named alike:
-`Value::FIXED` lists every value but the weapon values, in the book order,
+`Value::FIXED` lists every value but the weapon values (and COC2's test
+bonuses), in the book order,
 and `Value::name()` names each one; COC2's `AttackMode` has a `name()`, and
 an `id()` ending the identifier of its attack value. `label(id)` names every identifier the engine emits as a
 violation subject or a breakdown source (content, choices, values,
@@ -67,6 +68,24 @@ co-rules catalogue (D-45); `label` names a capacité by its voie and rank.
 A weapon value builds its identifier from the
 weapon (`cof.damage.epee-longue.one-handed`), so `Value::id` is not
 `const`.
+
+**ENG-TEST-BONUSES: Test bonuses are values, named by their capacité
+(D-50).** A capacité's permanent bonus to the character's own tests is a
+`TestBonus`, one per amount the capacité gives, numbered within it, with
+the characteristics its catalogue entry names (`characteristics()`, empty
+when it names none). The fields of the tests are not recorded: naming
+them would paraphrase the books. Each bonus is a `Value::TestBonus`
+(`coc.test-bonus.<voie>.<rank>.<n>`) with the capacité as source,
+adjusted like any value, its notices in the voies step, and `None` while
+the capacité is not held; `Character::test_bonuses` lists those held, and
+`Character::bonus_dice` the capacités giving a dé bonus to tests
+(`BonusDie`), with the characteristics named. Not test bonuses: those
+used once per session or scene, given to others or to attacks (a
+favoured weapon, a martial art), difficulties changed for others, a
+characteristic tested in place of another. In COC2 a bonus is flat or per
+rank reached, and a "+2 becomes +5" adds 3 to the bonus it upgrades, the
+upgrading capacité as source. *Why values:* breakdowns and adjustments
+come with them, as for every computed value.
 
 **ENG-FINDINGS: One finding per waiver.** Waivers match rule and subject
 and ignore severity (ADR KER-MATCHING), so two findings a waiver could
