@@ -7,7 +7,7 @@ use co_kernel::{
 };
 
 use crate::{
-    AttackMode, Character, Voie, derived,
+    AttackMode, Character, Voie, ability,
     rules::{CRIT_RANGE, PEUPLES, RANGED, WEAPON_MECHANIC},
 };
 
@@ -328,6 +328,29 @@ impl Weapon {
         self.profile().blunt
     }
 
+    /// Light (equipment table): the dague, the épée courte, the rapière, the
+    /// stylet and the vivelame.
+    pub(crate) const fn is_light(self) -> bool {
+        matches!(
+            self,
+            Self::Dague | Self::EpeeCourte | Self::Rapiere | Self::Stylet | Self::Vivelame
+        )
+    }
+
+    /// Thrown by hand when used at range: every ranged weapon but the bows,
+    /// the crossbows, the slings and the powder weapons.
+    pub(crate) const fn is_thrown(self) -> bool {
+        matches!(
+            self,
+            Self::Dague
+                | Self::Epieu
+                | Self::Lance
+                | Self::CouteauxDeLancer
+                | Self::Hachette
+                | Self::Javelot
+        )
+    }
+
     /// A powder weapon.
     pub(crate) const fn is_powder(self) -> bool {
         matches!(self, Self::Petoire | Self::Mousquet)
@@ -448,32 +471,59 @@ pub(crate) fn critical_range_id(weapon: Weapon) -> ValueId {
 }
 
 /// The DM added to the dice (COF.DER.DM): FOR at contact, except for the
-/// stylet; nothing at range. `None` when the weapon cannot be used that way.
+/// stylet; nothing at range; then the capacités' effects. `None` when the
+/// weapon cannot be used that way.
 pub(crate) fn damage(
+    character: &Character,
     values: &Characteristics,
     weapon: Weapon,
     weapon_use: WeaponUse,
 ) -> Option<DerivedValue> {
     weapon.dice(weapon_use)?;
     let value = DerivedValue::new();
-    Some(
-        if weapon_use.attack_mode() == AttackMode::Contact && weapon != Weapon::Stylet {
-            value.with_characteristic(values, Characteristic::For)
-        } else {
-            value
-        },
-    )
+    let value = if weapon_use.attack_mode() == AttackMode::Contact && weapon != Weapon::Stylet {
+        value.with_characteristic(values, Characteristic::For)
+    } else {
+        value
+    };
+    Some(ability::apply_to_weapon(
+        value,
+        character,
+        values,
+        ability::DAMAGE,
+        weapon,
+        Some(weapon_use),
+    ))
 }
 
+/// The lowest natural roll a critical range ever starts at (COF.DER.CRIT-RANGE).
+const CRITICAL_RANGE_FLOOR: i32 = 16;
+
 /// The lowest natural roll of a critical success (COF.DER.CRIT-RANGE): 20,
-/// widened by the weapon.
-pub(crate) fn critical_range(weapon: Weapon) -> DerivedValue {
-    let value = DerivedValue::new().with(Source::Rule(CRIT_RANGE), 20);
+/// widened by the weapon and the capacités, never below 16.
+pub(crate) fn critical_range(
+    character: &Character,
+    values: &Characteristics,
+    weapon: Weapon,
+) -> DerivedValue {
+    let mut value = DerivedValue::new().with(Source::Rule(CRIT_RANGE), 20);
     let widening = weapon.profile().critical - 20;
-    if widening == 0 {
-        value
+    if widening != 0 {
+        value = value.with(Source::Value(weapon.id()), widening);
+    }
+    let value = ability::apply_to_weapon(
+        value,
+        character,
+        values,
+        ability::CRITICAL_RANGE,
+        weapon,
+        None,
+    );
+    let below_floor = CRITICAL_RANGE_FLOOR - value.total();
+    if below_floor > 0 {
+        value.with(Source::Rule(CRIT_RANGE), below_floor)
     } else {
-        value.with(Source::Value(weapon.id()), widening)
+        value
     }
 }
 
@@ -484,7 +534,7 @@ const SMALL_DAMAGE_MAX: i32 = 10;
 /// a halfelin cannot wield large weapons (D-29).
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     let strength = character.characteristics()[Characteristic::For].get();
-    let small = derived::has_peuple_ability(character, Voie::Halfelin);
+    let small = ability::holds(character, Voie::Halfelin, Rank::new(1));
     for weapon in character.weapons() {
         let subject = || Subject::Value(weapon.id());
         if weapon == Weapon::ArcLong && strength < 1 {
@@ -558,7 +608,9 @@ mod tests {
             Characteristic::For => 3.into(),
             _ => 0.into(),
         });
-        let total = |weapon, weapon_use| damage(&values, weapon, weapon_use).map(|v| v.total());
+        let character = Character::new();
+        let total =
+            |weapon, weapon_use| damage(&character, &values, weapon, weapon_use).map(|v| v.total());
         assert_eq!(total(Weapon::EpeeLongue, WeaponUse::OneHanded), Some(3));
         assert_eq!(total(Weapon::Dague, WeaponUse::Ranged), Some(0));
         assert_eq!(total(Weapon::Stylet, WeaponUse::OneHanded), Some(0));
@@ -567,10 +619,12 @@ mod tests {
 
     #[test]
     fn rapiere_and_vivelame_widen_the_critical_range() {
-        assert_eq!(critical_range(Weapon::EpeeLongue).total(), 20);
-        assert_eq!(critical_range(Weapon::Rapiere).total(), 19);
-        assert_eq!(critical_range(Weapon::Vivelame).total(), 19);
         let character = Character::new();
+        let values = character.characteristics();
+        let range = |weapon| critical_range(&character, &values, weapon).total();
+        assert_eq!(range(Weapon::EpeeLongue), 20);
+        assert_eq!(range(Weapon::Rapiere), 19);
+        assert_eq!(range(Weapon::Vivelame), 19);
         assert_eq!(
             character
                 .value(Value::CriticalRange(Weapon::Rapiere))

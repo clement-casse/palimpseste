@@ -22,7 +22,8 @@ complete nain guerrier. Read it first.
 | `characteristics.rs` | `Series` (3), the series assignment, peuple modifiers, bounds, `SERIES_VALUE` | COF.CRE.CARAC-* |
 | `voie.rs` | `Voie` (the 78 reachable at level 1), the checks on the ranks chosen at creation | CO.VOIE.* (the kernel's `voie_rank_violations`), COF.PRG.LEVEL-REQ, COF.CRE.MAGE-EXTRA |
 | `level.rs` | `Level` (with its dé évolutif), `LevelUp`, the checks on each level-up | COF.PRG.POINTS, COST, LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES, COF.DER.D4 |
-| `derived.rs` | PV, DR, PC, PM, Init, DEF, attacks, with the effects of rank 1-2 capacités (D-22) | COF.DER.*, COF.PRG.PV |
+| `derived.rs` | PV, DR, PC, PM, Init, DEF, RD, attacks, each adding its table of capacité effects | COF.DER.*, COF.PRG.PV |
+| `ability.rs` | `AbilityOption`, the options capacités offer, the per-value tables of capacité effects and characteristic raises (D-13, D-22) | COF.CNT.VOIE, COF.CNT.EFFECT-SHAPES |
 | `armour.rs` | `Armour`, `Shield`, the profil's armour limits | COF.EQP.ARMOUR, COF.DER.ARMOUR-LIMIT |
 | `weapon.rs` | `Weapon`, `WeaponUse`, dice per use, DM, critical range, the checks on the weapons carried | COF.EQP.MELEE, COF.EQP.RANGED, COF.DER.DM, COF.DER.CRIT-RANGE |
 | `equipment.rs` | `Item` (a weapon, or free text named by the kernel's `ItemName`), the profil's starting equipment (`Gear`, `StartingLine`, `StartingItem`) | COF.CRE.EQUIPMENT |
@@ -93,8 +94,10 @@ find it there, and the sheet lists it in that order. A new choice the violations
 4. Add its French message in
    [`app/frontend/src/messages.ts`](../../app/frontend/src/messages.ts).
 
-**Adding a capacité effect:** only rank 1-2 capacités with a documented
-effect on a value are computed (D-22). The capacité contributes as
+**Adding a capacité effect:** add a row to the value's table in
+`ability.rs` (an `Effect` with its `Amount`, and the `Condition` or `When`
+option it needs), or to `RAISES` for a characteristic. An option goes in
+`offer`, and its effect reads it with `When::Chosen`. The capacité contributes as
 `Source::Ability`, with an identifier built from its voie and rank.
 
 ## Testing

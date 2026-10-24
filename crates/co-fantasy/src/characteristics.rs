@@ -260,9 +260,10 @@ fn check_peuple(character: &Character, violations: &mut Vec<Violation>) {
 }
 
 /// COF.CRE.CARAC-BOUNDS and COF.CRE.CARAC-MAGIC (recommended), on the
-/// adjusted starting values.
+/// adjusted starting values: a capacité raising a characteristic is no
+/// creation choice.
 fn check_values(character: &Character, violations: &mut Vec<Violation>) {
-    let values = character.characteristics();
+    let values = character.starting_characteristics();
     let max = if character.peuple().is_some_and(Peuple::is_human) {
         HUMAN_MAX
     } else {

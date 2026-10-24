@@ -1,98 +1,86 @@
 //! Derived values (COF.DER.*, COF.PRG.PV), with the documented effects of
-//! rank 1-2 capacités only (D-22).
+//! the capacités (D-22) read from their tables in [`ability`].
 
 use co_kernel::{
     Characteristic, Characteristics, DerivedValue, Rank, Severity, Source, Subject, Violation,
 };
 
 use crate::{
-    AttackMode, Character, Family, Level, Value, Voie,
+    AttackMode, Character, Family, Value, Voie,
+    ability::{self, AbilityOption},
     rules::{ATTACK, DEF, DERIVED_MECHANIC, DR, INIT, PC, PM},
 };
 
-/// Adds `amount` from the capacité at `rank` in `voie`, when acquired.
-fn with_ability(
-    value: DerivedValue,
-    character: &Character,
-    voie: Voie,
-    rank: u8,
-    amount: i32,
-) -> DerivedValue {
-    let rank = Rank::new(rank);
-    if character.has_rank(voie, rank) {
-        value.with(Source::Ability(voie.ability(rank)), amount)
-    } else {
-        value
-    }
+/// Whether the option `characteristic` is chosen for the capacité at `rank`
+/// in `voie`, the capacité being held.
+fn uses(character: &Character, voie: Voie, rank: u8, characteristic: Characteristic) -> bool {
+    ability::holds(character, voie, Rank::new(rank))
+        && ability::chose(
+            character,
+            voie,
+            rank,
+            AbilityOption::Characteristic(characteristic),
+        )
 }
 
-/// Whether the character has the rank-1 capacité of the voie de peuple
-/// `voie`: acquired in that voie, or kept through the voie du mage that
-/// replaced it (COF.CRE.VOIE-DU-MAGE).
-pub(crate) fn has_peuple_ability(character: &Character, voie: Voie) -> bool {
-    let first_rank = Rank::new(1);
-    let kept = character.peuple().and_then(crate::Peuple::voie) == Some(voie)
-        && character.has_rank(Voie::Mage, first_rank);
-    character.has_rank(voie, first_rank) || kept
-}
-
-/// Adds `amount` from the rank-1 capacité of the voie de peuple `voie`, when
-/// the character has it.
-fn with_peuple_ability(
-    value: DerivedValue,
-    character: &Character,
-    voie: Voie,
-    amount: i32,
-) -> DerivedValue {
-    if has_peuple_ability(character, voie) {
-        value.with(Source::Ability(voie.ability(Rank::new(1))), amount)
-    } else {
-        value
-    }
-}
-
-/// AGI as usable in the armour worn: capped by its AGI max (D-06).
-fn effective_agi(character: &Character, values: &Characteristics) -> i32 {
-    let agi = values[Characteristic::Agi].get();
+/// `c` as usable in the armour worn: capped by its AGI max (D-06).
+fn capped(character: &Character, values: &Characteristics, c: Characteristic) -> i32 {
+    let value = values[c].get();
     character
         .armour()
-        .map_or(agi, |armour| agi.min(armour.agi_max()))
+        .map_or(value, |armour| value.min(armour.agi_max()))
 }
 
 /// PV = 2 x family PV + CON at level 1 (COF.DER.PV-L1), then family PV +
-/// CON per level-up (COF.PRG.PV). The current CON counts for every level,
-/// so a change of CON changes the PV of the levels already gained.
+/// CON per level-up (COF.PRG.PV), with the capacités' effects. The current
+/// CON counts for every level, so a change of CON changes the PV of the
+/// levels already gained. Grosse tête (golem r1) may put INT in place of CON
+/// at level 1.
 pub(crate) fn vigour_points(
+    character: &Character,
     family: Family,
     values: &Characteristics,
-    level: Level,
 ) -> DerivedValue {
-    let level = i32::from(level.get());
-    DerivedValue::new()
-        .with(
-            Source::Value(family.id()),
-            (level + 1) * family.vigour_per_level(),
-        )
-        .with(
-            Source::Characteristic(Characteristic::Con),
-            level * values[Characteristic::Con].get(),
-        )
+    let level = i32::from(character.level().get());
+    let value = DerivedValue::new().with(
+        Source::Value(family.id()),
+        (level + 1) * family.vigour_per_level(),
+    );
+    let con = values[Characteristic::Con].get();
+    let value = if uses(character, Voie::Golem, 1, Characteristic::Int) {
+        value
+            .with(
+                Source::Characteristic(Characteristic::Int),
+                values[Characteristic::Int].get(),
+            )
+            .with(
+                Source::Characteristic(Characteristic::Con),
+                (level - 1) * con,
+            )
+    } else {
+        value.with(Source::Characteristic(Characteristic::Con), level * con)
+    };
+    ability::apply(value, character, values, ability::VIGOUR)
 }
 
-/// DR = 2 + CON, +1 for the mystiques (COF.DER.DR).
-pub(crate) fn recovery_dice(family: Family, values: &Characteristics) -> DerivedValue {
-    let value = DerivedValue::new()
+/// DR = 2 + CON, +1 for the mystiques (COF.DER.DR), with the capacités'
+/// effects.
+pub(crate) fn recovery_dice(
+    character: &Character,
+    family: Family,
+    values: &Characteristics,
+) -> DerivedValue {
+    let mut value = DerivedValue::new()
         .with(Source::Rule(DR), 2)
         .with_characteristic(values, Characteristic::Con);
     if family == Family::Mystiques {
-        value.with(Source::Value(family.id()), 1)
-    } else {
-        value
+        value = value.with(Source::Value(family.id()), 1);
     }
+    ability::apply(value, character, values, ability::RECOVERY)
 }
 
-/// PC = 2 + CHA, +1 for the aventuriers (COF.DER.PC), with Diversité
-/// (humain r1) and Petit pote (gnome r2).
+/// PC = 2 + CHA, +1 for the aventuriers (COF.DER.PC), with the capacités'
+/// effects.
 pub(crate) fn luck_points(
     character: &Character,
     family: Family,
@@ -104,12 +92,12 @@ pub(crate) fn luck_points(
     if family == Family::Aventuriers {
         value = value.with(Source::Value(family.id()), 1);
     }
-    let value = with_peuple_ability(value, character, Voie::Humain, 1);
-    with_ability(value, character, Voie::Gnome, 2, 1)
+    ability::apply(value, character, values, ability::LUCK)
 }
 
-/// PM = VOL + 1 per spell known (COF.DER.PM); `None` without any spell.
-/// Only the documented spells are known (D-23).
+/// PM = VOL + 1 per spell known (COF.DER.PM), with the capacités' effects;
+/// `None` without any spell. Charisme héroïque (séduction r4) may put CHA in
+/// place of VOL.
 pub(crate) fn mana_points(character: &Character, values: &Characteristics) -> Option<DerivedValue> {
     let spells: Vec<_> = character
         .voies()
@@ -124,29 +112,38 @@ pub(crate) fn mana_points(character: &Character, values: &Characteristics) -> Op
     if spells.is_empty() {
         return None;
     }
-    Some(spells.into_iter().fold(
-        DerivedValue::new().with_characteristic(values, Characteristic::Vol),
+    let characteristic = if uses(character, Voie::Seduction, 4, Characteristic::Cha) {
+        Characteristic::Cha
+    } else {
+        Characteristic::Vol
+    };
+    let value = spells.into_iter().fold(
+        DerivedValue::new().with_characteristic(values, characteristic),
         |value, spell| value.with(Source::Ability(spell), 1),
-    ))
+    );
+    Some(ability::apply(value, character, values, ability::MANA))
 }
 
-/// Init = 10 + PER (COF.DER.INIT), with Réflexes éclair (pourfendeur r1)
-/// and Murmure dans le vent (air r1).
+/// Init = 10 + PER (COF.DER.INIT), with the capacités' effects.
 pub(crate) fn initiative(character: &Character, values: &Characteristics) -> DerivedValue {
     let value = DerivedValue::new()
         .with(Source::Rule(INIT), 10)
         .with_characteristic(values, Characteristic::Per);
-    let value = with_ability(value, character, Voie::Pourfendeur, 1, 3);
-    with_ability(value, character, Voie::Air, 1, 1)
+    ability::apply(value, character, values, ability::INITIATIVE)
 }
 
 /// DEF = 10 + AGI (capped by the armour) + armour + shield (COF.DER.DEF),
-/// with Réflexes éclair (+2 from pourfendeur rank 5), Murmure dans le vent
-/// and Petite taille (halfelin r1).
+/// with the capacités' effects. Peau de pierre (pagne r2) may put CON, capped
+/// alike, in place of AGI.
 pub(crate) fn defence(character: &Character, values: &Characteristics) -> DerivedValue {
+    let characteristic = if uses(character, Voie::Pagne, 2, Characteristic::Con) {
+        Characteristic::Con
+    } else {
+        Characteristic::Agi
+    };
     let mut value = DerivedValue::new().with(Source::Rule(DEF), 10).with(
-        Source::Characteristic(Characteristic::Agi),
-        effective_agi(character, values),
+        Source::Characteristic(characteristic),
+        capped(character, values, characteristic),
     );
     if let Some(armour) = character.armour() {
         value = value.with(Source::Value(armour.id()), armour.defence());
@@ -154,14 +151,16 @@ pub(crate) fn defence(character: &Character, values: &Characteristics) -> Derive
     if let Some(shield) = character.shield() {
         value = value.with(Source::Value(shield.id()), shield.defence());
     }
-    let reflexes = if character.has_rank(Voie::Pourfendeur, Rank::new(5)) {
-        2
-    } else {
-        1
-    };
-    let value = with_ability(value, character, Voie::Pourfendeur, 1, reflexes);
-    let value = with_ability(value, character, Voie::Air, 1, 1);
-    with_peuple_ability(value, character, Voie::Halfelin, 1)
+    ability::apply(value, character, values, ability::DEFENCE)
+}
+
+/// RD from the capacités; `None` when none gives any.
+pub(crate) fn damage_reduction(
+    character: &Character,
+    values: &Characteristics,
+) -> Option<DerivedValue> {
+    ability::any(character, values, ability::REDUCTION)
+        .then(|| ability::apply(DerivedValue::new(), character, values, ability::REDUCTION))
 }
 
 /// Attack = level (at most 10) + FOR (contact), AGI capped by the armour
@@ -176,7 +175,7 @@ pub(crate) fn attack(
         AttackMode::Contact => value.with_characteristic(values, Characteristic::For),
         AttackMode::Ranged => value.with(
             Source::Characteristic(Characteristic::Agi),
-            effective_agi(character, values),
+            capped(character, values, Characteristic::Agi),
         ),
         AttackMode::Magic => value.with_characteristic(values, Characteristic::Vol),
     }
