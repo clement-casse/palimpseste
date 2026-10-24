@@ -21,8 +21,9 @@ stores their characters. It never applies a rule.
 
 > **Current phase:** the shared kernel, and character creation for COC2
 > (core rules) and COF2 (core rules, level 1), served by a PWA and its
-> backend. Variants, progression, combat and campaigns are out of scope for
-> now.
+> backend. The engines also compute COF2 levels and COC2 experience, which
+> the PWA does not edit yet. Variants, combat and campaigns are out of scope
+> for now.
 
 ## Principles
 
@@ -33,7 +34,10 @@ stores their characters. It never applies a rule.
 3. **Violations and derived values are computed, never stored.** Only
    choices, adjustments and waivers are stored.
 4. **Deviations are explicit.** A deviation is accepted only through a
-   waiver, and an adjustment always shows up as a notice.
+   waiver, which someone grants by hand, with their name and a reason, on
+   that one violation. Nothing waives a rule implicitly, and every waiver
+   stays visible on the character. An adjustment always shows up as a
+   notice.
 5. **Rules are code.** There is no rules engine, no expression language and
    no configuration-driven behaviour.
 

@@ -105,7 +105,15 @@ editor offers the options within the rules first; anything else goes
 through an explicit out-of-rules choice. Nothing is disabled or deleted:
 changing an earlier choice keeps the later ones, which turn into
 violations. A waiver or an adjustment needs an author (the session's
-nickname) and a reason; an `absolute` waiver asks for confirmation.
+nickname) and a reason; an `absolute` waiver asks for confirmation. A
+waiver is only ever created by the user's own action on one violation:
+the interface never creates one as a side effect of another choice, of
+an out-of-rules option, of validating a step or a level, or for several
+violations at once. A deviation explicitly waived counts as settled, in
+the step status as everywhere else; each waiver is listed in the editor
+(`Overrides.svelte`) and marked on the sheet (ADR FE-SHEET), where its
+rule, subject, author and reason can be read. *Why:* the book's rules
+hold unless someone visibly decided otherwise.
 
 **FE-MESSAGES: Violation messages live in the front end.** `messages.ts`
 holds them in French, keyed by rule identifier and filled with the

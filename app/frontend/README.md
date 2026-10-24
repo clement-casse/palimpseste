@@ -112,7 +112,10 @@ These are enforced in review (see [docs/adr/frontend.md](../../docs/adr/frontend
   an explicit out-of-rules choice. Never disable or delete an earlier
   choice: it turns into a violation. A waiver or an adjustment needs an
   author (the session's nickname) and a reason. An `absolute` waiver asks
-  for confirmation.
+  for confirmation. Only the user's own action on one violation creates a
+  waiver: never as a side effect of another choice, an out-of-rules option
+  or a validation, never in bulk. Every waiver stays listed in the editor
+  and marked on the sheet.
 - **New rules need a message.** Add the French text to `messages.ts`,
   keyed by rule identifier and filled with the violation's parameters.
   Without it, the identifier is shown.
