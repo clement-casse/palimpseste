@@ -186,7 +186,10 @@ methods taking a `Characteristic` so they cannot be swapped. A peuple with
 a single malus applies it without a choice; a chosen malus replaces it and
 is reported when the peuple does not offer it. The humain bonus follows
 D-15, judged once all seven values are assigned. CARAC-KEY reads the
-assigned series values, CARAC-MAGIC the final value.
+assigned series values, CARAC-BOUNDS and CARAC-MAGIC the adjusted starting
+value. `Character::characteristic` is the starting value raised by the
+capacités held (ENG-COF-CAPACITES): a raise is no creation choice, so it
+never breaks the creation bounds.
 
 **ENG-COF-LEVEL: The level counts the level-ups.** `Character::level()`
 is 1 plus the number of level-ups, never stored. Attack values take
@@ -231,14 +234,52 @@ counts do not stay incomplete.
 **ENG-COF-ARMOUR: Armour and shield are choices.** They add their DEF;
 the armour caps AGI in DEF and in the ranged attack (D-06). Beyond the
 profil's limit is a `standard` deviation of COF.DER.ARMOUR-LIMIT (D-24);
-the chevalier's Noblesse rank 2 raises the limit to the plaque complète.
+the chevalier's Noblesse rank 2 raises the limit to the plaque complète,
+Briseur d'os to the cotte de mailles, Armure lourde and Vêtements sacrés,
+when their option is chosen, to the armure de plaques and the cotte de
+mailles.
 
-**ENG-COF-CAPACITES: Documented rank 1-2 effects only (D-22).** Réflexes
-éclair, Murmure dans le vent, Diversité, Petite taille and Petit pote.
-Through the voie du mage, the peuple's rank-1 effect is kept, with the
-peuple voie's rank-1 ability as source. A demi-elfe's upbringing is not
-recorded, so its kept effect is left to an adjustment, as are the effects
-of higher ranks.
+**ENG-COF-CAPACITES: Capacité effects are per-value tables (D-22,
+D-13).** Every capacité whose catalogue entry states an effect on a value
+contributes, at any rank, as `Source::Ability`. Each value reads its own
+table in `ability.rs` (PV, DR, PC, PM, Init, DEF, RD, the DM and critical
+range of the weapons, mastery, armour limits, characteristic raises), each
+row a capacité with an `Amount` (flat, by the rank reached, per rank, rank
+plus n, a characteristic, a characteristic up to the rank, per rank 5 in a
+profil's voies), the equipment or level it needs and the option it depends
+on. The rank used is the highest held in the voie (CO.VOIE.RANK-SCALING);
+a "+n at rank k" in the catalogue is the total reached, a "+1 at rank k"
+after a first amount is added to it. Equipment conditions read the
+equipment given, so `InPlay` follows them. The critical range never starts
+below 16, a `Source::Rule(COF.DER.CRIT-RANGE)` making up the difference.
+`Value::DamageReduction` is `None` while no capacité gives RD. Through the
+voie du mage, the peuple's rank-1 effect is kept, with the peuple voie's
+rank-1 ability as source; a demi-elfe's upbringing is not recorded, so its
+kept effect is left to an adjustment. Not computed: effects that depend on
+circumstances (outdoors, against large creatures, a companion in sight,
+two weapons in hand), effects on one weapon's attack (Haches et marteaux's
+attack, Précision, Attaque en finesse), capacités whose content the
+co-rules skill lacks (the weapon categories of Armes de prédilection,
+Science du critique, Spécialisation; a bone armour for Armure d'os),
+unclear ones (Pacte démoniaque's VOL to DR), unarmed attacks, capacités
+calling other capacités, and competence bonuses. *Why tables:* about sixty
+effects share a few shapes; a general effect engine stays excluded.
+
+**ENG-COF-OPTIONS: Capacité options are stored choices.** Some capacités
+offer an option, an `AbilityOption`: a characteristic (raised by
+Supériorité elfique of the elfe haut, Combattant héroïque and the "lowest
+characteristic" capacités; used by Peau de pierre, Charisme héroïque,
+Endurer and Grosse tête), the exchange of PC for DR (Éclaireur), a heavier
+armour (Armure lourde, Vêtements sacrés) or the thrown weapons variant
+(Archer émérite). `with_ability_option(voie, rank, option)` stores it,
+keyed by the capacité; `ability_options_offered` lists the options a
+capacité offers the character, the lowest characteristics read on the
+starting values, ties included. A capacité with no default (the raises)
+held without an option is `Incomplete` of COF.CNT.VOIE; one with a default
+keeps it; an option the capacité does not offer is a `standard` deviation
+of COF.CNT.VOIE with the capacité as subject, and a characteristic raised
+anyway. Grosse tête puts INT in place of CON in the level-1 term of the PV
+only.
 
 **ENG-COF-PM: Every spell counts (D-23).** `Voie::is_spell` follows the
 spell markers of the co-rules catalogue for every voie and rank. PM is
@@ -251,8 +292,8 @@ their family term.
 
 **ENG-COF-WEAPONS: Weapons by use.** Each of the 33 weapons has its uses
 (contact in one or two hands, ranged, thrown). The damage adds FOR at
-contact, except with the stylet. `Profil::masters` gives the mastery for
-display (D-28): an unmastered weapon is not a violation. The arc long
+contact, except with the stylet. `Profil::masters` gives the profil's
+mastery and `Character::masters` adds the capacités', for display (D-28): an unmastered weapon is not a violation. The arc long
 needs FOR +1 (COF.EQP.RANGED) and Petite taille forbids large weapons
 (D-29), both `standard` deviations.
 
@@ -270,6 +311,6 @@ and displays with the fewest coins (COF.EQP.CURRENCY). The purse is the
   rank, each with a decision entry in the co-rules skill.
 - The rest of COF2 progression: the orphan point (COF.PRG.ORPHAN), the
   changement d'orientation (COF.PRG.REORIENT), hybrids after level 1 and
-  their PV per level, the effects of capacités above rank 2 (D-22, D-13),
-  the characteristics they raise and the choices some of them take; then
-  COC2 experience (COC.PRG.*, D-09, D-20).
+  their PV per level; then COC2 experience (COC.PRG.*, D-09, D-20).
+- Per-weapon attack values, for the capacités changing one weapon's attack;
+  the weapon categories of Armes de prédilection, from the co-rules skill.

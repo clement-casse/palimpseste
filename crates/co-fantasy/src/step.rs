@@ -8,9 +8,9 @@ use co_kernel::{ADJUSTMENT_RULE, RuleId, Subject, VOIE_ORDER, VOIE_STRUCTURE, Vi
 use crate::{
     Value,
     rules::{
-        ARMOUR_LIMIT, CARAC_BOUNDS, CARAC_KEY, CARAC_MAGIC, CARAC_PEUPLE, CARAC_SERIES, COST,
-        EQUIPMENT, HYBRID, LEVEL_REQ, MAGE_EXTRA, MAX_VOIES, NEW_VOIES, ORDER, PEUPLE, PEUPLES, PM,
-        POINTS, PROFIL, RANGED, VOIE_DU_MAGE, VOIES,
+        ARMOUR_LIMIT, CARAC_BOUNDS, CARAC_KEY, CARAC_MAGIC, CARAC_PEUPLE, CARAC_SERIES,
+        CONTENT_VOIE, COST, EQUIPMENT, HYBRID, LEVEL_REQ, MAGE_EXTRA, MAX_VOIES, NEW_VOIES, ORDER,
+        PEUPLE, PEUPLES, PM, POINTS, PROFIL, RANGED, VOIE_DU_MAGE, VOIES,
     },
 };
 
@@ -37,7 +37,7 @@ pub enum Step {
 }
 
 /// The step of each rule; adjustment notices follow their subject.
-const RULE_STEPS: [(RuleId, Step); 24] = [
+const RULE_STEPS: [(RuleId, Step); 25] = [
     (PROFIL, Step::Profil),
     (PEUPLE, Step::Peuple),
     (CARAC_SERIES, Step::Characteristics),
@@ -57,6 +57,7 @@ const RULE_STEPS: [(RuleId, Step); 24] = [
     (NEW_VOIES, Step::Voies),
     (HYBRID, Step::Voies),
     (MAX_VOIES, Step::Voies),
+    (CONTENT_VOIE, Step::Voies),
     (ARMOUR_LIMIT, Step::Equipment),
     (EQUIPMENT, Step::Equipment),
     (RANGED, Step::Equipment),

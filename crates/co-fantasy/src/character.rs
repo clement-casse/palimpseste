@@ -9,9 +9,9 @@ use co_kernel::{
 };
 
 use crate::{
-    Armour, Equipment, Family, InPlay, Item, Level, LevelUp, Money, Peuple, Profil, RecoveryDie,
-    Series, Shield, Voie, Weapon, WeaponUse, armour, characteristics, derived, equipment, level,
-    money, peuple, profil, voie, weapon,
+    AbilityOption, Armour, Equipment, Family, InPlay, Item, Level, LevelUp, Money, Peuple, Profil,
+    RecoveryDie, Series, Shield, Voie, Weapon, WeaponUse, ability, armour, characteristics,
+    derived, equipment, level, money, peuple, profil, voie, weapon,
 };
 
 /// The kind of attack an attack value applies to.
@@ -40,6 +40,8 @@ pub enum Value {
     Initiative,
     /// DEF (COF.DER.DEF).
     Defence,
+    /// RD given by the capacités (COF.CNT.EFFECT-SHAPES).
+    DamageReduction,
     /// Attack value (COF.DER.ATTACK).
     Attack(AttackMode),
     /// DM added to the weapon's dice in a use (COF.DER.DM).
@@ -55,13 +57,14 @@ impl Value {
     /// Every value but the weapon values, in the book order (PV to the
     /// attack values, then the money held). [`from_id`](Self::from_id)
     /// searches it, so it lists every such value, shown or not.
-    pub const FIXED: [Self; 10] = [
+    pub const FIXED: [Self; 11] = [
         Self::VigourPoints,
         Self::RecoveryDice,
         Self::LuckPoints,
         Self::ManaPoints,
         Self::Initiative,
         Self::Defence,
+        Self::DamageReduction,
         Self::Attack(AttackMode::Contact),
         Self::Attack(AttackMode::Ranged),
         Self::Attack(AttackMode::Magic),
@@ -95,6 +98,7 @@ impl Value {
             Self::ManaPoints => "Points de mana (PM)",
             Self::Initiative => "Initiative",
             Self::Defence => "Défense (DEF)",
+            Self::DamageReduction => "Réduction des dommages (RD)",
             Self::Attack(AttackMode::Contact) => "Attaque au contact",
             Self::Attack(AttackMode::Ranged) => "Attaque à distance",
             Self::Attack(AttackMode::Magic) => "Attaque magique",
@@ -124,6 +128,7 @@ impl Value {
             Self::ManaPoints => "cof.mana-points",
             Self::Initiative => "cof.initiative",
             Self::Defence => "cof.defence",
+            Self::DamageReduction => "cof.damage-reduction",
             Self::Attack(AttackMode::Contact) => "cof.attack.contact",
             Self::Attack(AttackMode::Ranged) => "cof.attack.ranged",
             Self::Attack(AttackMode::Magic) => "cof.attack.magic",
@@ -134,7 +139,7 @@ impl Value {
 /// What a manual adjustment applies to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Target {
-    /// A starting characteristic.
+    /// A characteristic.
     Characteristic(Characteristic),
     /// Another computed value.
     Value(Value),
@@ -166,6 +171,7 @@ pub struct Character {
     peuple_malus: Option<Characteristic>,
     voies: BTreeMap<Voie, BTreeSet<Rank>>,
     levels: Vec<LevelUp>,
+    ability_options: BTreeMap<(Voie, Rank), AbilityOption>,
     equipment: Equipment,
     purse: Option<Money>,
     adjustments: Vec<(Target, Adjustment)>,
@@ -301,6 +307,26 @@ impl Character {
         self
     }
 
+    /// Chooses `option` for the capacité at `rank` in `voie`, replacing any
+    /// option chosen for it.
+    #[must_use]
+    pub fn with_ability_option(
+        mut self,
+        voie: Voie,
+        rank: impl Into<Rank>,
+        option: AbilityOption,
+    ) -> Self {
+        self.ability_options.insert((voie, rank.into()), option);
+        self
+    }
+
+    /// Gives up the option chosen for the capacité at `rank` in `voie`.
+    #[must_use]
+    pub fn without_ability_option(mut self, voie: Voie, rank: impl Into<Rank>) -> Self {
+        self.ability_options.remove(&(voie, rank.into()));
+        self
+    }
+
     /// Puts on `armour`, replacing any armour worn.
     #[must_use]
     pub const fn with_armour(mut self, armour: Armour) -> Self {
@@ -413,25 +439,60 @@ impl Character {
         options
     }
 
+    /// Returns the options the capacité at `rank` in `voie` offers the
+    /// character, empty when it offers none. A capacité raising the lowest
+    /// characteristic offers the lowest starting values, ties included.
+    #[must_use]
+    pub fn ability_options_offered(&self, voie: Voie, rank: impl Into<Rank>) -> Vec<AbilityOption> {
+        ability::options(self, voie, rank.into())
+    }
+
+    /// Whether the character masters `weapon`: through the profil
+    /// (`Profil::masters`) or a capacité (Haches et marteaux, Archer émérite
+    /// of the elfe sylvain, Merveille technologique). Mastery is for display
+    /// (D-28).
+    #[must_use]
+    pub fn masters(&self, weapon: Weapon) -> bool {
+        self.profil.is_some_and(|profil| profil.masters(weapon)) || ability::masters(self, weapon)
+    }
+
     /// Returns the die of the dés de récupération, if the profil is set.
     #[must_use]
     pub fn recovery_die(&self) -> Option<RecoveryDie> {
         self.family().map(Family::recovery_die)
     }
 
-    /// Returns the starting value of `characteristic` and its breakdown.
+    /// Returns the value of `characteristic` and its breakdown: the starting
+    /// value, raised by the capacités held.
     #[must_use]
     pub fn characteristic(&self, characteristic: Characteristic) -> DerivedValue {
         self.adjusted(
             Target::Characteristic(characteristic),
-            characteristics::characteristic(self, characteristic),
+            ability::raise(
+                characteristics::characteristic(self, characteristic),
+                self,
+                characteristic,
+            ),
         )
     }
 
-    /// Returns the seven starting values.
+    /// Returns the seven values.
     #[must_use]
     pub fn characteristics(&self) -> Characteristics {
         Characteristics::from_fn(|c| self.characteristic(c).total().into())
+    }
+
+    /// The seven starting values, adjusted, before any capacité raises them:
+    /// the values the creation rules read.
+    pub(crate) fn starting_characteristics(&self) -> Characteristics {
+        Characteristics::from_fn(|c| {
+            self.adjusted(
+                Target::Characteristic(c),
+                characteristics::characteristic(self, c),
+            )
+            .total()
+            .into()
+        })
     }
 
     /// Returns `value` and its breakdown.
@@ -444,15 +505,16 @@ impl Character {
     pub fn value(&self, value: Value) -> Option<DerivedValue> {
         let values = self.characteristics();
         let base = match value {
-            Value::VigourPoints => derived::vigour_points(self.family()?, &values, self.level()),
-            Value::RecoveryDice => derived::recovery_dice(self.family()?, &values),
+            Value::VigourPoints => derived::vigour_points(self, self.family()?, &values),
+            Value::RecoveryDice => derived::recovery_dice(self, self.family()?, &values),
             Value::LuckPoints => derived::luck_points(self, self.family()?, &values),
             Value::ManaPoints => derived::mana_points(self, &values)?,
             Value::Initiative => derived::initiative(self, &values),
             Value::Defence => derived::defence(self, &values),
+            Value::DamageReduction => derived::damage_reduction(self, &values)?,
             Value::Attack(mode) => derived::attack(self, &values, mode),
-            Value::Damage(weapon, weapon_use) => weapon::damage(&values, weapon, weapon_use)?,
-            Value::CriticalRange(weapon) => weapon::critical_range(weapon),
+            Value::Damage(weapon, weapon_use) => weapon::damage(self, &values, weapon, weapon_use)?,
+            Value::CriticalRange(weapon) => weapon::critical_range(self, &values, weapon),
             Value::Money => money::money(self)?,
         };
         Some(self.adjusted(Target::Value(value), base))
@@ -467,6 +529,7 @@ impl Character {
         characteristics::check(self, &mut violations);
         voie::check(self, &mut violations);
         level::check(self, &mut violations);
+        ability::check(self, &mut violations);
         armour::check(self, &mut violations);
         equipment::check(self, &mut violations);
         money::check(self, &mut violations);
@@ -522,6 +585,18 @@ impl Character {
         self.peuple_malus
     }
 
+    /// The option chosen for the capacité at `rank` in `voie`.
+    pub(crate) fn ability_option(&self, voie: Voie, rank: Rank) -> Option<AbilityOption> {
+        self.ability_options.get(&(voie, rank)).copied()
+    }
+
+    /// The options chosen, in voie and rank order.
+    pub(crate) fn ability_options(&self) -> impl Iterator<Item = (Voie, Rank, AbilityOption)> + '_ {
+        self.ability_options
+            .iter()
+            .map(|((voie, rank), option)| (*voie, *rank, *option))
+    }
+
     /// The ranks chosen at creation, in voie order.
     pub(crate) fn creation_voies(&self) -> impl Iterator<Item = (Voie, &BTreeSet<Rank>)> {
         self.voies.iter().map(|(voie, ranks)| (*voie, ranks))
@@ -543,6 +618,22 @@ impl Character {
             voies.entry(voie).or_default().insert(rank);
         }
         voies
+    }
+
+    /// The highest rank held in `voie`, at creation or at a level-up.
+    pub(crate) fn highest_rank(&self, voie: Voie) -> Option<Rank> {
+        let created = self
+            .voies
+            .get(&voie)
+            .and_then(|ranks| ranks.last().copied());
+        let acquired = self
+            .levels
+            .iter()
+            .flat_map(LevelUp::ranks)
+            .filter(|(acquired, _)| *acquired == voie)
+            .map(|(_, rank)| rank)
+            .max();
+        created.max(acquired)
     }
 
     pub(crate) fn has_rank(&self, voie: Voie, rank: Rank) -> bool {
@@ -723,6 +814,7 @@ mod tests {
             .with_item("rope", 1)
             .with_purse(Money::pa(7))
             .with_level_up(LevelUp::new().with_rank(Voie::Rage, 2))
+            .with_ability_option(Voie::Archer, 1, AbilityOption::Thrown)
             .without_profil()
             .without_peuple()
             .without_series()
@@ -737,6 +829,7 @@ mod tests {
             .with_item("rope", 0)
             .without_item("lantern")
             .without_purse()
+            .without_ability_option(Voie::Archer, 1)
             .without_level_up()
             .without_level_up();
         assert_eq!(character, Character::new());

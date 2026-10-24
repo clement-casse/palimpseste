@@ -41,6 +41,8 @@ pub(crate) const NEW_VOIES: RuleId = RuleId::from_static("COF.PRG.NEW-VOIES");
 pub(crate) const HYBRID: RuleId = RuleId::from_static("COF.PRG.HYBRID");
 /// COF.PRG.MAX-VOIES: six voies at most, plus the voie de peuple.
 pub(crate) const MAX_VOIES: RuleId = RuleId::from_static("COF.PRG.MAX-VOIES");
+/// COF.CNT.VOIE: the option a capacité offers.
+pub(crate) const CONTENT_VOIE: RuleId = RuleId::from_static("COF.CNT.VOIE");
 /// COF.DER.ATTACK: attack values add the level, at most 10.
 pub(crate) const ATTACK: RuleId = RuleId::from_static("COF.DER.ATTACK");
 /// COF.DER.DR: DR = 2 + CON.
@@ -79,6 +81,8 @@ pub(crate) const ARMOUR_MECHANIC: Mechanic = Mechanic::new("cof.armour");
 pub(crate) const EQUIPMENT_MECHANIC: Mechanic = Mechanic::new("cof.equipment");
 /// Weapon checks.
 pub(crate) const WEAPON_MECHANIC: Mechanic = Mechanic::new("cof.weapons");
+/// Capacité option checks.
+pub(crate) const ABILITY_MECHANIC: Mechanic = Mechanic::new("cof.abilities");
 /// Level-up checks.
 pub(crate) const PROGRESSION_MECHANIC: Mechanic = Mechanic::new("cof.progression");
 /// Derived value checks.

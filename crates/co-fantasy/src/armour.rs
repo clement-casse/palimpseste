@@ -4,7 +4,7 @@
 use co_kernel::{Rank, Severity, Subject, ValueId, Violation};
 
 use crate::{
-    Character, Profil, Voie,
+    Character, Profil, Voie, ability,
     rules::{ARMOUR, ARMOUR_LIMIT, ARMOUR_MECHANIC, SHIELD},
 };
 
@@ -146,13 +146,16 @@ impl Shield {
 }
 
 /// The heaviest armour the character's capacités allow: the profil's limit,
-/// raised to the plaque complète by the chevalier's Noblesse rank 2.
+/// raised to the plaque complète by the chevalier's Noblesse rank 2, and by
+/// the capacités raising it (Briseur d'os, Armure lourde, Vêtements sacrés).
 fn armour_limit(character: &Character, profil: Profil) -> Option<Armour> {
-    if profil == Profil::Chevalier && character.has_rank(Voie::Noblesse, Rank::new(2)) {
-        Some(Armour::PlaqueComplete)
-    } else {
-        profil.armour_limit()
-    }
+    let profil_limit =
+        if profil == Profil::Chevalier && character.has_rank(Voie::Noblesse, Rank::new(2)) {
+            Some(Armour::PlaqueComplete)
+        } else {
+            profil.armour_limit()
+        };
+    profil_limit.max(ability::armour_limit(character))
 }
 
 /// Checks the armour and shield against the profil's limits. Without a
