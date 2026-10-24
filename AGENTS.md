@@ -60,7 +60,7 @@ In scope:
 - **Creation choices**: profil (and the family derived from it), peuple, value series and the value assigned to each characteristic, peuple bonus and malus, ranks acquired per voie, armour and shield, items carried (weapons, free text items), the purse rolled.
 - **Content read by the creation rules**: the 4 families, the 14 profils with their voies, key and magic characteristics, armour limits, weapon mastery and starting equipment, the 8 peuples with their modifiers and voie de peuple, the 3 value series, the 78 voies reachable at level 1, the armour and shield table, the weapon tables, the currency, as enums and `match` tables.
 - **Creation limits**: series assignment and its advice, peuple modifiers, characteristic bounds, two profil voies and the voie de peuple, voie du mage, mage extra capacité, level required per rank, armour limits, starting equipment and purse, arc long strength, halfelin weapon size.
-- **Levels** (ADR ENG-COF-PROGRESSION): `LevelUp`, the capacités acquired at one level-up, stored in order on `Character`; the `Level` they reach and its dé évolutif d4° (COF.DER.D4); the capacity points of each level and their cost (COF.PRG.POINTS, COF.PRG.COST), the level required per rank when acquired, lower ranks first, the voies a level-up opens and the voie count (COF.PRG.LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES).
+- **Levels** (ADR ENG-COF-PROGRESSION): `LevelUp`, the capacités acquired and forgotten at one level-up and the exchange of its orphan point (`OrphanExchange`), stored in order on `Character`; the `Level` they reach and its dé évolutif d4° (COF.DER.D4); the capacity points of each level and their cost (COF.PRG.POINTS, COF.PRG.COST), the level required per rank when acquired, lower ranks first, the voies a level-up opens and the voie count (COF.PRG.LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES), the changement d'orientation (COF.PRG.REORIENT) and the orphan point (COF.PRG.ORPHAN).
 - **Derived values**: PV (with the PV per level), DR (count and die), PC, PM, Init, DEF with armour and shield, contact, ranged and magic attack values (with the level, at most 10), weapon damage dice and DM, critical range, RD, weapon mastery, money held, with the documented effects of the capacités at every rank, read from per-value tables (ADR ENG-COF-CAPACITES), and every spell (D-23).
 - **Capacité options** (ADR ENG-COF-OPTIONS): `AbilityOption`, chosen per capacité with `with_ability_option`: the characteristic raised or used, the PC for DR exchange, a heavier armour, the thrown weapons variant; characteristics raised by the capacités held.
 - **Equipment in play** (ADR ENG-IN-PLAY): `Equipment` (armour, shield, items), `Character::in_play`, the values of `InPlay` and its report of the rules that hold in play (armour limit, arc long, Petite taille), computed from the equipment it is given; nothing is stored.
@@ -69,7 +69,7 @@ In scope:
 Out of scope, do not implement or prepare for:
 
 - variants, prestige voies, hybrid profils;
-- the rest of progression: orphan point, changement d'orientation, hybrid PV per level;
+- hybrid PV per level;
 - capacité effects that depend on circumstances or on one weapon's attack, and those whose content the co-rules skill lacks (ADR ENG-COF-CAPACITES);
 - competence bonuses, languages and talent secondaire, capacités calling other capacités, armour malus to tests, final touch, unarmed attacks, weapon range, items without a rule (they stay free text);
 - prices, purchases and spending: they wait for campaign initialization (D-25);

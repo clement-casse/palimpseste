@@ -43,6 +43,11 @@ pub(crate) const HYBRID: RuleId = RuleId::from_static("COF.PRG.HYBRID");
 pub(crate) const MAX_VOIES: RuleId = RuleId::from_static("COF.PRG.MAX-VOIES");
 /// COF.CNT.VOIE: the option a capacité offers.
 pub(crate) const CONTENT_VOIE: RuleId = RuleId::from_static("COF.CNT.VOIE");
+/// COF.PRG.ORPHAN: the orphan point, exchanged once nothing at rank 1 or 2
+/// is left.
+pub(crate) const ORPHAN: RuleId = RuleId::from_static("COF.PRG.ORPHAN");
+/// COF.PRG.REORIENT: the changement d'orientation.
+pub(crate) const REORIENT: RuleId = RuleId::from_static("COF.PRG.REORIENT");
 /// COF.DER.ATTACK: attack values add the level, at most 10.
 pub(crate) const ATTACK: RuleId = RuleId::from_static("COF.DER.ATTACK");
 /// COF.DER.DR: DR = 2 + CON.

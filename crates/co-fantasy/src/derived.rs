@@ -23,6 +23,18 @@ fn uses(character: &Character, voie: Voie, rank: u8, characteristic: Characteris
         )
 }
 
+/// Adds the orphan points exchanged for `target` (COF.PRG.ORPHAN), each
+/// with the level-up that exchanged it as source.
+fn with_orphans(value: DerivedValue, character: &Character, target: Value) -> DerivedValue {
+    character
+        .orphan_exchanges()
+        .map(|(level, exchange)| (level, exchange.gain()))
+        .filter(|(_, (gained, _))| *gained == target)
+        .fold(value, |value, (level, (_, amount))| {
+            value.with(Source::Value(level.id()), amount)
+        })
+}
+
 /// `c` as usable in the armour worn: capped by its AGI max (D-06).
 fn capped(character: &Character, values: &Characteristics, c: Characteristic) -> i32 {
     let value = values[c].get();
@@ -60,7 +72,8 @@ pub(crate) fn vigour_points(
     } else {
         value.with(Source::Characteristic(Characteristic::Con), level * con)
     };
-    ability::apply(value, character, values, ability::VIGOUR)
+    let value = ability::apply(value, character, values, ability::VIGOUR);
+    with_orphans(value, character, Value::VigourPoints)
 }
 
 /// DR = 2 + CON, +1 for the mystiques (COF.DER.DR), with the capacités'
@@ -76,7 +89,8 @@ pub(crate) fn recovery_dice(
     if family == Family::Mystiques {
         value = value.with(Source::Value(family.id()), 1);
     }
-    ability::apply(value, character, values, ability::RECOVERY)
+    let value = ability::apply(value, character, values, ability::RECOVERY);
+    with_orphans(value, character, Value::RecoveryDice)
 }
 
 /// PC = 2 + CHA, +1 for the aventuriers (COF.DER.PC), with the capacités'
@@ -92,7 +106,8 @@ pub(crate) fn luck_points(
     if family == Family::Aventuriers {
         value = value.with(Source::Value(family.id()), 1);
     }
-    ability::apply(value, character, values, ability::LUCK)
+    let value = ability::apply(value, character, values, ability::LUCK);
+    with_orphans(value, character, Value::LuckPoints)
 }
 
 /// PM = VOL + 1 per spell known (COF.DER.PM), with the capacités' effects;
@@ -121,7 +136,8 @@ pub(crate) fn mana_points(character: &Character, values: &Characteristics) -> Op
         DerivedValue::new().with_characteristic(values, characteristic),
         |value, spell| value.with(Source::Ability(spell), 1),
     );
-    Some(ability::apply(value, character, values, ability::MANA))
+    let value = ability::apply(value, character, values, ability::MANA);
+    Some(with_orphans(value, character, Value::ManaPoints))
 }
 
 /// Init = 10 + PER (COF.DER.INIT), with the capacités' effects.

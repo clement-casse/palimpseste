@@ -9,9 +9,9 @@ use co_kernel::{
 };
 
 use crate::{
-    AbilityOption, Armour, Equipment, Family, InPlay, Item, Level, LevelUp, Money, Peuple, Profil,
-    RecoveryDie, Series, Shield, Voie, Weapon, WeaponUse, ability, armour, characteristics,
-    derived, equipment, level, money, peuple, profil, voie, weapon,
+    AbilityOption, Armour, Equipment, Family, InPlay, Item, Level, LevelUp, Money, OrphanExchange,
+    Peuple, Profil, RecoveryDie, Series, Shield, Voie, Weapon, WeaponUse, ability, armour,
+    characteristics, derived, equipment, level, money, peuple, profil, voie, weapon,
 };
 
 /// The kind of attack an attack value applies to.
@@ -610,41 +610,62 @@ impl Character {
         })
     }
 
-    /// The current ranks: those chosen at creation and those acquired at
-    /// each level-up.
+    /// The current ranks: those chosen at creation, then each level-up's in
+    /// order, forgetting before acquiring.
     pub(crate) fn voies(&self) -> BTreeMap<Voie, BTreeSet<Rank>> {
         let mut voies = self.voies.clone();
-        for (voie, rank) in self.levels.iter().flat_map(LevelUp::ranks) {
-            voies.entry(voie).or_default().insert(rank);
+        for level_up in &self.levels {
+            level_up.apply(&mut voies);
         }
         voies
     }
 
-    /// The highest rank held in `voie`, at creation or at a level-up.
-    pub(crate) fn highest_rank(&self, voie: Voie) -> Option<Rank> {
-        let created = self
-            .voies
-            .get(&voie)
-            .and_then(|ranks| ranks.last().copied());
+    /// Whether a level-up forgets a capacité: until one does, the current
+    /// ranks are every rank chosen or acquired, read without replaying the
+    /// level-ups.
+    fn forgets(&self) -> bool {
+        self.levels
+            .iter()
+            .any(|level_up| level_up.forgotten().next().is_some())
+    }
+
+    /// The ranks acquired, at creation or at a level-up, in `voie`.
+    fn acquired(&self, voie: Voie) -> impl Iterator<Item = Rank> + '_ {
+        let created = self.voies.get(&voie).into_iter().flatten().copied();
         let acquired = self
             .levels
             .iter()
             .flat_map(LevelUp::ranks)
-            .filter(|(acquired, _)| *acquired == voie)
-            .map(|(_, rank)| rank)
-            .max();
-        created.max(acquired)
+            .filter(move |(acquired, _)| *acquired == voie)
+            .map(|(_, rank)| rank);
+        created.chain(acquired)
+    }
+
+    /// The highest rank held in `voie`.
+    pub(crate) fn highest_rank(&self, voie: Voie) -> Option<Rank> {
+        if self.forgets() {
+            self.voies()
+                .get(&voie)
+                .and_then(|ranks| ranks.last().copied())
+        } else {
+            self.acquired(voie).max()
+        }
     }
 
     pub(crate) fn has_rank(&self, voie: Voie, rank: Rank) -> bool {
-        self.voies
-            .get(&voie)
-            .is_some_and(|ranks| ranks.contains(&rank))
-            || self
-                .levels
-                .iter()
-                .flat_map(LevelUp::ranks)
-                .any(|acquired| acquired == (voie, rank))
+        if self.forgets() {
+            self.voies()
+                .get(&voie)
+                .is_some_and(|ranks| ranks.contains(&rank))
+        } else {
+            self.acquired(voie).any(|acquired| acquired == rank)
+        }
+    }
+
+    /// The orphan points exchanged, with the level-up that exchanged each.
+    pub(crate) fn orphan_exchanges(&self) -> impl Iterator<Item = (Level, OrphanExchange)> + '_ {
+        self.levels()
+            .filter_map(|(level, level_up)| level_up.orphan().map(|exchange| (level, exchange)))
     }
 
     pub(crate) const fn armour(&self) -> Option<Armour> {
