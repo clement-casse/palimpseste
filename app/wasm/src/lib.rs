@@ -76,8 +76,8 @@ pub fn evaluate_in_play_js(
 #[cfg(test)]
 mod tests {
     use palimpseste_document::{
-        AdjustmentEntry, Characteristic, ContemporainDocument, FantasyDocument, ItemEntry, Subject,
-        Target, VoieEntry, WaiverEntry,
+        AdjustmentEntry, Characteristic, ContemporainDocument, FantasyDocument, ItemEntry,
+        LevelUpEntry, Subject, Target, VoieEntry, WaiverEntry, XpSpendingEntry,
     };
 
     use super::*;
@@ -387,5 +387,157 @@ mod tests {
             }
             Catalog::Fantasy(_) => panic!("contemporain catalog expected"),
         }
+    }
+
+    /// A humain guerrier at level 1, with a level-up acquiring `abilities`.
+    fn levelled(abilities: &[&str]) -> FantasyDocument {
+        let mut document = FantasyDocument::empty();
+        document.profil = Some("cof.profil.guerrier".into());
+        document.peuple = Some("cof.peuple.humain".into());
+        document.voies = ["cof.bouclier", "cof.soldat", "cof.humain"]
+            .into_iter()
+            .map(|id| VoieEntry {
+                id: id.into(),
+                ranks: vec![1],
+            })
+            .collect();
+        document.level_ups = vec![LevelUpEntry {
+            abilities: abilities.iter().map(|id| (*id).to_owned()).collect(),
+            ..LevelUpEntry::default()
+        }];
+        document
+    }
+
+    #[test]
+    fn level_ups_have_their_status_and_offer() {
+        let sheet = fantasy(levelled(&["cof.bouclier.2"]));
+        assert_eq!(sheet.progression.len(), 1);
+        let level = &sheet.progression[0];
+        assert_eq!((level.number, level.name.as_str()), (2, "Niveau 2"));
+        let ids: Vec<_> = level.steps.iter().map(|step| step.id.as_str()).collect();
+        assert_eq!(ids, ["abilities", "options", "orientation", "orphan"]);
+        // One point left: incomplete in the level's capacités, never in a
+        // creation step.
+        assert_eq!(level.steps[0].incomplete, 1);
+        let points = sheet
+            .violations
+            .iter()
+            .find(|v| v.rule == "COF.PRG.POINTS")
+            .unwrap();
+        assert_eq!(
+            (points.progression, points.step.as_str()),
+            (Some(2), "abilities")
+        );
+        let voies = sheet.steps.iter().find(|s| s.id == "voies").unwrap();
+        assert_eq!(voies.incomplete + voies.deviations, 0);
+
+        let Details::Fantasy(details) = sheet.details else {
+            panic!("fantasy details expected");
+        };
+        assert_eq!((details.level, details.evolutive_die.as_str()), (2, "d4"));
+        let offer = &details.levels[0];
+        assert_eq!((offer.points_available, offer.points_spent), (2, 1));
+        assert!(
+            offer
+                .acquirable
+                .iter()
+                .any(|a| a.ability == "cof.soldat.2" && a.cost == 1)
+        );
+        assert!(
+            details
+                .abilities_held
+                .iter()
+                .any(|held| held.ability == "cof.bouclier.2" && held.progression == Some(2))
+        );
+        assert!(
+            details
+                .abilities_held
+                .iter()
+                .any(|held| held.ability == "cof.bouclier.1" && held.progression.is_none())
+        );
+    }
+
+    #[test]
+    fn capacites_are_named_by_identifier() {
+        let Catalog::Fantasy(content) = catalog(Engine::Fantasy) else {
+            panic!("fantasy catalog expected");
+        };
+        let rage = content
+            .abilities
+            .iter()
+            .find(|entry| entry.id == "cof.rage.2")
+            .unwrap();
+        assert_eq!(
+            (rage.voie.as_str(), rage.rank, rage.label.as_str()),
+            ("cof.rage", 2, "Voie de la rage, rang 2")
+        );
+        assert_eq!(content.abilities.len(), content.voies.len() * 5);
+        assert!(
+            content
+                .ability_options
+                .iter()
+                .any(|o| o.id == "cof.option.thrown")
+        );
+        assert_eq!(content.orphan_exchanges.len(), 4);
+        // A breakdown names a capacité source by its identifier.
+        let mut document = levelled(&["cof.soldat.2", "cof.bouclier.2"]);
+        document.voies.push(VoieEntry {
+            id: "cof.pourfendeur".into(),
+            ranks: vec![1],
+        });
+        let sheet = fantasy(document);
+        let initiative = value(&sheet, "cof.initiative");
+        assert!(
+            initiative
+                .contributions
+                .iter()
+                .any(|c| c.source_id.as_deref() == Some("cof.pourfendeur.1"))
+        );
+        let Catalog::Contemporain(content) = catalog(Engine::Contemporain) else {
+            panic!("contemporain catalog expected");
+        };
+        assert_eq!(content.abilities.len(), 90);
+        assert_eq!(content.sequels.len(), 3);
+        let crime = content.voies.iter().find(|v| v.id == "coc.crime").unwrap();
+        assert_eq!(
+            crime.rank_five_choice,
+            [Characteristic::Per, Characteristic::Cha]
+        );
+    }
+
+    #[test]
+    fn spendings_have_their_status_and_offer() {
+        let mut document = ContemporainDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "coc.crime".into(),
+            ranks: vec![1],
+        }];
+        document.experience = 1;
+        document.xp_spendings = vec![XpSpendingEntry {
+            abilities: vec!["coc.crime.2".into()],
+            traits: Vec::new(),
+        }];
+        let sheet = contemporain(document);
+        assert_eq!(sheet.progression[0].name, "Dépense d'XP 1");
+        // Crime 2 costs 2 XP of the 1 earned.
+        let cost = sheet
+            .violations
+            .iter()
+            .find(|v| v.rule == "COC.PRG.COST")
+            .unwrap();
+        assert_eq!((cost.progression, cost.step.as_str()), (Some(1), "ranks"));
+        assert_eq!(sheet.progression[0].steps[0].deviations, 1);
+        assert_eq!(value(&sheet, "coc.experience").total, Some(-1));
+        let Details::Contemporain(details) = sheet.details else {
+            panic!("contemporain details expected");
+        };
+        assert_eq!(details.spendings[0].xp_left, -1);
+        assert_eq!(details.spendings[0].acquirable, []);
+        assert!(
+            details
+                .abilities_held
+                .iter()
+                .any(|held| held.ability == "coc.crime.2" && held.progression == Some(1))
+        );
     }
 }

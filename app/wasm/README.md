@@ -18,8 +18,8 @@ Three stateless functions over plain data (ADR APP-BINDINGS):
 | JavaScript | Rust | Returns |
 |---|---|---|
 | `emptyDocument(engine)` | `empty_document_js` | a `Document` with no choice made |
-| `catalog(engine)` | `catalog_js` → `catalog()` | the content the engine offers: profils, peuples, voies, weapons, ... with identifiers and French names |
-| `evaluate(document)` | `evaluate_js` → `evaluate()` | a `Sheet`: the status of each step, characteristics, values with their breakdown, violations (waived or not), unused waivers, and engine-specific details |
+| `catalog(engine)` | `catalog_js` → `catalog()` | the content the engine offers: profils, peuples, voies, every capacité by identifier (`abilities`), weapons, the steps of a level-up or spending, ... with identifiers and French names |
+| `evaluate(document)` | `evaluate_js` → `evaluate()` | a `Sheet`: the status of each creation step and of each level-up or spending (`progression`), characteristics, values with their breakdown, violations (waived or not) placed in their step, unused waivers, and engine-specific details, the offers of each level-up or spending among them |
 
 No Rust object crosses the boundary, so JavaScript never frees memory by
 hand. Values cross as `tsify::Ts<T>`, which turns a value the front end got
