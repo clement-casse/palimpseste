@@ -1,4 +1,4 @@
-//! Derived values at level 1 (COF.DER.*), with the documented effects of
+//! Derived values (COF.DER.*, COF.PRG.PV), with the documented effects of
 //! rank 1-2 capacités only (D-22).
 
 use co_kernel::{
@@ -6,8 +6,8 @@ use co_kernel::{
 };
 
 use crate::{
-    AttackMode, Character, Family, Value, Voie,
-    rules::{DEF, DERIVED_MECHANIC, DR, INIT, LEVEL, LEVEL1, PC, PM},
+    AttackMode, Character, Family, Level, Value, Voie,
+    rules::{ATTACK, DEF, DERIVED_MECHANIC, DR, INIT, PC, PM},
 };
 
 /// Adds `amount` from the capacité at `rank` in `voie`, when acquired.
@@ -59,11 +59,24 @@ fn effective_agi(character: &Character, values: &Characteristics) -> i32 {
         .map_or(agi, |armour| agi.min(armour.agi_max()))
 }
 
-/// PV = 2 x family PV + CON (COF.DER.PV-L1).
-pub(crate) fn vigour_points(family: Family, values: &Characteristics) -> DerivedValue {
+/// PV = 2 x family PV + CON at level 1 (COF.DER.PV-L1), then family PV +
+/// CON per level-up (COF.PRG.PV). The current CON counts for every level,
+/// so a change of CON changes the PV of the levels already gained.
+pub(crate) fn vigour_points(
+    family: Family,
+    values: &Characteristics,
+    level: Level,
+) -> DerivedValue {
+    let level = i32::from(level.get());
     DerivedValue::new()
-        .with(Source::Value(family.id()), 2 * family.vigour_per_level())
-        .with_characteristic(values, Characteristic::Con)
+        .with(
+            Source::Value(family.id()),
+            (level + 1) * family.vigour_per_level(),
+        )
+        .with(
+            Source::Characteristic(Characteristic::Con),
+            level * values[Characteristic::Con].get(),
+        )
 }
 
 /// DR = 2 + CON, +1 for the mystiques (COF.DER.DR).
@@ -100,11 +113,12 @@ pub(crate) fn luck_points(
 pub(crate) fn mana_points(character: &Character, values: &Characteristics) -> Option<DerivedValue> {
     let spells: Vec<_> = character
         .voies()
+        .into_iter()
         .flat_map(|(voie, ranks)| {
             ranks
-                .iter()
-                .filter(move |rank| voie.is_spell(**rank))
-                .map(move |rank| voie.ability(*rank))
+                .into_iter()
+                .filter(move |rank| voie.is_spell(*rank))
+                .map(move |rank| voie.ability(rank))
         })
         .collect();
     if spells.is_empty() {
@@ -150,14 +164,14 @@ pub(crate) fn defence(character: &Character, values: &Characteristics) -> Derive
     with_peuple_ability(value, character, Voie::Halfelin, 1)
 }
 
-/// Attack = level + FOR (contact), AGI capped by the armour (ranged) or VOL
-/// (magic) (COF.DER.ATTACK).
+/// Attack = level (at most 10) + FOR (contact), AGI capped by the armour
+/// (ranged) or VOL (magic) (COF.DER.ATTACK).
 pub(crate) fn attack(
     character: &Character,
     values: &Characteristics,
     mode: AttackMode,
 ) -> DerivedValue {
-    let value = DerivedValue::new().with(Source::Rule(LEVEL1), LEVEL);
+    let value = DerivedValue::new().with(Source::Rule(ATTACK), character.level().attack_term());
     match mode {
         AttackMode::Contact => value.with_characteristic(values, Characteristic::For),
         AttackMode::Ranged => value.with(

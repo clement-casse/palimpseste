@@ -1,9 +1,9 @@
 //! Acceptance test: Lhagva, human barbarian of the COF2 book (COF p. 20-40),
-//! level 1, from the co-rules fixture `cof2-lhagva`.
+//! at levels 1 and 2, from the co-rules fixture `cof2-lhagva`.
 
 use co_fantasy::{
-    Armour, AttackMode, Character, Family, Money, Peuple, Profil, RecoveryDie, Series, Shield,
-    Value, Voie, Weapon, WeaponUse,
+    Armour, AttackMode, Character, Family, Level, LevelUp, Money, Peuple, Profil, RecoveryDie,
+    Series, Shield, Value, Voie, Weapon, WeaponUse,
 };
 use co_kernel::{AbilityId, Characteristic, Characteristics, Dice, Source};
 
@@ -159,6 +159,35 @@ fn money() {
 #[test]
 fn no_violation() {
     let lhagva = lhagva();
+    assert_eq!(lhagva.violations(), []);
+    assert!(lhagva.report().is_clean());
+}
+
+/// Level 2: Charge (pourfendeur r2) and Défier la mort (rage r2), one point
+/// each.
+fn lhagva_level_two() -> Character {
+    lhagva().with_level_up(
+        LevelUp::new()
+            .with_rank(Voie::Pourfendeur, 2)
+            .with_rank(Voie::Rage, 2),
+    )
+}
+
+#[test]
+fn level_two_adds_vigour_and_attack() {
+    let lhagva = lhagva_level_two();
+    assert_eq!(lhagva.level(), Level::from(2));
+    // 12, then 5 (combattants) + CON 2.
+    assert_eq!(total(&lhagva, Value::VigourPoints), Some(19));
+    let attack = |mode| total(&lhagva, Value::Attack(mode));
+    assert_eq!(attack(AttackMode::Contact), Some(5));
+    assert_eq!(attack(AttackMode::Ranged), Some(3));
+    assert_eq!(attack(AttackMode::Magic), Some(3));
+}
+
+#[test]
+fn level_two_has_no_violation() {
+    let lhagva = lhagva_level_two();
     assert_eq!(lhagva.violations(), []);
     assert!(lhagva.report().is_clean());
 }

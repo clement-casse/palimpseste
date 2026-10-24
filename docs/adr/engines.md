@@ -1,9 +1,10 @@
 # Engines
 
 `co-contemporain` (COC2) and `co-fantasy` (COF2): the core rules of
-character creation, at level 1 for COF2 (scope in AGENTS.md). The
-acceptance tests are the books' worked characters: Amelia Steele (COC2),
-Lhagva and Ionas (COF2). Rule identifiers (`COF.CRE.CARAC-SERIES`) and
+character creation, at level 1 for COF2, and the COF2 levels gained after
+it (scope in AGENTS.md). The acceptance tests are the books' worked
+characters: Amelia Steele (COC2), Lhagva and Ionas (COF2, at levels 1
+and 2). Rule identifiers (`COF.CRE.CARAC-SERIES`) and
 rule interpretations (D-xx) come from the co-rules skill.
 
 ## Both engines
@@ -187,14 +188,42 @@ is reported when the peuple does not offer it. The humain bonus follows
 D-15, judged once all seven values are assigned. CARAC-KEY reads the
 assigned series values, CARAC-MAGIC the final value.
 
-**ENG-COF-LEVEL: Level 1, not stored.** Attack values take it as
-`Source::Rule(COF.CRE.LEVEL1)`. A rank above 1 is a deviation of
-COF.PRG.LEVEL-REQ, except the mage family's one rank 2 in a voie of its
-profil or the voie du mage (COF.CRE.MAGE-EXTRA), never in another profil's
-voie, waived or not.
+**ENG-COF-LEVEL: The level counts the level-ups.** `Character::level()`
+is 1 plus the number of level-ups, never stored. Attack values take
+min(level, 10) as `Source::Rule(COF.DER.ATTACK)`, which `term_label` names
+"Niveau"; PV take (level + 1) family PV and level x CON, so a change of CON
+changes the PV of every level already gained (COF.PRG.PV). A rank chosen
+at creation above 1 is a deviation of COF.PRG.LEVEL-REQ with the voie as
+subject, except the mage family's one rank 2 in a voie of its profil or
+the voie du mage (COF.CRE.MAGE-EXTRA), never in another profil's voie,
+waived or not.
+
+**ENG-COF-PROGRESSION: Level-ups are an ordered history.** A `LevelUp`
+holds the ranks acquired at one level; `Character` keeps its level-ups in
+order (`with_level_up` appends one, `without_level_up` gives up the last),
+the n-th reaching level n + 1. The current ranks join the creation ranks
+and those of every level-up, and feed the derived values and the voie
+structure (CO.VOIE.*); the creation rules (COF.CRE.VOIES, MAGE-EXTRA,
+VOIE-DU-MAGE, the starting equipment) read the creation ranks only. Each
+level-up is checked where it happened: its 2 points spent at once at 1
+point up to rank 2 and 2 above (COF.PRG.POINTS: fewer is `Incomplete`,
+more a deviation, the level-up `cof.level.<n>` as subject), each rank
+against the level it was acquired at (COF.PRG.LEVEL-REQ, the capacité as
+subject), a rank bought again (COF.PRG.COST) or before the rank below
+(COF.PRG.ORDER, only when that rank comes at a later level: one never
+acquired is CO.VOIE.ORDER's). A voie a level-up opens is a voie of the
+main profil, or the voie de peuple slot's options: another profil's is a
+deviation of COF.PRG.HYBRID, another voie de peuple or the voie du mage
+outside the mage family one of COF.PRG.NEW-VOIES. Beyond six voies, or a
+second voie in the voie de peuple slot opened by a level-up, is a
+deviation of COF.PRG.MAX-VOIES. The progression findings sit in
+`Step::Voies`. *Why a history, not the current ranks and a level:* the
+points of each level, the level a rank was acquired at, and the changement
+d'orientation (the rank-1 capacités of level 1 are never forgotten) are
+read per level.
 
 **ENG-COF-VOIES: Slots count what is there.** The chosen voies are every
-voie outside the voie de peuple slot, which holds the voies de peuple and
+voie chosen at creation outside the voie de peuple slot, which holds the voies de peuple and
 the voie du mage. Another profil's voie (a level-1 hybrid) or another
 peuple's is a deviation with the voie as subject, so once waived the
 counts do not stay incomplete.
@@ -237,3 +266,8 @@ and displays with the fewest coins (COF.EQP.CURRENCY). The purse is the
   campaign concept lives.
 - The demi-elfe upbringing as a choice, and capacité names per voie and
   rank, each with a decision entry in the co-rules skill.
+- The rest of COF2 progression: the orphan point (COF.PRG.ORPHAN), the
+  changement d'orientation (COF.PRG.REORIENT), hybrids after level 1 and
+  their PV per level, the effects of capacités above rank 2 (D-22, D-13),
+  the characteristics they raise and the choices some of them take; then
+  COC2 experience (COC.PRG.*, D-09, D-20).

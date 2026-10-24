@@ -1,5 +1,5 @@
-//! A COF2 character at creation (level 1): choices only, everything else
-//! computed.
+//! A COF2 character: its creation choices at level 1 and its level-ups,
+//! everything else computed.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -9,15 +9,15 @@ use co_kernel::{
 };
 
 use crate::{
-    Armour, Equipment, Family, InPlay, Item, Money, Peuple, Profil, RecoveryDie, Series, Shield,
-    Voie, Weapon, WeaponUse, armour, characteristics, derived, equipment, money, peuple, profil,
-    voie, weapon,
+    Armour, Equipment, Family, InPlay, Item, Level, LevelUp, Money, Peuple, Profil, RecoveryDie,
+    Series, Shield, Voie, Weapon, WeaponUse, armour, characteristics, derived, equipment, level,
+    money, peuple, profil, voie, weapon,
 };
 
 /// The kind of attack an attack value applies to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AttackMode {
-    /// Attaque au contact: level + FOR.
+    /// Attaque au contact: level (at most 10) + FOR.
     Contact,
     /// Attaque à distance: level + AGI.
     Ranged,
@@ -28,7 +28,7 @@ pub enum AttackMode {
 /// A value the engine computes, other than a characteristic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Value {
-    /// PV maximum (COF.DER.PV-L1).
+    /// PV maximum (COF.DER.PV-L1, COF.PRG.PV).
     VigourPoints,
     /// Number of dés de récupération (COF.DER.DR).
     RecoveryDice,
@@ -149,12 +149,13 @@ impl Target {
     }
 }
 
-/// The choices made for a level-1 character, with the adjustments and
-/// waivers granted on them.
+/// The choices made for a character at level 1 and at each level-up, with
+/// the adjustments and waivers granted on them.
 ///
-/// Every value is computed from these choices, never stored. Any choice can
-/// be made in any order, and out-of-rule choices are kept: they show up as
-/// violations.
+/// Every value is computed from these choices, never stored: the level
+/// counts the level-ups, the current ranks join the ranks chosen at creation
+/// and those acquired since. Any choice can be made in any order, and
+/// out-of-rule choices are kept: they show up as violations.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Character {
     profil: Option<Profil>,
@@ -164,6 +165,7 @@ pub struct Character {
     peuple_bonus: Option<Characteristic>,
     peuple_malus: Option<Characteristic>,
     voies: BTreeMap<Voie, BTreeSet<Rank>>,
+    levels: Vec<LevelUp>,
     equipment: Equipment,
     purse: Option<Money>,
     adjustments: Vec<(Target, Adjustment)>,
@@ -264,14 +266,15 @@ impl Character {
         self
     }
 
-    /// Acquires `rank` in `voie`.
+    /// Acquires `rank` in `voie` at creation.
     #[must_use]
     pub fn with_rank(mut self, voie: Voie, rank: impl Into<Rank>) -> Self {
         self.voies.entry(voie).or_default().insert(rank.into());
         self
     }
 
-    /// Gives up `rank` in `voie`; the voie is dropped once it has no rank left.
+    /// Gives up `rank` in `voie` at creation; the voie is dropped once it has
+    /// no rank left.
     #[must_use]
     pub fn without_rank(mut self, voie: Voie, rank: impl Into<Rank>) -> Self {
         if let Some(ranks) = self.voies.get_mut(&voie) {
@@ -280,6 +283,21 @@ impl Character {
                 self.voies.remove(&voie);
             }
         }
+        self
+    }
+
+    /// Gains a level, acquiring the capacités of `level_up`
+    /// (COF.PRG.LEVEL-UP).
+    #[must_use]
+    pub fn with_level_up(mut self, level_up: LevelUp) -> Self {
+        self.levels.push(level_up);
+        self
+    }
+
+    /// Gives up the last level gained, and the capacités acquired with it.
+    #[must_use]
+    pub fn without_level_up(mut self) -> Self {
+        self.levels.pop();
         self
     }
 
@@ -362,6 +380,13 @@ impl Character {
         self
     }
 
+    /// Returns the level: 1, plus 1 per level-up.
+    #[must_use]
+    pub fn level(&self) -> Level {
+        let level_ups = u8::try_from(self.levels.len()).unwrap_or(u8::MAX);
+        Level::from(level_ups.saturating_add(1))
+    }
+
     /// Returns the family of the profil, if the profil is set.
     #[must_use]
     pub fn family(&self) -> Option<Family> {
@@ -419,7 +444,7 @@ impl Character {
     pub fn value(&self, value: Value) -> Option<DerivedValue> {
         let values = self.characteristics();
         let base = match value {
-            Value::VigourPoints => derived::vigour_points(self.family()?, &values),
+            Value::VigourPoints => derived::vigour_points(self.family()?, &values, self.level()),
             Value::RecoveryDice => derived::recovery_dice(self.family()?, &values),
             Value::LuckPoints => derived::luck_points(self, self.family()?, &values),
             Value::ManaPoints => derived::mana_points(self, &values)?,
@@ -441,6 +466,7 @@ impl Character {
         peuple::check(self, &mut violations);
         characteristics::check(self, &mut violations);
         voie::check(self, &mut violations);
+        level::check(self, &mut violations);
         armour::check(self, &mut violations);
         equipment::check(self, &mut violations);
         money::check(self, &mut violations);
@@ -496,14 +522,38 @@ impl Character {
         self.peuple_malus
     }
 
-    pub(crate) fn voies(&self) -> impl Iterator<Item = (Voie, &BTreeSet<Rank>)> {
+    /// The ranks chosen at creation, in voie order.
+    pub(crate) fn creation_voies(&self) -> impl Iterator<Item = (Voie, &BTreeSet<Rank>)> {
         self.voies.iter().map(|(voie, ranks)| (*voie, ranks))
+    }
+
+    /// The level-ups, with the level each one reached.
+    pub(crate) fn levels(&self) -> impl Iterator<Item = (Level, &LevelUp)> {
+        self.levels.iter().enumerate().map(|(index, level_up)| {
+            let level = u8::try_from(index).map_or(u8::MAX, |index| index.saturating_add(2));
+            (Level::from(level), level_up)
+        })
+    }
+
+    /// The current ranks: those chosen at creation and those acquired at
+    /// each level-up.
+    pub(crate) fn voies(&self) -> BTreeMap<Voie, BTreeSet<Rank>> {
+        let mut voies = self.voies.clone();
+        for (voie, rank) in self.levels.iter().flat_map(LevelUp::ranks) {
+            voies.entry(voie).or_default().insert(rank);
+        }
+        voies
     }
 
     pub(crate) fn has_rank(&self, voie: Voie, rank: Rank) -> bool {
         self.voies
             .get(&voie)
             .is_some_and(|ranks| ranks.contains(&rank))
+            || self
+                .levels
+                .iter()
+                .flat_map(LevelUp::ranks)
+                .any(|acquired| acquired == (voie, rank))
     }
 
     pub(crate) const fn armour(&self) -> Option<Armour> {
@@ -672,6 +722,7 @@ mod tests {
             .with_item(Weapon::Dague, 2)
             .with_item("rope", 1)
             .with_purse(Money::pa(7))
+            .with_level_up(LevelUp::new().with_rank(Voie::Rage, 2))
             .without_profil()
             .without_peuple()
             .without_series()
@@ -685,7 +736,15 @@ mod tests {
             .without_item(Weapon::Dague)
             .with_item("rope", 0)
             .without_item("lantern")
-            .without_purse();
+            .without_purse()
+            .without_level_up()
+            .without_level_up();
         assert_eq!(character, Character::new());
+        assert_eq!(
+            LevelUp::new()
+                .with_rank(Voie::Rage, 2)
+                .without_rank(Voie::Rage, 2),
+            LevelUp::new()
+        );
     }
 }

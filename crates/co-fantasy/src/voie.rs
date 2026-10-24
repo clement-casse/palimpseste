@@ -1,13 +1,11 @@
 //! Voies (COF.CNT.PROFILS, COF.CNT.PEUPLES) and the checks on the ranks
-//! acquired at level 1.
+//! chosen at creation, at level 1.
 
 use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId, voie_rank_violations};
 
 use crate::{
-    Character, Family, Profil,
-    rules::{
-        LEVEL, LEVEL_REQ, MAGE_EXTRA, PEUPLE_VOIE, PROFIL_VOIES, VOIE_DU_MAGE, VOIE_MECHANIC, VOIES,
-    },
+    Character, Family, Profil, level,
+    rules::{LEVEL_REQ, MAGE_EXTRA, PEUPLE_VOIE, PROFIL_VOIES, VOIE_DU_MAGE, VOIE_MECHANIC, VOIES},
 };
 
 /// One of the 78 voies a level-1 COF2 character can acquire: the five voies
@@ -482,24 +480,14 @@ const PROFIL_VOIE_COUNT: i32 = 2;
 /// The rank of the mage family's extra capacité (COF.CRE.MAGE-EXTRA).
 const MAGE_EXTRA_RANK: Rank = Rank::new(2);
 
-/// The level required to acquire `rank` (COF.PRG.LEVEL-REQ), if the table
-/// gives one.
-const fn required_level(rank: u8) -> Option<i32> {
-    match rank {
-        1 => Some(1),
-        2 => Some(2),
-        3 => Some(3),
-        4 => Some(5),
-        5 => Some(7),
-        _ => None,
-    }
-}
+/// The level of every character at creation (COF.CRE.LEVEL1).
+const CREATION_LEVEL: i32 = 1;
 
-/// Checks the acquired ranks against the voie structure (ADR KER-VOIE) and
-/// the level-1 choices.
+/// Checks the current ranks against the voie structure (ADR KER-VOIE), and
+/// the ranks chosen at creation against the level-1 choices.
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     for (voie, ranks) in character.voies() {
-        violations.extend(voie_rank_violations(&voie.id(), ranks, VOIE_MECHANIC));
+        violations.extend(voie_rank_violations(&voie.id(), &ranks, VOIE_MECHANIC));
     }
     check_slots(character, violations);
     check_level(character, violations);
@@ -516,7 +504,7 @@ fn check_slots(character: &Character, violations: &mut Vec<Violation>) {
         .is_some_and(|family| family != Family::Mages);
     let mut chosen = 0_i32;
     let mut peuple_slot = 0_i32;
-    for (voie, _) in character.voies() {
+    for (voie, _) in character.creation_voies() {
         let foreign = if voie == Voie::Mage {
             peuple_slot += 1;
             if non_mage {
@@ -577,14 +565,14 @@ fn may_hold_mage_extra(character: &Character, voie: Voie) -> bool {
 /// COF.PRG.LEVEL-REQ: rank 1 only at level 1, rank 2 in a voie that may hold
 /// the mage extra.
 fn check_level(character: &Character, violations: &mut Vec<Violation>) {
-    for (voie, ranks) in character.voies() {
+    for (voie, ranks) in character.creation_voies() {
         let allowed = if may_hold_mage_extra(character, voie) {
             MAGE_EXTRA_RANK
         } else {
             Rank::new(1)
         };
-        if let Some(highest) = ranks.last().map(|rank| rank.get())
-            && highest > allowed.get()
+        if let Some(highest) = ranks.last().copied()
+            && highest > allowed
         {
             let mut violation = Violation::deviation(
                 LEVEL_REQ,
@@ -592,9 +580,9 @@ fn check_level(character: &Character, violations: &mut Vec<Violation>) {
                 Subject::Voie(voie.id()),
                 Severity::Standard,
             )
-            .with_parameter("rank", i32::from(highest))
-            .with_parameter("level", LEVEL);
-            if let Some(required) = required_level(highest) {
+            .with_parameter("rank", i32::from(highest.get()))
+            .with_parameter("level", CREATION_LEVEL);
+            if let Some(required) = level::required_level(highest) {
                 violation = violation.with_parameter("required", required);
             }
             violations.push(violation);
@@ -609,7 +597,7 @@ fn check_mage_extra(character: &Character, violations: &mut Vec<Violation>) {
         return;
     }
     let extras = character
-        .voies()
+        .creation_voies()
         .filter(|(voie, ranks)| {
             may_hold_mage_extra(character, *voie) && ranks.contains(&MAGE_EXTRA_RANK)
         })

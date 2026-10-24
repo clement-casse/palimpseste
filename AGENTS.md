@@ -8,7 +8,7 @@ A companion application for the French tabletop RPG *Chroniques Oubliées* (COF2
 The long-term goal is a character editor, later a campaign tracker.
 Each ruleset and each variant will be a **WorldEngine**: rules written as Rust code, composed from mechanics, with game content kept as data.
 
-**Current phase: the kernel, and the COC2 and COF2 character creation engines.** Everything below is scoped to them.
+**Current phase: the kernel, the COC2 and COF2 character creation engines, and COF2 levels.** Everything below is scoped to them.
 
 ## Current scope: `co-kernel`
 
@@ -53,21 +53,22 @@ Out of scope, do not implement or prepare for:
 
 ## Current scope: `co-fantasy`
 
-The COF2 engine, core rules only (no variant), **character creation at level 1** only (see `docs/adr/engines.md`).
+The COF2 engine, core rules only (no variant): **character creation at level 1, and the capacités acquired at each level gained after it** (see `docs/adr/engines.md`).
 
 In scope:
 
 - **Creation choices**: profil (and the family derived from it), peuple, value series and the value assigned to each characteristic, peuple bonus and malus, ranks acquired per voie, armour and shield, items carried (weapons, free text items), the purse rolled.
 - **Content read by the creation rules**: the 4 families, the 14 profils with their voies, key and magic characteristics, armour limits, weapon mastery and starting equipment, the 8 peuples with their modifiers and voie de peuple, the 3 value series, the 78 voies reachable at level 1, the armour and shield table, the weapon tables, the currency, as enums and `match` tables.
 - **Creation limits**: series assignment and its advice, peuple modifiers, characteristic bounds, two profil voies and the voie de peuple, voie du mage, mage extra capacité, level required per rank, armour limits, starting equipment and purse, arc long strength, halfelin weapon size.
-- **Derived values**: PV, DR (count and die), PC, PM, Init, DEF with armour and shield, contact, ranged and magic attack values, weapon damage dice and DM, critical range, money held, with the documented effects of rank 1-2 capacités (D-22) and the documented spells (D-23).
+- **Levels** (ADR ENG-COF-PROGRESSION): `LevelUp`, the capacités acquired at one level-up, stored in order on `Character`; the `Level` they reach and its dé évolutif d4° (COF.DER.D4); the capacity points of each level and their cost (COF.PRG.POINTS, COF.PRG.COST), the level required per rank when acquired, lower ranks first, the voies a level-up opens and the voie count (COF.PRG.LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES).
+- **Derived values**: PV (with the PV per level), DR (count and die), PC, PM, Init, DEF with armour and shield, contact, ranged and magic attack values (with the level, at most 10), weapon damage dice and DM, critical range, money held, with the documented effects of rank 1-2 capacités (D-22) and the documented spells (D-23).
 - **Equipment in play** (ADR ENG-IN-PLAY): `Equipment` (armour, shield, items), `Character::in_play`, the values of `InPlay` and its report of the rules that hold in play (armour limit, arc long, Petite taille), computed from the equipment it is given; nothing is stored.
 - **Catalogue and steps** (ADR ENG-CATALOGUE, ADR ENG-STEPS): each content enum named by the choices document has `ALL`, `id()`, `from_id()` and `name()` (French display name); the content tables the creation rules read are public read-only accessors; `Value::FIXED` lists the values in the book order and `Value::name()` names them; `label` and `term_label` name every identifier the engine emits; `Step` gives the creation steps in the book order and places each violation in one.
 
 Out of scope, do not implement or prepare for:
 
 - variants, prestige voies, hybrid profils;
-- progression (levels above 1, capacity points, PV per level, orphan point, changement d'orientation);
+- the rest of progression: orphan point, changement d'orientation, hybrid PV per level, the effects of capacités above rank 2 (D-22);
 - competence bonuses, languages and talent secondaire, capacités calling other capacités, armour malus to tests, final touch, unarmed attacks, weapon range, items without a rule (they stay free text);
 - prices, purchases and spending: they wait for campaign initialization (D-25);
 - data files and data formats, persistence, serialization, `serde`;

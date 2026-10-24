@@ -1,8 +1,9 @@
 # co-fantasy
 
-The COF2 engine: character creation at level 1 under the core rules of
-*Chroniques Oubliées Fantasy*, second edition. It has no variants, no
-prestige voies and no progression. It depends on
+The COF2 engine: character creation at level 1, and the capacités acquired
+at each level gained after it, under the core rules of *Chroniques
+Oubliées Fantasy*, second edition. It has no variants and no prestige
+voies; of progression it has the level-ups and their points only. It depends on
 [`co-kernel`](../co-kernel) only (ADR ENG-CRATES).
 
 A `Character` stores choices, adjustments and waivers. Everything else is
@@ -15,12 +16,13 @@ complete nain guerrier. Read it first.
 | File | Holds | Rules |
 |---|---|---|
 | `character.rs` | `Character` (the choices and their `with_*` / `without_*` builders), `Value` (`FIXED`, `name()`), `Target`, `AttackMode`; `violations()`, `report()`, and options that depend on the choices (`peuple_slot_options`) | |
-| `rules.rs` | every `RuleId`, `Mechanic` and engine `ValueId` constant, and the level fixed at creation | |
+| `rules.rs` | every `RuleId`, `Mechanic` and engine `ValueId` constant | |
 | `profil.rs` | `Family` (4), `Profil` (14), `RecoveryDie`, weapon mastery | COF.CNT.FAMILIES, COF.CNT.PROFILS |
 | `peuple.rs` | `Peuple` (8), its modifiers and voie de peuple | COF.CRE.PEUPLE, COF.CNT.PEUPLES |
 | `characteristics.rs` | `Series` (3), the series assignment, peuple modifiers, bounds, `SERIES_VALUE` | COF.CRE.CARAC-* |
-| `voie.rs` | `Voie` (the 78 reachable at level 1), the checks on the ranks acquired | CO.VOIE.* (the kernel's `voie_rank_violations`), COF.PRG.LEVEL-REQ, COF.CRE.MAGE-EXTRA |
-| `derived.rs` | PV, DR, PC, PM, Init, DEF, attacks, with the effects of rank 1-2 capacités (D-22) | COF.DER.* |
+| `voie.rs` | `Voie` (the 78 reachable at level 1), the checks on the ranks chosen at creation | CO.VOIE.* (the kernel's `voie_rank_violations`), COF.PRG.LEVEL-REQ, COF.CRE.MAGE-EXTRA |
+| `level.rs` | `Level` (with its dé évolutif), `LevelUp`, the checks on each level-up | COF.PRG.POINTS, COST, LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES, COF.DER.D4 |
+| `derived.rs` | PV, DR, PC, PM, Init, DEF, attacks, with the effects of rank 1-2 capacités (D-22) | COF.DER.*, COF.PRG.PV |
 | `armour.rs` | `Armour`, `Shield`, the profil's armour limits | COF.EQP.ARMOUR, COF.DER.ARMOUR-LIMIT |
 | `weapon.rs` | `Weapon`, `WeaponUse`, dice per use, DM, critical range, the checks on the weapons carried | COF.EQP.MELEE, COF.EQP.RANGED, COF.DER.DM, COF.DER.CRIT-RANGE |
 | `equipment.rs` | `Item` (a weapon, or free text named by the kernel's `ItemName`), the profil's starting equipment (`Gear`, `StartingLine`, `StartingItem`) | COF.CRE.EQUIPMENT |
@@ -47,12 +49,15 @@ design decisions are in [docs/adr/engines.md](../../docs/adr/engines.md)
   front end restates none of them (ADR ENG-CATALOGUE).
 - **Violations.** `Character::violations` calls each module's
   `check(&Character, &mut Vec<Violation>)` (profil, peuple,
-  characteristics, voies, armour, equipment, money, weapons, derived
-  values), then adds one notice per adjustment. `report()` matches the
+  characteristics, voies, level-ups, armour, equipment, money, weapons,
+  derived values), then adds one notice per adjustment. `report()` matches the
   result against the waivers.
-- **Level 1 is not stored.** Attack values take it as
-  `Source::Rule(COF.CRE.LEVEL1)`. A rank above 1 is a deviation, except
-  for the mage's extra capacité (ADR ENG-COF-LEVEL).
+- **Levels are a history.** `with_level_up(LevelUp)` appends the ranks
+  acquired at one level; the level counts the level-ups. The current ranks
+  (creation and level-ups) feed the values; the creation rules read the
+  creation ranks only, and each level-up is checked at its own level
+  (ADR ENG-COF-LEVEL, ADR ENG-COF-PROGRESSION). Attack values take
+  min(level, 10) as `Source::Rule(COF.DER.ATTACK)`.
 - **Values.** `Character::value(Value)` returns a `DerivedValue`, or `None`
   when it does not apply. Weapon values are keyed by weapon and use
   (`Value::Damage(Weapon, WeaponUse)`). Every `Value` and every
@@ -96,8 +101,8 @@ effect on a value are computed (D-22). The capacité contributes as
 
 - Unit tests sit in each module. They include order independence
   (`violations_do_not_depend_on_the_order_of_choices`).
-- `tests/lhagva.rs` and `tests/ionas.rs`: the acceptance tests, built from
-  the book's worked characters as recorded in the co-rules `examples/`
+- `tests/lhagva.rs` and `tests/ionas.rs`: the acceptance tests at levels 1
+  and 2, built from the book's worked characters as recorded in the co-rules `examples/`
   (choices and numbers only).
 - `tests/catalogue.rs`: every content enum lists all its variants, each
   with a unique identifier that converts back, and a display name.

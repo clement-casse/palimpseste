@@ -1,4 +1,4 @@
-//! Rule, mechanic and value identifiers, and the level fixed at creation.
+//! Rule, mechanic and value identifiers.
 //!
 //! Rule identifiers trace to the co-rules skill. Soft limits of different
 //! severities carry distinct rule identifiers, because a waiver matches on
@@ -28,10 +28,21 @@ pub(crate) const MAGE_EXTRA: RuleId = RuleId::from_static("COF.CRE.MAGE-EXTRA");
 pub(crate) const VOIE_DU_MAGE: RuleId = RuleId::from_static("COF.CRE.VOIE-DU-MAGE");
 /// COF.PRG.LEVEL-REQ: level required per rank.
 pub(crate) const LEVEL_REQ: RuleId = RuleId::from_static("COF.PRG.LEVEL-REQ");
-/// COF.CRE.LEVEL1: every character starts at level 1.
-pub(crate) const LEVEL1: RuleId = RuleId::from_static("COF.CRE.LEVEL1");
-/// The level of every character at creation (COF.CRE.LEVEL1).
-pub(crate) const LEVEL: i32 = 1;
+/// COF.PRG.POINTS: 2 capacity points per level, spent at once.
+pub(crate) const POINTS: RuleId = RuleId::from_static("COF.PRG.POINTS");
+/// COF.PRG.COST: a capacité costs 1 point up to rank 2, then 2; one already
+/// acquired is bought again for nothing.
+pub(crate) const COST: RuleId = RuleId::from_static("COF.PRG.COST");
+/// COF.PRG.ORDER: lower ranks first, at the level they are acquired.
+pub(crate) const ORDER: RuleId = RuleId::from_static("COF.PRG.ORDER");
+/// COF.PRG.NEW-VOIES: the voies a level-up may open.
+pub(crate) const NEW_VOIES: RuleId = RuleId::from_static("COF.PRG.NEW-VOIES");
+/// COF.PRG.HYBRID: a voie of another profil after level 1.
+pub(crate) const HYBRID: RuleId = RuleId::from_static("COF.PRG.HYBRID");
+/// COF.PRG.MAX-VOIES: six voies at most, plus the voie de peuple.
+pub(crate) const MAX_VOIES: RuleId = RuleId::from_static("COF.PRG.MAX-VOIES");
+/// COF.DER.ATTACK: attack values add the level, at most 10.
+pub(crate) const ATTACK: RuleId = RuleId::from_static("COF.DER.ATTACK");
 /// COF.DER.DR: DR = 2 + CON.
 pub(crate) const DR: RuleId = RuleId::from_static("COF.DER.DR");
 /// COF.DER.PC: PC = 2 + CHA.
@@ -68,6 +79,8 @@ pub(crate) const ARMOUR_MECHANIC: Mechanic = Mechanic::new("cof.armour");
 pub(crate) const EQUIPMENT_MECHANIC: Mechanic = Mechanic::new("cof.equipment");
 /// Weapon checks.
 pub(crate) const WEAPON_MECHANIC: Mechanic = Mechanic::new("cof.weapons");
+/// Level-up checks.
+pub(crate) const PROGRESSION_MECHANIC: Mechanic = Mechanic::new("cof.progression");
 /// Derived value checks.
 pub(crate) const DERIVED_MECHANIC: Mechanic = Mechanic::new("cof.derived");
 
