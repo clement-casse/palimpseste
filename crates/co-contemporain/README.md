@@ -17,7 +17,7 @@ builds a complete character. Read it first.
 | `rules.rs` | every `RuleId`, `Mechanic` and engine `ValueId` constant | |
 | `age.rs` | `Age`, `AgeBracket`, the limits of each bracket | COC.CRE.AGE-BRACKET |
 | `domaine.rs` | `Domaine` (18), its voie slots and social class requirements | COC.CRE.DOMAINE, COC.CNT.DOMAINES |
-| `voie.rs` | `Voie` (18), the characteristic each rank 5 raises, the checks on the ranks acquired | CO.VOIE.* (the kernel's `voie_rank_violations`), COC.CRE.CAPACITY-POINTS, COC.CRE.MAX-VOIES |
+| `voie.rs` | `Voie` (18), the names of its capacités, the characteristic each rank 5 raises, the checks on the ranks acquired | CO.VOIE.* (the kernel's `voie_rank_violations`), COC.CRE.CAPACITY-POINTS, COC.CRE.MAX-VOIES |
 | `experience.rs` | `Experience`, `XpSpending`, the XP left and the checks on each spending | COC.PRG.COST, ONE-RANK, LIMITS, XP-USE |
 | `traits.rs` | `Trait`, `Sequel` (and its identifier once acquired in play), `TraitPoints`, `SocialClass` | COC.CRE.TRAITS, COC.CNT.TRAITS, COC.CRE.SOCIAL-CLASS |
 | `characteristics.rs` | the characteristic points allocated, `ALLOCATED_POINTS`, starting and current values, the rank-5 raises | COC.CRE.CARAC-*, COC.PRG.CARAC |
@@ -40,7 +40,8 @@ decisions are in [docs/adr/engines.md](../../docs/adr/engines.md) (`ENG-*`,
   display name). Its data is a `match` table beside the mechanic that
   reads it. There are no data files (ADR ENG-CONTENT, ADR ENG-CATALOGUE).
 - **Names.** `Value::FIXED` lists the values in the book order and
-  `Value::name()` names them. `label(id)` names every identifier the engine
+  `Value::name()` names them; `Voie::ability_name(rank)` names each
+  capacité. `label(id)` names every identifier the engine
   emits as a violation subject or a breakdown source, and
   `term_label(rule)` the terms a formula sets (the age bracket), so that
   the front end restates none of them (ADR ENG-CATALOGUE).

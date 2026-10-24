@@ -60,9 +60,11 @@ adjustment yields one notice, even when its value is uncomputable.
 capacité name is stored. That identifier is the one key a capacité is
 named by everywhere: `Voie::ability(rank)` builds it,
 `Voie::from_ability_id` reads it back, and the choices document, the
-catalog and the interface use it, so the capacités' names, descriptions
-and effects, a later delivery, attach to it without changing anything
-that names a capacité. A weapon value builds its identifier from the
+catalog and the interface use it, so names and effects attach to it
+without changing anything that names a capacité.
+`Voie::ability_name(rank)` gives a COC2 capacité's French name, from the
+co-rules catalogue (D-45); `label` names a capacité by its voie and rank.
+A weapon value builds its identifier from the
 weapon (`cof.damage.epee-longue.one-handed`), so `Value::id` is not
 `const`.
 

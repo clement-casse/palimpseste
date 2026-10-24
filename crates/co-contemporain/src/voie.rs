@@ -174,6 +174,17 @@ impl Voie {
         Some((Self::from_id(voie)?, Rank::new(rank)))
     }
 
+    /// The French display name of the capacité at `rank` in this voie
+    /// (COC.CNT.VOIES, D-45); `None` outside ranks 1 to 5.
+    #[must_use]
+    pub fn ability_name(self, rank: Rank) -> Option<&'static str> {
+        let index = usize::from(rank.get()).checked_sub(1)?;
+        ABILITY_NAMES
+            .iter()
+            .find(|(voie, _)| *voie == self)
+            .and_then(|(_, names)| names.get(index).copied())
+    }
+
     const fn slug(self) -> &'static str {
         match self {
             Self::ArmesDeContact => "coc.armes-de-contact",
@@ -197,6 +208,166 @@ impl Voie {
         }
     }
 }
+
+/// The names of the capacités of each voie, ranks 1 to 5 (COC.CNT.VOIES, D-45).
+const ABILITY_NAMES: [(Voie, [&str; 5]); 18] = [
+    (
+        Voie::ArmesDeContact,
+        [
+            "Amateur",
+            "Entraîné",
+            "Tacticien",
+            "Fin bretteur",
+            "Maître d'armes",
+        ],
+    ),
+    (
+        Voie::ArmesADistance,
+        [
+            "Amateur",
+            "Entraîné",
+            "Tacticien",
+            "Sniper",
+            "Tireur d'élite",
+        ],
+    ),
+    (
+        Voie::ArmesLourdes,
+        [
+            "Artilleur",
+            "Mitrailleur",
+            "Tacticien d'impact",
+            "Canonnier",
+            "Seigneur du feu",
+        ],
+    ),
+    (
+        Voie::ArtsEtArtisanats,
+        [
+            "Artiste/artisan",
+            "Copiste",
+            "Inspiré",
+            "Célébrité",
+            "Génie",
+        ],
+    ),
+    (
+        Voie::Athletisme,
+        [
+            "Sportif amateur",
+            "Sportif confirmé",
+            "Déterminé",
+            "Athlète",
+            "Champion",
+        ],
+    ),
+    (
+        Voie::CombatAMainsNues,
+        ["Amateur", "Entraîné", "Tacticien", "Disciple", "Maître"],
+    ),
+    (
+        Voie::Corporations,
+        ["Membre", "Connecté", "Cadre", "Influenceur", "Boss"],
+    ),
+    (
+        Voie::Crime,
+        [
+            "Pickpocket",
+            "Gangster",
+            "Cambrioleur",
+            "Imposteur",
+            "Cerveau",
+        ],
+    ),
+    (
+        Voie::Discours,
+        [
+            "Convaincant",
+            "Éloquent",
+            "Rhétoricien",
+            "Meneur",
+            "Marionnettiste",
+        ],
+    ),
+    (
+        Voie::Furtivite,
+        ["Furtif", "Vigilant", "Passe-partout", "Infiltré", "Fantôme"],
+    ),
+    (
+        Voie::Investigation,
+        [
+            "Fin limier",
+            "Spécialiste",
+            "Intuitif",
+            "Mémoire vivante",
+            "Expert",
+        ],
+    ),
+    (
+        Voie::Langues,
+        [
+            "Bilingue",
+            "Philologue",
+            "Linguiste",
+            "Cryptographe",
+            "Hyperpolyglotte",
+        ],
+    ),
+    (
+        Voie::Medecine,
+        [
+            "Secouriste",
+            "Médecin",
+            "Chirurgien",
+            "Homme-médecine",
+            "Professeur",
+        ],
+    ),
+    (
+        Voie::Psychologie,
+        [
+            "Observateur",
+            "Intuitif",
+            "Introspectif",
+            "Profileur",
+            "Clairvoyant",
+        ],
+    ),
+    (
+        Voie::Technologie,
+        ["Geek", "Ingénieur", "Connecté", "Optimisateur", "Génie"],
+    ),
+    (
+        Voie::Sciences,
+        [
+            "Alumni",
+            "Professionnel",
+            "Esprit pratique",
+            "Expert reconnu",
+            "Personnalité publique",
+        ],
+    ),
+    (
+        Voie::Survie,
+        [
+            "Voyageur du monde",
+            "Explorateur",
+            "Baroudeur",
+            "Guide",
+            "Aventurier",
+        ],
+    ),
+    (
+        Voie::Vehicules,
+        [
+            "Chauffeur",
+            "Conducteur expérimenté",
+            "Casse-cou",
+            "Pilote émérite",
+            "As des as",
+        ],
+    ),
+];
 
 /// Voies allowed in total, whatever the age bracket (COC.CRE.MAX-VOIES).
 const ABSOLUTE_MAX_VOIES: i32 = 6;
@@ -295,6 +466,8 @@ fn check_capacity_points(character: &Character, violations: &mut Vec<Violation>)
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use co_kernel::Category;
 
     use super::*;
@@ -342,6 +515,24 @@ mod tests {
         for bad in ["coc.crime", "coc.crime.x", "coc.unknown.1", ""] {
             assert_eq!(Voie::from_ability_id(bad), None, "{bad}");
         }
+    }
+
+    #[test]
+    fn every_capacite_is_named() {
+        for voie in Voie::ALL {
+            let names: BTreeSet<_> = (1..=5)
+                .map(|rank| voie.ability_name(Rank::new(rank)))
+                .collect();
+            assert_eq!(names.len(), 5, "{voie:?}");
+            assert!(names.iter().all(|name| name.is_some_and(|n| !n.is_empty())));
+            assert_eq!(voie.ability_name(Rank::new(0)), None);
+            assert_eq!(voie.ability_name(Rank::new(6)), None);
+        }
+        assert_eq!(
+            Voie::ArmesDeContact.ability_name(Rank::new(4)),
+            Some("Fin bretteur")
+        );
+        assert_eq!(Voie::Crime.ability_name(Rank::new(2)), Some("Gangster"));
     }
 
     #[test]
