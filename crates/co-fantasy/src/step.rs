@@ -8,8 +8,9 @@ use co_kernel::{ADJUSTMENT_RULE, RuleId, Subject, VOIE_ORDER, VOIE_STRUCTURE, Vi
 use crate::{
     Value,
     rules::{
-        ARMOUR_LIMIT, CARAC_BOUNDS, CARAC_KEY, CARAC_MAGIC, CARAC_PEUPLE, CARAC_SERIES, EQUIPMENT,
-        LEVEL_REQ, MAGE_EXTRA, PEUPLE, PEUPLES, PM, PROFIL, RANGED, VOIE_DU_MAGE, VOIES,
+        ARMOUR_LIMIT, CARAC_BOUNDS, CARAC_KEY, CARAC_MAGIC, CARAC_PEUPLE, CARAC_SERIES, COST,
+        EQUIPMENT, HYBRID, LEVEL_REQ, MAGE_EXTRA, MAX_VOIES, NEW_VOIES, ORDER, PEUPLE, PEUPLES, PM,
+        POINTS, PROFIL, RANGED, VOIE_DU_MAGE, VOIES,
     },
 };
 
@@ -26,7 +27,8 @@ pub enum Step {
     Peuple,
     /// Value series, its assignment and the peuple modifiers (step 4).
     Characteristics,
-    /// Voies and capacités (step 5).
+    /// Voies and capacités (step 5), with the capacités acquired at each
+    /// level-up.
     Voies,
     /// Armour, shield, weapons, items and purse (step 11).
     Equipment,
@@ -35,7 +37,7 @@ pub enum Step {
 }
 
 /// The step of each rule; adjustment notices follow their subject.
-const RULE_STEPS: [(RuleId, Step); 18] = [
+const RULE_STEPS: [(RuleId, Step); 24] = [
     (PROFIL, Step::Profil),
     (PEUPLE, Step::Peuple),
     (CARAC_SERIES, Step::Characteristics),
@@ -49,6 +51,12 @@ const RULE_STEPS: [(RuleId, Step); 18] = [
     (MAGE_EXTRA, Step::Voies),
     (VOIE_DU_MAGE, Step::Voies),
     (LEVEL_REQ, Step::Voies),
+    (POINTS, Step::Voies),
+    (COST, Step::Voies),
+    (ORDER, Step::Voies),
+    (NEW_VOIES, Step::Voies),
+    (HYBRID, Step::Voies),
+    (MAX_VOIES, Step::Voies),
     (ARMOUR_LIMIT, Step::Equipment),
     (EQUIPMENT, Step::Equipment),
     (RANGED, Step::Equipment),

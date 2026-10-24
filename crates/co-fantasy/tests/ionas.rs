@@ -1,11 +1,11 @@
 //! Acceptance test: Ionas Melenwë, high-elf ensorceleur of the COF2 book
-//! (COF p. 20-40), level 1, from the co-rules fixture `cof2-ionas`.
+//! (COF p. 20-40), at levels 1 and 2, from the co-rules fixture `cof2-ionas`.
 //!
 //! Deferred with spell effects: the DM of Choc (1d4+4).
 
 use co_fantasy::{
-    AttackMode, Character, Family, Money, Peuple, Profil, RecoveryDie, SERIES_VALUE, Series, Value,
-    Voie, Weapon, WeaponUse,
+    AttackMode, Character, Family, LevelUp, Money, Peuple, Profil, RecoveryDie, SERIES_VALUE,
+    Series, Value, Voie, Weapon, WeaponUse,
 };
 use co_kernel::{AbilityId, Characteristic, Characteristics, Dice, Source};
 
@@ -148,4 +148,31 @@ fn no_violation() {
     let ionas = ionas();
     assert_eq!(ionas.violations(), []);
     assert!(ionas.report().is_clean());
+}
+
+/// Level 2: Sous tension* (air r2) and Maîtrise de la magie* (mage r2).
+fn ionas_level_two() -> Character {
+    ionas().with_level_up(
+        LevelUp::new()
+            .with_rank(Voie::Air, 2)
+            .with_rank(Voie::Mage, 2),
+    )
+}
+
+#[test]
+fn level_two_adds_vigour_mana_and_attack() {
+    let ionas = ionas_level_two();
+    // 7, then 3 (mages) + CON 1.
+    assert_eq!(total(&ionas, Value::VigourPoints), Some(11));
+    // Two more spells.
+    assert_eq!(total(&ionas, Value::ManaPoints), Some(7));
+    let attack = |mode| total(&ionas, Value::Attack(mode));
+    assert_eq!(attack(AttackMode::Contact), Some(0));
+    assert_eq!(attack(AttackMode::Ranged), Some(3));
+    assert_eq!(attack(AttackMode::Magic), Some(4));
+}
+
+#[test]
+fn level_two_has_no_violation() {
+    assert_eq!(ionas_level_two().violations(), []);
 }

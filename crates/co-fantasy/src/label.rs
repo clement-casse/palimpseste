@@ -7,8 +7,9 @@ use co_kernel::{RuleId, ValueId};
 
 use crate::{
     Armour, Family, Peuple, Profil, SERIES_VALUE, Series, Shield, Value, Voie, Weapon,
+    level::LEVEL_PREFIX,
     rules::{
-        ARMOUR, LEVEL1, PEUPLE_BONUS, PEUPLE_MALUS, PEUPLE_VALUE, PEUPLE_VOIE, PROFIL_VALUE,
+        ARMOUR, ATTACK, PEUPLE_BONUS, PEUPLE_MALUS, PEUPLE_VALUE, PEUPLE_VOIE, PROFIL_VALUE,
         PROFIL_VOIES, PURSE, SERIES, SHIELD,
     },
 };
@@ -29,9 +30,9 @@ const CHOICES: [(ValueId, &str); 11] = [
 ];
 
 /// The French display name of what `id` names: a content (profil, peuple,
-/// series, family, armour, shield, weapon, voie), a choice, a value, or a
-/// capacité (`<voie>.<rank>`, ADR ENG-VALUE-IDS). `None` for an identifier
-/// the engine does not emit.
+/// series, family, armour, shield, weapon, voie), a choice, a value, a
+/// level-up (`cof.level.<level>`), or a capacité (`<voie>.<rank>`, ADR
+/// ENG-VALUE-IDS). `None` for an identifier the engine does not emit.
 #[must_use]
 pub fn label(id: &str) -> Option<String> {
     CHOICES
@@ -41,14 +42,21 @@ pub fn label(id: &str) -> Option<String> {
         .or_else(|| content_name(id))
         .map(str::to_owned)
         .or_else(|| Value::from_id(id).map(Value::name))
+        .or_else(|| level_name(id))
         .or_else(|| ability_name(id))
 }
 
+/// The display name of the level-up `id`, `cof.level.<level>`.
+fn level_name(id: &str) -> Option<String> {
+    let level: u8 = id.strip_prefix(LEVEL_PREFIX)?.parse().ok()?;
+    Some(format!("Niveau {level}"))
+}
+
 /// The French name of the term `rule`'s formula sets itself, when it names
-/// one: the level. `None` for a plain constant.
+/// one: the level of the attack values. `None` for a plain constant.
 #[must_use]
 pub fn term_label(rule: &RuleId) -> Option<&'static str> {
-    (*rule == LEVEL1).then_some("Niveau")
+    (*rule == ATTACK).then_some("Niveau")
 }
 
 /// The display name of the content `id` names.
@@ -83,7 +91,7 @@ mod tests {
     use co_kernel::{Adjustment, Author, Characteristic, Source, Subject};
 
     use super::*;
-    use crate::{Character, Money, Target, WeaponUse, rules::DEF};
+    use crate::{Character, LevelUp, Money, Target, WeaponUse, rules::DEF};
 
     /// Every identifier `label` looks up, content, choices and values.
     fn identifiers() -> Vec<String> {
@@ -137,12 +145,14 @@ mod tests {
         assert_eq!(label("cof.unknown"), None);
         assert_eq!(label("cof.unknown.1"), None);
         assert_eq!(label("cof.rage.x"), None);
-        assert_eq!(term_label(&LEVEL1), Some("Niveau"));
+        assert_eq!(label("cof.level.3").as_deref(), Some("Niveau 3"));
+        assert_eq!(label("cof.level.x"), None);
+        assert_eq!(term_label(&ATTACK), Some("Niveau"));
         assert_eq!(term_label(&DEF), None);
     }
 
     /// A character emitting many subjects and sources: every voie at ranks
-    /// 1 and 2, every weapon, an armour, a shield and adjustments.
+    /// 1 and 2, level-ups, every weapon, an armour, a shield and adjustments.
     fn busy() -> Character {
         let adjustment = || Adjustment::new(1, Author::new("gm"), "test reason");
         let character = Character::new()
@@ -159,7 +169,9 @@ mod tests {
             .with_adjustment(Target::Characteristic(Characteristic::For), adjustment());
         let character = Voie::ALL
             .into_iter()
-            .fold(character, |c, voie| c.with_rank(voie, 1).with_rank(voie, 2));
+            .fold(character, |c, voie| c.with_rank(voie, 1).with_rank(voie, 2))
+            .with_level_up(LevelUp::new().with_rank(Voie::Rage, 3))
+            .with_level_up(LevelUp::new());
         Weapon::ALL
             .into_iter()
             .fold(character, |c, weapon| c.with_item(weapon, 1))

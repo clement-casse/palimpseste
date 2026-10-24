@@ -1,9 +1,10 @@
 //! Chroniques Oubliées Fantasy, second edition (COF2): character creation at
-//! level 1, core rules only.
+//! level 1 and the levels gained after it, core rules only.
 //!
 //! A [`Character`] holds the creation choices (profil, peuple, value series
 //! and its assignment, peuple modifiers, voie ranks, armour and shield,
-//! items carried, purse) with the Game Master's adjustments and waivers. Every other value is computed
+//! items carried, purse), the capacités acquired at each [`LevelUp`], and
+//! the Game Master's adjustments and waivers. Every other value is computed
 //! with its breakdown, and every broken rule is reported as a violation.
 //! Rule identifiers trace to the co-rules skill.
 //!
@@ -55,6 +56,7 @@ mod characteristics;
 mod derived;
 mod equipment;
 mod label;
+mod level;
 mod money;
 mod peuple;
 mod play;
@@ -69,6 +71,7 @@ pub use character::{AttackMode, Character, Target, Value};
 pub use characteristics::{SERIES_VALUE, Series};
 pub use equipment::{Gear, Item, StartingItem, StartingLine};
 pub use label::{label, term_label};
+pub use level::{Level, LevelUp};
 pub use money::{Money, purse_dice};
 pub use peuple::Peuple;
 pub use play::{Equipment, InPlay};
