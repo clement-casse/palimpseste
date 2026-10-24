@@ -381,12 +381,38 @@ impl Voie {
         )
     }
 
-    /// Whether the capacité at `rank` is a spell. Only the spells the co-rules
-    /// skill documents are known (D-23).
+    /// Whether the capacité at `rank` is a spell (the `*` of the co-rules
+    /// catalogue, D-23).
     pub(crate) fn is_spell(self, rank: Rank) -> bool {
         matches!(
             (self, rank.get()),
-            (Self::Air | Self::Invocation, 1 | 2) | (Self::Mage, 2 | 3)
+            (
+                Self::Musicien
+                    | Self::Air
+                    | Self::Envouteur
+                    | Self::Illusions
+                    | Self::Invocation
+                    | Self::MagieDesArcanes
+                    | Self::MagieDestructrice
+                    | Self::MagieElementaire
+                    | Self::MagieProtectrice
+                    | Self::MagieUniverselle
+                    | Self::Vegetaux,
+                1..=5
+            ) | (Self::Seduction, 5)
+                | (Self::Vagabond, 4 | 5)
+                | (Self::Divination | Self::Priere, 1..=3)
+                | (Self::Artefacts, 2 | 4)
+                | (Self::Metal | Self::SombreMagie, 1..=4)
+                | (Self::Golem, 4)
+                | (Self::Runes | Self::Mort | Self::Foi, 2..=5)
+                | (Self::Demon | Self::Sang, 1 | 2 | 4 | 5)
+                | (Self::OutreTombe, 1 | 3..=5)
+                | (Self::Animaux, 3..=5)
+                | (Self::Protecteur | Self::Soins, 1..=3 | 5)
+                | (Self::GuerreSainte, 1 | 4 | 5)
+                | (Self::Spiritualite, 2 | 3 | 5)
+                | (Self::Mage, 2 | 3)
         )
     }
 
@@ -848,11 +874,32 @@ mod tests {
     }
 
     #[test]
-    fn documented_spells_are_known() {
-        assert!(Voie::Air.is_spell(Rank::new(1)));
-        assert!(Voie::Invocation.is_spell(Rank::new(2)));
-        assert!(!Voie::Mage.is_spell(Rank::new(1)));
-        assert!(Voie::Mage.is_spell(Rank::new(2)));
-        assert!(!Voie::Rage.is_spell(Rank::new(1)));
+    fn spells_follow_the_catalogue() {
+        let spells = |voie: Voie| -> Vec<u8> {
+            (1..=5)
+                .filter(|rank| voie.is_spell(Rank::new(*rank)))
+                .collect()
+        };
+        assert_eq!(spells(Voie::Air), [1, 2, 3, 4, 5]);
+        assert_eq!(spells(Voie::Artefacts), [2, 4]);
+        assert_eq!(spells(Voie::OutreTombe), [1, 3, 4, 5]);
+        assert_eq!(spells(Voie::Protecteur), [1, 2, 3, 5]);
+        assert_eq!(spells(Voie::Mage), [2, 3]);
+        assert_eq!(spells(Voie::Seduction), [5]);
+        assert_eq!(spells(Voie::Rage), []);
+        assert_eq!(spells(Voie::Humain), []);
+        // Only the profils with a magic characteristic, the barde's voies and
+        // the voie du mage hold spells.
+        for voie in Voie::ALL {
+            if !spells(voie).is_empty() {
+                assert!(
+                    voie == Voie::Mage
+                        || voie
+                            .profil()
+                            .is_some_and(|p| p.magic_characteristic().is_some()),
+                    "{voie:?}"
+                );
+            }
+        }
     }
 }
