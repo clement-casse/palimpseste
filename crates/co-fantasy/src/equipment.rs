@@ -578,4 +578,12 @@ mod tests {
             [weapon(Weapon::Dague, i64::from(u32::MAX) - 5)]
         );
     }
+
+    #[test]
+    fn free_text_items_come_from_any_name() {
+        let rope = Item::from("corde");
+        assert_eq!(Item::from(String::from("corde")), rope);
+        assert_eq!(Item::from(ItemName::from("corde")), rope);
+        assert_ne!(Item::from(Weapon::Dague), rope);
+    }
 }

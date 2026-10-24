@@ -1024,4 +1024,51 @@ mod tests {
         }
         assert_eq!(OrphanExchange::from_id("cof.orphan.unknown"), None);
     }
+
+    #[test]
+    fn the_orphan_point_may_give_mana_points() {
+        let caster = guerrier().with_rank(Voie::Air, 1).with_level_up(
+            LevelUp::new()
+                .with_rank(Voie::Bouclier, 2)
+                .with_orphan(OrphanExchange::ManaPoints),
+        );
+        // VOL 0, one spell, and 2 PM from the level-2 orphan point.
+        assert_eq!(caster.value(Value::ManaPoints).map(|v| v.total()), Some(3));
+    }
+
+    #[test]
+    fn without_a_profil_no_voie_or_orphan_point_is_checked() {
+        let character = Character::new().with_level_up(
+            LevelUp::new()
+                .with_rank(Voie::Rage, 1)
+                .with_orphan(OrphanExchange::LuckPoint),
+        );
+        assert_eq!(level_violations(&character), []);
+    }
+
+    #[test]
+    fn an_empty_voie_de_peuple_slot_offers_its_voies() {
+        // A humain guerrier who chose no voie de peuple at creation.
+        let character = Character::new()
+            .with_profil(Profil::Guerrier)
+            .with_peuple(Peuple::Humain)
+            .with_rank(Voie::Bouclier, 1)
+            .with_rank(Voie::Soldat, 1);
+        let opened = character.clone().with_level_up(
+            LevelUp::new()
+                .with_rank(Voie::Humain, 1)
+                .with_rank(Voie::Bouclier, 2),
+        );
+        assert_eq!(level_violations(&opened), []);
+        // Its rank 1 is still to acquire: the orphan point waits.
+        let orphan = character.with_level_up(
+            LevelUp::new()
+                .with_rank(Voie::Bouclier, 2)
+                .with_orphan(OrphanExchange::LuckPoint),
+        );
+        assert_eq!(
+            level_violations(&orphan),
+            [("COF.PRG.ORPHAN".to_owned(), level(2), DEVIATION)]
+        );
+    }
 }

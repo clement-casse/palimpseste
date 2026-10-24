@@ -328,6 +328,7 @@ mod tests {
         const RULE: RuleId = RuleId::from_static("TEST.RULE");
         const VALUE: ValueId = ValueId::from_static("test-value");
         let owned_rule = RuleId::new("TEST.RULE".to_owned());
+        assert_eq!(RuleId::from_static("TEST.RULE"), owned_rule);
         let owned_value = ValueId::new("test-value".to_owned());
         assert_eq!(RULE, owned_rule);
         assert_eq!(RULE.cmp(&owned_rule), std::cmp::Ordering::Equal);

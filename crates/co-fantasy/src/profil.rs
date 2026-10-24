@@ -439,4 +439,13 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn each_family_rolls_its_recovery_die() {
+        let dice: Vec<String> = Family::ALL
+            .into_iter()
+            .map(|family| family.recovery_die().to_string())
+            .collect();
+        assert_eq!(dice, ["d8", "d10", "d6", "d8"]);
+    }
 }

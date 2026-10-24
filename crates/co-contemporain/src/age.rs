@@ -290,4 +290,30 @@ mod tests {
         let elderly = adult.with_age(70);
         assert_eq!(age_violations(&elderly), []);
     }
+
+    #[test]
+    fn every_bracket_is_named() {
+        let names: Vec<_> = [12, 20, 40, 60, 70]
+            .into_iter()
+            .filter_map(|years: u16| AgeBracket::of(years.into()))
+            .map(AgeBracket::name)
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "10-15 ans (adolescent)",
+                "16-30 ans",
+                "31-50 ans",
+                "51-65 ans",
+                "66 ans et plus (âgé)",
+            ]
+        );
+    }
+
+    #[test]
+    fn only_the_budgets_come_from_the_bracket() {
+        let character = Character::new().with_age(20);
+        assert_eq!(budget(&character, Value::Initiative), None);
+        assert!(budget(&character, Value::MaxRank).is_some());
+    }
 }

@@ -347,4 +347,20 @@ mod tests {
             Category::Deviation(Severity::Standard)
         );
     }
+
+    #[test]
+    fn grosse_tete_puts_int_in_place_of_con_at_level_1() {
+        let forgesort = values(Character::new().with_profil(Profil::Forgesort))
+            .with_series_value(Characteristic::Int, 2)
+            .with_rank(Voie::Golem, 1);
+        // 2 x 3 (mages) + CON 1.
+        assert_eq!(total(&forgesort, Value::VigourPoints), Some(7));
+        let int = crate::AbilityOption::Characteristic(Characteristic::Int);
+        let clever = forgesort.with_ability_option(Voie::Golem, 1, int);
+        // 2 x 3 + INT 2.
+        assert_eq!(total(&clever, Value::VigourPoints), Some(8));
+        // At level 3, CON counts for the two levels gained: 4 x 3 + 2 + 2 x 1.
+        let level_three = (0..2).fold(clever, |c, _| c.with_level_up(crate::LevelUp::new()));
+        assert_eq!(total(&level_three, Value::VigourPoints), Some(16));
+    }
 }

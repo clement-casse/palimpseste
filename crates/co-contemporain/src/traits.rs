@@ -611,4 +611,52 @@ mod tests {
             Trait::Sequelle(Sequel::DiminueEsprit).id()
         );
     }
+
+    #[test]
+    fn acquired_sequels_are_named_apart_from_the_trait() {
+        for sequel in Sequel::ALL {
+            let id = sequel.acquired_id();
+            assert_eq!(Sequel::from_acquired_id(id.as_str()), Some(sequel));
+            assert_ne!(id, Trait::Sequelle(sequel).id());
+            assert_ne!(sequel.acquired_name(), Trait::Sequelle(sequel).name());
+        }
+        assert_eq!(
+            Sequel::from_acquired_id("coc.acquired-sequel.unknown"),
+            None
+        );
+    }
+
+    #[test]
+    fn trait_points_are_a_magnitude() {
+        assert_eq!(TraitPoints::new(2), TraitPoints::from(2));
+        assert_eq!(TraitPoints::new(3).get(), 3);
+    }
+
+    #[test]
+    fn every_social_class_is_named() {
+        let classes = [
+            &[(Trait::ClasseInferieure, 2)][..],
+            &[(Trait::ClasseInferieure, 1)],
+            &[],
+            &[(Trait::ClasseSuperieure, 1)],
+            &[(Trait::ClasseSuperieure, 2)],
+            &[(Trait::ClasseSuperieure, 3)],
+        ];
+        let names: Vec<_> = classes
+            .into_iter()
+            .filter_map(|traits| social_class(&with(traits)))
+            .map(SocialClass::name)
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "Marginal",
+                "Classe populaire",
+                "Classe moyenne",
+                "Classe moyenne supérieure",
+                "Grande bourgeoisie",
+                "Grande fortune",
+            ]
+        );
+    }
 }
