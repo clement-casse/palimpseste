@@ -5,6 +5,7 @@ use co_kernel::{Characteristic, Characteristics, DerivedValue, Rank, Source};
 use crate::{
     AgeBracket, AttackMode, Character, HEALTH_SCALE_STEPS, Sequel, Trait, Voie, protection,
     rules::{CG, DEF, HEALTH_SCALE, INIT},
+    weapon,
 };
 
 /// Bonus of D'un autre âge to Init and DEF for an adolescent.
@@ -74,12 +75,14 @@ pub(crate) fn attack(
     }
 }
 
-/// Contact DM bonus = FOR (COC.DER.DM-BONUS), with Force de la nature +1.
+/// Contact DM bonus = FOR (COC.DER.DM-BONUS), INT when higher with Médecin
+/// (D-51), with Force de la nature +1.
 pub(crate) fn contact_damage_bonus(
     character: &Character,
     values: &Characteristics,
 ) -> DerivedValue {
-    let value = DerivedValue::new().with_characteristic(values, Characteristic::For);
+    let characteristic = weapon::damage_characteristic(character, values, Characteristic::For);
+    let value = DerivedValue::new().with_characteristic(values, characteristic);
     if character.has_trait(Trait::ForceDeLaNature) {
         value.with(Source::Value(Trait::ForceDeLaNature.id()), 1)
     } else {
@@ -205,6 +208,27 @@ mod tests {
             .with_trait(Trait::DUnAutreAge, 2)
             .with_trait(Trait::Sequelle(Sequel::DiminueCorps), 2);
         assert_eq!(total(&character, Value::HealthScale), Some(12));
+    }
+
+    #[test]
+    fn medecin_puts_a_higher_int_in_the_contact_damage() {
+        let doctor = Character::new()
+            .with_carac_points(Characteristic::For, 1)
+            .with_carac_points(Characteristic::Int, 3)
+            .with_rank(Voie::Medecine, 1)
+            .with_rank(Voie::Medecine, 2);
+        let bonus = doctor.value(Value::ContactDamageBonus).unwrap();
+        assert_eq!(bonus.total(), 3);
+        assert_eq!(
+            bonus.contributions()[0].source(),
+            &Source::Characteristic(Characteristic::Int)
+        );
+        let strong = doctor.with_carac_points(Characteristic::For, 4);
+        assert_eq!(total(&strong, Value::ContactDamageBonus), Some(4));
+        let student = Character::new()
+            .with_carac_points(Characteristic::Int, 3)
+            .with_rank(Voie::Medecine, 1);
+        assert_eq!(total(&student, Value::ContactDamageBonus), Some(0));
     }
 
     #[test]

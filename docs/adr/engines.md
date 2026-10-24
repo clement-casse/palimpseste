@@ -197,7 +197,9 @@ weapons. The rank-4 capacités of the combat voies are computed: Fin
 bretteur, Sniper and Disciple (critical on 18-20, a characteristic added to
 the DM and the bonus critique), and Canonnier (1d6 more with heavy weapons,
 the bonus critique following the dice as D-30 has it for the unarmed rank
-2, D-41).
+2, D-41). Médecin (médecine rank 2) puts INT in place of FOR in the
+contact DM bonus, and of AGI in the DM of Fin bretteur and Disciple,
+whenever INT is higher; the bonus critique keeps AGI (D-51).
 
 **ENG-COC-PROTECTIONS: RD and malus, never DEF.** Protections add RD, and
 their malus to Init, ATC and AGI tests, never to AGI or DEF (D-04, D-05).
