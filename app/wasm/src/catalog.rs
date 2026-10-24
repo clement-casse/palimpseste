@@ -57,6 +57,28 @@ pub struct FantasyCatalog {
     pub weapons: Vec<FantasyWeaponEntry>,
     /// The dice rolled for the purse, in pièces d'argent.
     pub purse_dice: String,
+    /// The steps of a level-up, in its form's order.
+    pub level_steps: Vec<Named>,
+    /// Every capacité of every voie, by identifier (ADR ENG-VALUE-IDS).
+    pub abilities: Vec<AbilityEntry>,
+    /// The options a capacité may take.
+    pub ability_options: Vec<Named>,
+    /// What an orphan point may be exchanged for.
+    pub orphan_exchanges: Vec<Named>,
+}
+
+/// A capacité, named by its identifier: the key its name, description and
+/// effects will attach to; today its label names its voie and rank.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+pub struct AbilityEntry {
+    /// Identifier, `<voie>.<rank>`.
+    pub id: String,
+    /// The voie's identifier.
+    pub voie: String,
+    /// The rank in the voie.
+    pub rank: u8,
+    /// Display label, such as `Voie de la rage, rang 2`.
+    pub label: String,
 }
 
 /// A COF2 profil.
@@ -183,6 +205,13 @@ pub struct ContemporainCatalog {
     pub protections: Vec<Named>,
     /// The échelle de santé and its states.
     pub health_scale: HealthScaleEntry,
+    /// The steps of a spending of XP, in its form's order.
+    pub spending_steps: Vec<Named>,
+    /// Every capacité of every voie, by identifier (ADR ENG-VALUE-IDS).
+    pub abilities: Vec<AbilityEntry>,
+    /// The sequels a character may acquire in play, by their identifier once
+    /// acquired.
+    pub sequels: Vec<Named>,
 }
 
 /// A COC2 domaine.
@@ -211,6 +240,10 @@ pub struct ContemporainVoieEntry {
     pub name: String,
     /// The weapon category its starting equipment gives one weapon of.
     pub starting_weapon: Option<Named>,
+    /// The characteristics its rank 5 raises whatever the choice.
+    pub rank_five_raises: Vec<Characteristic>,
+    /// The characteristics its rank 5 offers to choose from.
+    pub rank_five_choice: Vec<Characteristic>,
 }
 
 /// A COC2 trait distinctif.
@@ -403,6 +436,47 @@ fn fantasy() -> FantasyCatalog {
             })
             .collect(),
         purse_dice: co_fantasy::purse_dice().to_string(),
+        level_steps: co_fantasy::LevelStep::ALL
+            .iter()
+            .map(|step| Named::new(step.id(), step.name()))
+            .collect(),
+        abilities: Voie::ALL
+            .into_iter()
+            .flat_map(|voie| {
+                (1..=5).map(move |rank| {
+                    ability_entry(
+                        voie.ability(co_kernel::Rank::new(rank)).as_str(),
+                        voie.id().as_str(),
+                        rank,
+                        co_fantasy::label,
+                    )
+                })
+            })
+            .collect(),
+        ability_options: co_fantasy::AbilityOption::ALL
+            .into_iter()
+            .map(|option| Named::new(option.id(), option.name()))
+            .collect(),
+        orphan_exchanges: co_fantasy::OrphanExchange::ALL
+            .into_iter()
+            .map(|exchange| Named::new(exchange.id(), exchange.name()))
+            .collect(),
+    }
+}
+
+/// The catalog entry of the capacité `id`, labelled by the engine's
+/// `label`.
+fn ability_entry(
+    id: &str,
+    voie: &str,
+    rank: u8,
+    label: fn(&str) -> Option<String>,
+) -> AbilityEntry {
+    AbilityEntry {
+        id: id.to_owned(),
+        voie: voie.to_owned(),
+        rank,
+        label: label(id).unwrap_or_else(|| id.to_owned()),
     }
 }
 
@@ -440,6 +514,8 @@ fn contemporain() -> ContemporainCatalog {
                 id: voie.id().as_str().to_owned(),
                 name: voie.name().to_owned(),
                 starting_weapon: voie.starting_weapon().map(attack_mode),
+                rank_five_raises: characteristics(voie.rank_five_raises()),
+                rank_five_choice: characteristics(voie.rank_five_choice()),
             })
             .collect(),
         traits: Trait::ALL
@@ -475,5 +551,26 @@ fn contemporain() -> ContemporainCatalog {
                 })
                 .collect(),
         },
+        spending_steps: co_contemporain::SpendingStep::ALL
+            .iter()
+            .map(|step| Named::new(step.id(), step.name()))
+            .collect(),
+        abilities: Voie::ALL
+            .into_iter()
+            .flat_map(|voie| {
+                (1..=5).map(move |rank| {
+                    ability_entry(
+                        voie.ability(co_kernel::Rank::new(rank)).as_str(),
+                        voie.id().as_str(),
+                        rank,
+                        co_contemporain::label,
+                    )
+                })
+            })
+            .collect(),
+        sequels: co_contemporain::Sequel::ALL
+            .into_iter()
+            .map(|sequel| Named::new(sequel.acquired_id().as_str(), sequel.acquired_name()))
+            .collect(),
     }
 }

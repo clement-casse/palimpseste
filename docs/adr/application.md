@@ -92,7 +92,17 @@ constant term and an adjustment. No Rust object crosses the boundary, so
 JavaScript never frees memory by hand. Types are described to TypeScript by `tsify` and passed as
 `tsify::Ts`, so a wrong value throws instead of panicking. *Why not the
 `into_wasm_abi`/`from_wasm_abi` attributes:* they are deprecated, and leak
-memory when (de)serialization fails.
+memory when (de)serialization fails. Each violation carries
+where the engine places it (ADR ENG-COF-PLACEMENT, ENG-COC-PLACEMENT): a
+creation step, or a step of a level-up or spending, numbered in
+`progression`; `sheet.steps` count the creation's own, and
+`sheet.progression` gives each level-up or spending with the status of its
+steps. The details carry what each level-up or spending offers within the
+rules, the capacités held with where they were acquired, and the options
+they offer. A capacité is always named by its identifier: the catalog's
+`abilities` label each one, and a breakdown line gives the identifier of
+its source (`sourceId`), so the capacités' names, descriptions and effects
+attach later to the same key.
 
 **APP-WASM-BUILD: `cargo` and `wasm-bindgen-cli`.** `cargo` builds the
 `wasm32-unknown-unknown` target, and `wasm-bindgen --target web` writes an
