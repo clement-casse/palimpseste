@@ -195,4 +195,12 @@ mod tests {
         let character = Character::new().with_rank(Voie::ArmesLourdes, 1);
         assert_eq!(leftovers(&character), []);
     }
+
+    #[test]
+    fn free_text_items_come_from_any_name() {
+        let rope = Item::from("corde");
+        assert_eq!(Item::from(String::from("corde")), rope);
+        assert_eq!(Item::from(ItemName::from("corde")), rope);
+        assert_ne!(Item::from(Weapon::Couteau), rope);
+    }
 }

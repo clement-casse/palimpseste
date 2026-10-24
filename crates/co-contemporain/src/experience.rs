@@ -545,4 +545,14 @@ mod tests {
         assert_eq!(rules, Vec::<String>::new());
         assert_eq!(character.characteristics()[Characteristic::Per].get(), 0);
     }
+
+    #[test]
+    fn a_rank_given_up_is_not_bought() {
+        let spending = XpSpending::new()
+            .with_rank(Voie::Crime, 3)
+            .without_rank(Voie::Crime, 3);
+        assert_eq!(spending, XpSpending::new());
+        let character = criminal().with_experience(3).with_xp_spending(spending);
+        assert_eq!(total(&character, Value::Experience), Some(3));
+    }
 }

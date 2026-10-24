@@ -1015,4 +1015,81 @@ mod tests {
         let plate = guerrier.with_ability_option(Voie::Resistance, 3, AbilityOption::Armour);
         assert!(!limit(&plate));
     }
+
+    #[test]
+    fn capacites_offer_their_options() {
+        use Characteristic::{Agi, Cha, Con, For, Int};
+        let c = AbilityOption::Characteristic;
+        let character = zero();
+        let offered = |voie, rank: u8| character.ability_options_offered(voie, rank);
+        assert_eq!(offered(Voie::ElfeHaut, 5), [c(Int), c(Cha)]);
+        assert_eq!(offered(Voie::CombatADeuxArmes, 4), [c(Agi), c(For)]);
+        assert_eq!(offered(Voie::Pagne, 2), [c(Con)]);
+        assert_eq!(offered(Voie::Metal, 5), [c(Con)]);
+        assert_eq!(offered(Voie::Seduction, 4), [c(Cha)]);
+        assert_eq!(offered(Voie::Golem, 1), [c(Int)]);
+        assert_eq!(offered(Voie::Resistance, 3), [AbilityOption::Armour]);
+        assert_eq!(offered(Voie::Spiritualite, 1), [AbilityOption::Armour]);
+        assert_eq!(offered(Voie::Traqueur, 1), [AbilityOption::RecoveryDice]);
+        assert_eq!(offered(Voie::Archer, 1), [AbilityOption::Thrown]);
+        // All seven values at 0: every one is among the lowest.
+        assert_eq!(offered(Voie::Vent, 5).len(), 7);
+    }
+
+    #[test]
+    fn combattant_heroique_raises_the_characteristic_chosen() {
+        let duellist = ranks(zero(), Voie::CombatADeuxArmes, 4);
+        assert_eq!(
+            option_violations(&duellist),
+            [(ability(Voie::CombatADeuxArmes, 4), Category::Incomplete)]
+        );
+        let agi = AbilityOption::Characteristic(Characteristic::Agi);
+        let agile = duellist.with_ability_option(Voie::CombatADeuxArmes, 4, agi);
+        assert_eq!(option_violations(&agile), []);
+        assert_eq!(agile.characteristics()[Characteristic::Agi].get(), 1);
+        assert_eq!(agile.characteristics()[Characteristic::For].get(), 0);
+    }
+
+    #[test]
+    fn armure_sur_mesure_counts_in_plate() {
+        // Rank 5 of the voie de la guerre, a chevalier voie.
+        let chevalier = ranks(zero().with_profil(Profil::Chevalier), Voie::Guerre, 5);
+        let source = Source::Ability(Voie::Guerre.ability(Rank::new(1)));
+        let fitted = |c: &Character| {
+            c.value(Value::Defence).is_some_and(|value| {
+                value
+                    .contributions()
+                    .iter()
+                    .any(|contribution| contribution.source() == &source)
+            })
+        };
+        assert!(!fitted(
+            &chevalier.clone().with_armour(Armour::CotteDeMailles)
+        ));
+        assert!(fitted(&chevalier.with_armour(Armour::ArmureDePlaques)));
+    }
+
+    #[test]
+    fn effects_apply_under_their_condition_and_option() {
+        let effect = Effect::new(Voie::Archer, 1, Amount::Flat(2))
+            .only(Condition::Shield)
+            .when(When::Chosen(AbilityOption::Thrown));
+        let archer = zero().with_rank(Voie::Archer, 1);
+        let values = archer.characteristics();
+        assert_eq!(effect.amount(&archer, &values), None);
+        let shielded = archer.with_shield(Shield::PetitBouclier);
+        assert_eq!(effect.amount(&shielded, &values), None);
+        let thrower = shielded.with_ability_option(Voie::Archer, 1, AbilityOption::Thrown);
+        assert_eq!(effect.amount(&thrower, &values), Some(2));
+        assert_eq!(
+            Effect::flat(Voie::Rage, 1, 1).amount(&thrower, &values),
+            None
+        );
+        let bows = [WeaponEffect::new(Weapons::Bows, effect)];
+        let on = |weapon| {
+            apply_to_weapon(DerivedValue::new(), &thrower, &values, &bows, weapon, None).total()
+        };
+        assert_eq!(on(Weapon::ArcCourt), 2);
+        assert_eq!(on(Weapon::Dague), 0);
+    }
 }
