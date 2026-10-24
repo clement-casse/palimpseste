@@ -128,18 +128,19 @@ connection, each query on `spawn_blocking`. Tables `users`, `identities`,
 `friendships` (version 3); a document is stored as JSON text
 next to a version counter, its `ETag`. Foreign keys are enforced on the
 connection. The schema version is `PRAGMA user_version`, and opening the
-store migrates in one transaction: a database of no version (new, or older
-than the versioning) reaches version 1 by creating what is missing and
-migrating its earlier schema in place, each of those migrations running
-when its column is missing; each later change is a numbered migration,
-run once, in order. A database at a version the server does not know is
-refused. Migrations run with foreign keys enforced, so one that rebuilds a
+store migrates in one transaction: a new, empty database is created at
+version 3; each later change is a numbered migration, run once, in order.
+A database at any other version is refused untouched: one the server does
+not know yet, and one before version 3, whose migrations are gone.
+Migrations run with foreign keys enforced, so one that rebuilds a
 table others reference also needs the opening to turn them off around the
 transaction and check them before the commit. *Why not `sqlx`:* a handful
 of queries, and no database at build time. *Why a version number:* an
 index, a constraint or a data change adds no column whose absence could
-trigger it. Version 3 deleted the characters, whose documents moved to
-version 2 (ADR APP-DOCUMENT), and kept everything else.
+trigger it. *Why refuse the versions before 3:* the migration to version 3
+deleted every character, whose documents moved to version 2 (ADR
+APP-DOCUMENT); every store has passed it, and with its predecessors out of
+the code it can never run again.
 
 ## Sign-in and users
 

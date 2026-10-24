@@ -21,14 +21,22 @@ use crate::{
     user::nickname_candidates,
 };
 
-/// The tables of schema version 1, created where missing.
+/// The version of the schema `SCHEMA` creates, the earliest this server
+/// opens. The migrations to it are gone, the one deleting every character
+/// among them (ADR BE-STORE): a database at an earlier version is refused,
+/// so that they never run again.
+const BASE_VERSION: usize = 3;
+
+/// The tables and indexes of schema version 3, created in a new database.
+/// One friendship per pair of users, the lower id first.
 const SCHEMA: &str = "
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE users (
         id INTEGER PRIMARY KEY,
         nickname TEXT NOT NULL,
         profile TEXT NOT NULL DEFAULT ''
     );
-    CREATE TABLE IF NOT EXISTS characters (
+    CREATE UNIQUE INDEX users_nickname ON users (nickname COLLATE NOCASE);
+    CREATE TABLE characters (
         id INTEGER PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users (id),
         name TEXT NOT NULL,
@@ -36,19 +44,20 @@ const SCHEMA: &str = "
         document TEXT NOT NULL,
         version INTEGER NOT NULL
     );
-    CREATE TABLE IF NOT EXISTS identities (
+    CREATE TABLE identities (
         issuer TEXT NOT NULL,
         subject TEXT NOT NULL,
         user_id INTEGER NOT NULL REFERENCES users (id),
         label TEXT NOT NULL DEFAULT '',
         PRIMARY KEY (issuer, subject)
     );
-    CREATE TABLE IF NOT EXISTS sessions (
+    CREATE UNIQUE INDEX identities_user_issuer ON identities (user_id, issuer);
+    CREATE TABLE sessions (
         token_hash TEXT PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users (id),
         expires_at INTEGER NOT NULL
     );
-    CREATE TABLE IF NOT EXISTS logins (
+    CREATE TABLE logins (
         id TEXT PRIMARY KEY,
         provider TEXT NOT NULL,
         state TEXT NOT NULL,
@@ -57,7 +66,7 @@ const SCHEMA: &str = "
         expires_at INTEGER NOT NULL,
         link_user INTEGER REFERENCES users (id)
     );
-    CREATE TABLE IF NOT EXISTS registrations (
+    CREATE TABLE registrations (
         token_hash TEXT PRIMARY KEY,
         issuer TEXT NOT NULL,
         subject TEXT NOT NULL,
@@ -65,70 +74,31 @@ const SCHEMA: &str = "
         nickname TEXT NOT NULL,
         expires_at INTEGER NOT NULL
     );
+    CREATE TABLE invitations (
+        id INTEGER PRIMARY KEY,
+        token_hash TEXT NOT NULL UNIQUE,
+        user_id INTEGER NOT NULL REFERENCES users (id),
+        expires_at INTEGER NOT NULL
+    );
+    CREATE INDEX invitations_user ON invitations (user_id);
+    CREATE TABLE friendships (
+        id INTEGER PRIMARY KEY,
+        user_low INTEGER NOT NULL REFERENCES users (id),
+        user_high INTEGER NOT NULL REFERENCES users (id),
+        CHECK (user_low < user_high),
+        UNIQUE (user_low, user_high)
+    );
+    CREATE INDEX friendships_high ON friendships (user_high);
 ";
 
-/// Brings a database older than the versioned schema to version 1, each
-/// migration when its column is missing, before indexing it. Before
-/// nicknames and linked identities (ADR BE-USERS and ADR BE-IDENTITIES), a
-/// user had a `name` (not unique), an identity no label, and a sign-in
-/// nothing to link.
-const UNVERSIONED_MIGRATIONS: [(&str, &str, &str); 3] = [
-    (
-        "users",
-        "profile",
-        "ALTER TABLE users RENAME COLUMN name TO nickname;
-         ALTER TABLE users ADD COLUMN profile TEXT NOT NULL DEFAULT '';
-         UPDATE users SET nickname = nickname || ' ' || id
-         WHERE id NOT IN (SELECT MIN(id) FROM users GROUP BY nickname COLLATE NOCASE);",
-    ),
-    (
-        "identities",
-        "label",
-        "ALTER TABLE identities ADD COLUMN label TEXT NOT NULL DEFAULT '';",
-    ),
-    (
-        "logins",
-        "link_user",
-        "ALTER TABLE logins ADD COLUMN link_user INTEGER REFERENCES users (id);",
-    ),
-];
-
-/// The indexes of schema version 1, created where missing.
-const INDEXES: &str = "
-    CREATE UNIQUE INDEX IF NOT EXISTS users_nickname ON users (nickname COLLATE NOCASE);
-    CREATE UNIQUE INDEX IF NOT EXISTS identities_user_issuer ON identities (user_id, issuer);
-";
-
-/// The schema changes after version 1, in order: `MIGRATIONS[i]` brings a
-/// database at version `i + 1` to version `i + 2`. A change to the schema
+/// The schema changes after version 3, in order: `MIGRATIONS[i]` brings a
+/// database at version `i + 3` to version `i + 4`. A change to the schema
 /// appends one; a migration once released is never edited. They run in the
 /// opening transaction with foreign keys enforced, which SQLite does not let
 /// a migration turn off: rebuilding a table others reference (`users`)
 /// first makes `SqliteRepo::with` turn them off around `migrate`, and check
 /// them with `PRAGMA foreign_key_check` before the commit.
-const MIGRATIONS: [&str; 2] = [
-    // 2: invitations and friendships (ADR BE-INVITATIONS, ADR BE-FRIENDS).
-    // One friendship per pair of users, the lower id first.
-    "CREATE TABLE invitations (
-         id INTEGER PRIMARY KEY,
-         token_hash TEXT NOT NULL UNIQUE,
-         user_id INTEGER NOT NULL REFERENCES users (id),
-         expires_at INTEGER NOT NULL
-     );
-     CREATE INDEX invitations_user ON invitations (user_id);
-     CREATE TABLE friendships (
-         id INTEGER PRIMARY KEY,
-         user_low INTEGER NOT NULL REFERENCES users (id),
-         user_high INTEGER NOT NULL REFERENCES users (id),
-         CHECK (user_low < user_high),
-         UNIQUE (user_low, user_high)
-     );
-     CREATE INDEX friendships_high ON friendships (user_high);",
-    // 3: the choices document moves to version 2, which reads no version 1
-    // (ADR APP-DOCUMENT); the characters stored before are deleted, the
-    // accounts, identities and friendships kept (ADR BE-STORE).
-    "DELETE FROM characters;",
-];
+const MIGRATIONS: [&str; 0] = [];
 
 const USER_COLUMNS: &str = "users.id, users.nickname, users.profile";
 
@@ -198,54 +168,47 @@ impl SqliteRepo {
 }
 
 /// Brings the database to the last version `migrations` lead to, in one
-/// transaction: from no version (a new database, or one older than the
-/// versioned schema) to version 1, then through each migration after the
-/// version it is at. A database at a later version than `migrations` know is
-/// refused, rather than read by a server that does not know its schema.
+/// transaction: a new database, empty, to version 3, then through each
+/// migration after the version it is at. A database at another version is
+/// refused untouched: before version 3, it would need the migrations that
+/// are gone; after the last, a server that does not know its schema would
+/// read it.
 fn migrate(connection: &mut Connection, migrations: &[&str]) -> anyhow::Result<()> {
     let transaction = connection.transaction()?;
     let stored: i64 = transaction.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    let latest = migrations.len() + 1;
-    let current = usize::try_from(stored)
-        .ok()
-        .filter(|current| *current <= latest)
-        .ok_or_else(|| {
-            anyhow!("database at schema version {stored}, this server knows up to {latest}")
-        })?;
-    if current == 0 {
-        unversioned_to_first(&transaction).context("migrating the schema to version 1")?;
-    }
-    for (index, migration) in migrations
-        .iter()
-        .enumerate()
-        .skip(current.saturating_sub(1))
-    {
+    let latest = BASE_VERSION + migrations.len();
+    let empty: bool = transaction.query_row(
+        "SELECT NOT EXISTS (SELECT 1 FROM sqlite_schema)",
+        [],
+        |row| row.get(0),
+    )?;
+    let current = if stored == 0 && empty {
         transaction
-            .execute_batch(migration)
-            .with_context(|| format!("migrating the schema to version {}", index + 2))?;
+            .execute_batch(SCHEMA)
+            .with_context(|| format!("creating the schema of version {BASE_VERSION}"))?;
+        BASE_VERSION
+    } else {
+        usize::try_from(stored)
+            .ok()
+            .filter(|current| (BASE_VERSION..=latest).contains(current))
+            .ok_or_else(|| {
+                anyhow!(
+                    "database at schema version {stored}, this server opens versions \
+                     {BASE_VERSION} to {latest}"
+                )
+            })?
+    };
+    for (index, migration) in migrations.iter().enumerate().skip(current - BASE_VERSION) {
+        transaction.execute_batch(migration).with_context(|| {
+            format!(
+                "migrating the schema to version {}",
+                BASE_VERSION + index + 1
+            )
+        })?;
     }
     transaction.pragma_update(None, "user_version", i64::try_from(latest)?)?;
     transaction.commit()?;
     Ok(())
-}
-
-/// Brings a database of no version to version 1: creates the tables and
-/// indexes missing, after migrating each earlier schema whose column is
-/// missing. Applied to a database already at the shape of version 1, it
-/// changes nothing.
-fn unversioned_to_first(transaction: &Transaction<'_>) -> rusqlite::Result<()> {
-    transaction.execute_batch(SCHEMA)?;
-    for (table, column, migration) in UNVERSIONED_MIGRATIONS {
-        let current: bool = transaction.query_row(
-            "SELECT EXISTS (SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2)",
-            params![table, column],
-            |row| row.get(0),
-        )?;
-        if !current {
-            transaction.execute_batch(migration)?;
-        }
-    }
-    transaction.execute_batch(INDEXES)
 }
 
 fn lock(connection: &Mutex<Connection>) -> MutexGuard<'_, Connection> {
@@ -1127,9 +1090,14 @@ mod tests {
             .unwrap()
     }
 
+    /// The version `migrations` bring a database to.
+    fn version_after(migrations: &[&str]) -> i64 {
+        i64::try_from(BASE_VERSION + migrations.len()).unwrap()
+    }
+
     /// The version `SqliteRepo` migrates a database to.
     fn last_version() -> i64 {
-        i64::try_from(MIGRATIONS.len()).unwrap() + 1
+        version_after(&MIGRATIONS)
     }
 
     #[test]
@@ -1142,7 +1110,7 @@ mod tests {
     fn migrations_run_once_in_order() {
         let first = ["CREATE TABLE notes (id INTEGER PRIMARY KEY)"];
         let second = [first[0], "ALTER TABLE notes ADD COLUMN text TEXT"];
-        // From version 1, where `open` leaves a database today: one
+        // From version 3, where `open` leaves a database today: one
         // migration at a time, then both in one opening.
         let one_by_one: [&[&str]; 3] = [&[], &first, &second];
         let at_once: [&[&str]; 2] = [&[], &second];
@@ -1152,10 +1120,7 @@ mod tests {
                 // Run again, a migration would fail: its table or column exists.
                 migrate(&mut connection, migrations).unwrap();
                 migrate(&mut connection, migrations).unwrap();
-                assert_eq!(
-                    schema_version(&connection),
-                    i64::try_from(migrations.len()).unwrap() + 1
-                );
+                assert_eq!(schema_version(&connection), version_after(migrations));
             }
             connection
                 .execute("INSERT INTO notes (text) VALUES ('kept')", [])
@@ -1168,7 +1133,7 @@ mod tests {
         let mut connection = Connection::open_in_memory().unwrap();
         let failing = ["CREATE TABLE notes (id INTEGER PRIMARY KEY)", "NOT SQL"];
         let error = migrate(&mut connection, &failing).unwrap_err();
-        assert!(error.to_string().contains("version 3"), "{error}");
+        assert!(error.to_string().contains("version 5"), "{error}");
         assert_eq!(schema_version(&connection), 0);
         let tables: i64 = connection
             .query_row("SELECT COUNT(*) FROM sqlite_schema", [], |row| row.get(0))
@@ -1185,8 +1150,39 @@ mod tests {
         )
         .unwrap();
         let error = migrate(&mut connection, &[]).unwrap_err();
-        assert!(error.to_string().contains("schema version 2"), "{error}");
-        assert_eq!(schema_version(&connection), 2);
+        assert!(error.to_string().contains("schema version 4"), "{error}");
+        assert_eq!(schema_version(&connection), 4);
+    }
+
+    #[test]
+    fn a_database_before_version_3_is_refused_untouched() {
+        // Its characters may predate the choices document version 2: the
+        // migration that deleted them must never run again (ADR BE-STORE).
+        // Version 0 with tables is a database from before the versioning.
+        for stored in [0, 1, 2] {
+            let mut connection = Connection::open_in_memory().unwrap();
+            connection
+                .execute_batch(
+                    "CREATE TABLE characters (id INTEGER PRIMARY KEY);
+                     INSERT INTO characters (id) VALUES (1);",
+                )
+                .unwrap();
+            connection
+                .pragma_update(None, "user_version", stored)
+                .unwrap();
+            let error = migrate(&mut connection, &MIGRATIONS).unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains(&format!("schema version {stored},")),
+                "{error}"
+            );
+            assert_eq!(schema_version(&connection), stored);
+            let characters: i64 = connection
+                .query_row("SELECT COUNT(*) FROM characters", [], |row| row.get(0))
+                .unwrap();
+            assert_eq!(characters, 1);
+        }
     }
 
     #[test]
@@ -1813,117 +1809,6 @@ mod tests {
                 .unwrap(),
             None
         );
-    }
-
-    #[tokio::test]
-    async fn migrates_a_database_of_version_1() {
-        let mut connection = Connection::open_in_memory().unwrap();
-        migrate(&mut connection, &MIGRATIONS[..0]).unwrap();
-        assert_eq!(schema_version(&connection), 1);
-        let repo = SqliteRepo {
-            connection: Arc::new(Mutex::new(connection)),
-        };
-        let ana = sign_up(&repo, "a", "Ana").await;
-        let ben = sign_up(&repo, "b", "Ben").await;
-        migrate(&mut lock(&repo.connection), &MIGRATIONS).unwrap();
-        assert_eq!(schema_version(&lock(&repo.connection)), last_version());
-        repo.create_invitation(ana.id, &token("ana"), HOUR)
-            .await
-            .unwrap();
-        let ana_for_ben = repo.accept_invitation(ben.id, &token("ana")).await.unwrap();
-        assert_eq!(ana_for_ben.nickname, ana.nickname);
-    }
-
-    #[tokio::test]
-    async fn migrating_to_version_3_deletes_the_characters_only() {
-        let mut connection = Connection::open_in_memory().unwrap();
-        migrate(&mut connection, &MIGRATIONS[..1]).unwrap();
-        assert_eq!(schema_version(&connection), 2);
-        let repo = SqliteRepo {
-            connection: Arc::new(Mutex::new(connection)),
-        };
-        let ana = sign_up(&repo, "a", "Ana").await;
-        repo.create_character(ana.id, &brune_name(), &Document::empty(Engine::Fantasy))
-            .await
-            .unwrap();
-        migrate(&mut lock(&repo.connection), &MIGRATIONS).unwrap();
-        assert_eq!(schema_version(&lock(&repo.connection)), last_version());
-        assert_eq!(repo.characters(ana.id).await.unwrap(), []);
-        // The account stays, with its identity.
-        assert_eq!(repo.identities(ana.id).await.unwrap().len(), 1);
-    }
-
-    #[tokio::test]
-    async fn migrates_a_database_of_adr_0009() {
-        let path = std::env::temp_dir().join(format!(
-            "palimpseste-store-migration-{}.sqlite3",
-            std::process::id()
-        ));
-        let _ = std::fs::remove_file(&path);
-        Connection::open(&path)
-            .unwrap()
-            .execute_batch(
-                "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);
-                 CREATE TABLE identities (
-                     issuer TEXT NOT NULL, subject TEXT NOT NULL,
-                     user_id INTEGER NOT NULL REFERENCES users (id),
-                     PRIMARY KEY (issuer, subject));
-                 CREATE TABLE logins (
-                     id TEXT PRIMARY KEY, provider TEXT NOT NULL, state TEXT NOT NULL,
-                     nonce TEXT NOT NULL, pkce_verifier TEXT NOT NULL,
-                     expires_at INTEGER NOT NULL);
-                 INSERT INTO users (name) VALUES ('Ana'), ('Ben'), ('ana');
-                 INSERT INTO identities VALUES ('https://issuer.test', 'a', 1);",
-            )
-            .unwrap();
-        for _ in 0..2 {
-            let repo = SqliteRepo::open(&path).await.unwrap();
-            assert_eq!(schema_version(&lock(&repo.connection)), last_version());
-            let ana = repo.identity_user(ISSUER, "a", "").await.unwrap().unwrap();
-            assert_eq!(ana.nickname.as_str(), "Ana");
-            assert_eq!(
-                repo.identities(ana.id).await.unwrap(),
-                vec![identity(ISSUER, "")]
-            );
-            for taken in ["ana 3", "Ben"] {
-                assert!(matches!(
-                    repo.update_user(ana.id, Some(nickname(taken)), None).await,
-                    Err(Error::NicknameTaken)
-                ));
-            }
-        }
-        std::fs::remove_file(&path).unwrap();
-    }
-
-    #[tokio::test]
-    async fn a_database_from_before_the_versioning_keeps_its_accounts() {
-        let path = std::env::temp_dir().join(format!(
-            "palimpseste-store-unversioned-{}.sqlite3",
-            std::process::id()
-        ));
-        let _ = std::fs::remove_file(&path);
-        let (ana, brune) = {
-            // The schema of version 1, as opened before the version was kept.
-            let mut connection = Connection::open(&path).unwrap();
-            migrate(&mut connection, &[]).unwrap();
-            connection.pragma_update(None, "user_version", 0).unwrap();
-            let repo = SqliteRepo {
-                connection: Arc::new(Mutex::new(connection)),
-            };
-            let ana = sign_up(&repo, "a", "Ana").await;
-            let brune = repo
-                .create_character(ana.id, &brune_name(), &Document::empty(Engine::Fantasy))
-                .await
-                .unwrap();
-            (ana, brune)
-        };
-        let reopened = SqliteRepo::open(&path).await.unwrap();
-        assert_eq!(schema_version(&lock(&reopened.connection)), last_version());
-        // The account stays; the character goes with version 3.
-        assert_eq!(reopened.identities(ana.id).await.unwrap().len(), 1);
-        assert_eq!(reopened.character(ana.id, brune.id).await.unwrap(), None);
-        drop(reopened);
-        std::fs::remove_file(&path).unwrap();
     }
 
     #[tokio::test]

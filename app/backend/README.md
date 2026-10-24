@@ -99,7 +99,7 @@ tokens or claims (ADR BE-LOGS).
 
 The SQLite file is created if missing. Opening it migrates its schema,
 versioned by `PRAGMA user_version`, in place; a database newer than the
-server is refused (ADR BE-STORE).
+server, or before version 3, is refused (ADR BE-STORE).
 
 ## Recipes
 
@@ -111,7 +111,7 @@ Follow the backend-structure skill. In short:
 - **New persistence:** a method on `PalimpsesteRepository`, implemented in
   `repo/sqlite.rs` on `spawn_blocking`. A schema change is a migration
   appended to `MIGRATIONS`, run once per database, with a test that opens
-  a database of the previous version.
+  a database of the previous version. `SCHEMA` stays at version 3.
 - **A new configuration option:** a clap field with an `env` in `main.rs`,
   and a row in ADR BE-CONFIG.
 
