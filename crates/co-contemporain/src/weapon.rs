@@ -321,22 +321,41 @@ const fn mastery(weapon: Weapon) -> Option<(Voie, Characteristic)> {
     }
 }
 
-/// Adds the characteristic of the rank-4 weapon capacité, when acquired.
+/// The rank-4 weapon capacité acquired for `weapon`, with its
+/// characteristic.
+fn held_mastery(character: &Character, weapon: Weapon) -> Option<(Voie, Characteristic)> {
+    mastery(weapon).filter(|(voie, _)| character.has_rank(*voie, Rank::new(MASTERY_RANK)))
+}
+
+/// Adds `characteristic` with the rank-4 weapon capacité of `voie` as
+/// source.
 fn with_mastery(
     value: DerivedValue,
+    values: &Characteristics,
+    voie: Voie,
+    characteristic: Characteristic,
+) -> DerivedValue {
+    value.with(
+        Source::Ability(voie.ability(Rank::new(MASTERY_RANK))),
+        values[characteristic].get(),
+    )
+}
+
+/// The characteristic added to the DM in place of `usual`: INT, when
+/// higher, for FOR or AGI with Médecin (médecine rank 2, D-51).
+pub(crate) fn damage_characteristic(
     character: &Character,
     values: &Characteristics,
-    weapon: Weapon,
-) -> DerivedValue {
-    let rank = Rank::new(MASTERY_RANK);
-    match mastery(weapon) {
-        Some((voie, characteristic)) if character.has_rank(voie, rank) => value.with(
-            Source::Ability(voie.ability(rank)),
-            values[characteristic].get(),
-        ),
-        _ => value,
-    }
+    usual: Characteristic,
+) -> Characteristic {
+    let replaced = matches!(usual, Characteristic::For | Characteristic::Agi)
+        && character.has_rank(Voie::Medecine, Rank::new(MEDECIN_RANK))
+        && values[Characteristic::Int] > values[usual];
+    if replaced { Characteristic::Int } else { usual }
 }
+
+/// The rank of Médecin in the voie de la médecine.
+const MEDECIN_RANK: u8 = 2;
 
 /// The damage dice: the table's, 1d6 unarmed with the rank-2 capacité of
 /// the combat à mains nues, and 1d6 more with heavy weapons with Canonnier
@@ -360,7 +379,7 @@ pub(crate) fn damage_dice(character: &Character, weapon: Weapon) -> Dice {
 
 /// The DM added to the dice: the weapon's own, the contact DM bonus for
 /// unarmed and contact attacks (COC.DER.DM-BONUS), and the rank-4
-/// capacité's characteristic.
+/// capacité's characteristic, INT in place of AGI with Médecin (D-51).
 pub(crate) fn damage(
     character: &Character,
     values: &Characteristics,
@@ -378,7 +397,15 @@ pub(crate) fn damage(
     {
         value.extend(bonus.contributions().iter().cloned());
     }
-    with_mastery(value, character, values, weapon)
+    match held_mastery(character, weapon) {
+        Some((voie, characteristic)) => with_mastery(
+            value,
+            values,
+            voie,
+            damage_characteristic(character, values, characteristic),
+        ),
+        None => value,
+    }
 }
 
 /// The bonus critique (COC.DER.CRIT-BONUS): the highest result of the dice
@@ -395,7 +422,10 @@ pub(crate) fn critical_bonus(
     }
     let highest = damage_dice(character, weapon).highest() + profile.flat;
     let value = DerivedValue::new().with(Source::Value(weapon.id()), highest);
-    Some(with_mastery(value, character, values, weapon))
+    Some(match held_mastery(character, weapon) {
+        Some((voie, characteristic)) => with_mastery(value, values, voie, characteristic),
+        None => value,
+    })
 }
 
 /// The lowest natural roll of a critical success (COC.DER.CRIT-RANGE): 20,
@@ -405,12 +435,12 @@ pub(crate) fn critical_range(character: &Character, weapon: Weapon) -> DerivedVa
     if weapon == Weapon::FusilDePrecision {
         value = value.with(Source::Value(weapon.id()), CRITICAL_WIDENING);
     }
-    let rank = Rank::new(MASTERY_RANK);
-    match mastery(weapon) {
-        Some((voie, _)) if character.has_rank(voie, rank) => {
-            value.with(Source::Ability(voie.ability(rank)), CRITICAL_WIDENING)
-        }
-        _ => value,
+    match held_mastery(character, weapon) {
+        Some((voie, _)) => value.with(
+            Source::Ability(voie.ability(Rank::new(MASTERY_RANK))),
+            CRITICAL_WIDENING,
+        ),
+        None => value,
     }
 }
 
@@ -466,6 +496,35 @@ mod tests {
             Some(1)
         );
         assert_eq!(total(&character, Value::Damage(Weapon::Arbalete)), Some(0));
+    }
+
+    #[test]
+    fn medecin_puts_a_higher_int_in_the_damage_only() {
+        let character = Character::new()
+            .with_carac_points(Characteristic::Agi, 2)
+            .with_carac_points(Characteristic::Int, 3);
+        let fencer = ranks(character, Voie::ArmesDeContact, 4);
+        let doctor = ranks(fencer.clone(), Voie::Medecine, 2);
+        // INT 3 replaces FOR 0 in the contact bonus and AGI 2 in Fin
+        // bretteur's DM, never in its bonus critique.
+        assert_eq!(total(&fencer, Value::Damage(Weapon::Fleuret)), Some(2));
+        assert_eq!(total(&doctor, Value::Damage(Weapon::Fleuret)), Some(3 + 3));
+        assert_eq!(
+            total(&doctor, Value::CriticalBonus(Weapon::Fleuret)),
+            Some(8 + 2)
+        );
+        let sniper = ranks(
+            Character::new()
+                .with_carac_points(Characteristic::Per, 1)
+                .with_carac_points(Characteristic::Int, 3),
+            Voie::ArmesADistance,
+            4,
+        );
+        let sniper = ranks(sniper, Voie::Medecine, 2);
+        assert_eq!(
+            total(&sniper, Value::Damage(Weapon::FusilDePrecision)),
+            Some(1 + 1)
+        );
     }
 
     #[test]
