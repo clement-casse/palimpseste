@@ -10,10 +10,17 @@
     steps,
     current,
     onselect,
-  }: { steps: StepStatus[]; current: string; onselect: (id: string) => void } = $props();
+    label = "Étapes de création",
+  }: {
+    steps: StepStatus[];
+    current: string;
+    onselect: (id: string) => void;
+    /** What the steps are of, for assistive technologies. */
+    label?: string;
+  } = $props();
 </script>
 
-<nav aria-label="Étapes de création" class="overflow-x-auto">
+<nav aria-label={label} class="overflow-x-auto">
   <Listgroup active class="w-max min-w-full flex-row md:w-full md:flex-col">
     {#each steps as step, i (step.id)}
       <!-- `active` on each item too: flowbite-svelte renders an item as a

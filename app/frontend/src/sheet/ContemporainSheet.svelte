@@ -33,6 +33,8 @@
   import Restore from "./Restore.svelte";
   import Tile from "./Tile.svelte";
   import { damage, range, shown, weaponSlugs } from "./values";
+  import { currentVoies } from "../progression/progression";
+  import { characterPath, follow } from "../router.svelte";
   import VoieRanks from "./VoieRanks.svelte";
 
   let {
@@ -43,7 +45,10 @@
     play,
     notes,
     equipment,
+    characterId,
   }: {
+    /** The user's own character, to record what play brings; none for a friend's. */
+    characterId?: number;
     choices: ContemporainDocument;
     catalog: ContemporainCatalog;
     sheet: Sheet;
@@ -146,6 +151,11 @@
       notes={valueMarks(HEALTH)}
       onchange={play ? (damage) => play.set(HEALTH, damage, health) : undefined}
     />
+    {#if play && characterId !== undefined && play.used(HEALTH, health) >= health}
+      <a class="text-sm underline" href={`${characterPath(characterId)}#progression`} onclick={follow}>
+        Séquelle subie ? L’inscrire
+      </a>
+    {/if}
   {/if}
   {#if play}<Restore {play} />{/if}
 </div>
@@ -210,7 +220,21 @@
   </Block>
 
   <Block title="Voies" notes={marksAt(notes, ...steps("voies"))}>
-    <VoieRanks voies={choices.voies ?? []} names={namesOf(catalog.voies)} {notes} />
+    <VoieRanks
+      voies={currentVoies(catalog, details.abilitiesHeld)}
+      names={namesOf(catalog.voies)}
+      {notes}
+      {catalog}
+      held={details.abilitiesHeld}
+    />
+    <p class="mt-2 text-sm">
+      XP restante : {line("coc.experience")?.total ?? "—"}
+      {#if play && characterId !== undefined}
+        · <a class="underline" href={`${characterPath(characterId)}#progression`} onclick={follow}>
+          Fin de séance : inscrire l’XP gagnée
+        </a>
+      {/if}
+    </p>
   </Block>
 
   <Block title="Traits distinctifs" notes={marksAt(notes, ...steps("traits"))}>
@@ -230,6 +254,14 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">Aucun.</p>
       {/if}
     {/each}
+    {#if (choices.acquiredSequels ?? []).length > 0}
+      <Heading tag="h4" class="text-base text-gray-500 dark:text-gray-400">Séquelles subies</Heading>
+      <ul class="space-y-1">
+        {#each choices.acquiredSequels ?? [] as id (id)}
+          <li>{catalog.sequels.find((s) => s.id === id)?.name ?? id}</li>
+        {/each}
+      </ul>
+    {/if}
   </Block>
 
   <EquipmentSection

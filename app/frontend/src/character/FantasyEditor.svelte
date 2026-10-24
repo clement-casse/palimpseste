@@ -40,6 +40,8 @@
     signed,
     valueOf,
   } from "./edits";
+  import AbilityOptionPicker from "../progression/AbilityOptionPicker.svelte";
+  import LaterRanks from "../progression/LaterRanks.svelte";
   import Items from "./Items.svelte";
   import RankPicker from "./RankPicker.svelte";
 
@@ -48,11 +50,13 @@
     catalog,
     details,
     step,
+    characterId,
   }: {
     choices: FantasyDocument;
     catalog: FantasyCatalog;
     details: FantasyDetails;
     step: string;
+    characterId: number;
   } = $props();
 
   const voieNames = $derived(namesOf(catalog.voies));
@@ -318,7 +322,10 @@
   {#snippet voieRow(id: string)}
     <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
       <span>{voieNames.get(id) ?? id}</span>
-      <RankPicker ranks={ranksOf(choices.voies, id)} onchange={(r) => setVoie(id, r)} />
+      <span class="inline-flex flex-wrap items-center gap-2">
+        <RankPicker ranks={ranksOf(choices.voies, id)} onchange={(r) => setVoie(id, r)} />
+        <LaterRanks {catalog} held={details.abilitiesHeld} voie={id} {characterId} levels />
+      </span>
     </ListgroupItem>
   {/snippet}
   <Helper class="text-sm">
@@ -343,6 +350,13 @@
     </Listgroup>
   {:else}
     <Helper class="text-sm">Choisissez d'abord un peuple.</Helper>
+  {/if}
+  {@const creationOptions = details.abilityOptions.filter((line) => line.progression == null)}
+  {#if creationOptions.length > 0}
+    <Heading tag="h3" class="text-lg">Options des capacités</Heading>
+    {#each creationOptions as line (line.ability)}
+      <AbilityOptionPicker bind:choices {catalog} {line} />
+    {/each}
   {/if}
   <Accordion flush>
     <AccordionItem open={otherVoies.length > 0} headingTag="h3" classes={{ content: "space-y-3 py-3" }}>

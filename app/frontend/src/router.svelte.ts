@@ -44,6 +44,13 @@ export const INVITATION = "/invitation";
 
 export const characterPath = (id: number) => `/characters/${id}`;
 
+/**
+ * The level-up (COF2) or spending of XP (COC2) numbered `number` being
+ * prepared, or the next one (ADR FE-PROGRESSION).
+ */
+export const characterProgressionPath = (id: number, number: number | "new") =>
+  `/characters/${id}/progression/${number}`;
+
 /** The sheet a player follows a character with during a session. */
 export const characterSheetPath = (id: number) => `/characters/${id}/sheet`;
 
@@ -64,6 +71,7 @@ export type Page =
   | { name: "characters" }
   | { name: "character"; id: number }
   | { name: "character-sheet"; id: number }
+  | { name: "character-progression"; id: number; number: number | "new" }
   | { name: "profile" }
   | { name: "friends" }
   | { name: "friend"; id: number }
@@ -82,6 +90,11 @@ export function match(path: string): Page {
   if (path === INVITATION) return { name: "invitation" };
   const character = /^\/characters\/(\d+)$/.exec(path);
   if (character) return { name: "character", id: Number(character[1]) };
+  const progression = /^\/characters\/(\d+)\/progression\/(new|\d+)$/.exec(path);
+  if (progression) {
+    const number = progression[2] === "new" ? "new" : Number(progression[2]);
+    return { name: "character-progression", id: Number(progression[1]), number };
+  }
   const sheet = /^\/characters\/(\d+)\/sheet$/.exec(path);
   if (sheet) return { name: "character-sheet", id: Number(sheet[1]) };
   const friend = /^\/friends\/(\d+)$/.exec(path);

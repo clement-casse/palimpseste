@@ -32,6 +32,9 @@ scans every flowbite-svelte component.
 
 **FE-PAGES: One page per path.** `/` lists the user's characters,
 `/characters/{id}` edits one (the current step in the hash),
+`/characters/{id}/progression/{n}` prepares its level-up (COF2, `n` the
+level reached) or spending of XP (COC2, `n` from 1), `new` for the next one
+(ADR FE-PROGRESSION),
 `/characters/{id}/sheet` shows its sheet for play (ADR FE-SHEET),
 `/profile` shows the user's profile, `/friends` their friends and
 invitations, `/friends/{id}` a friend and their characters,
@@ -100,6 +103,38 @@ editors receive the document as a `$bindable` prop (`bind:choices`) and
 change it directly; the parent narrows the document, catalog and details
 by engine, so nothing is cast.
 
+**FE-PROGRESSION: Level-ups and spendings are drafts, validated whole.**
+After the creation steps, the editor's step list ends with "Progression":
+the level-ups (COF2) or spendings of XP (COC2) validated, each opened in
+its own form, and "Monter au niveau N" or "Dépenser de l'XP", offered
+only once the character is complete (`unsettledAll`: no missing choice
+and no rule broken without a waiver, a waived one counting as settled,
+ADR FE-OVERRIDES), the only gate in the interface, on a workflow, never
+on a rule. The form (`ProgressionEditor`) prepares one entry aside: a
+copy of the whole document with the entry, kept as a draft on this device
+(`palimpseste.draft.{id}` in `localStorage`, with the version it started
+from) so a reload keeps it, evaluated by the engine on every change; its
+steps are the engine's (Capacités, Options, Changement d'orientation,
+Point orphelin; Rangs, Traits, Caractéristiques), then "Bilan", which
+lists what the entry brings and what it changes on the sheet (the
+document before it against the document with it), and this entry's
+violations. Each step offers what the engine offers within the rules
+first (`levels`, `spendings`), anything else under "Hors règles". "Valider
+le niveau" saves the copy once (`PUT` with `If-Match` at the draft's
+version, a `412` keeping the draft), only when the entry has nothing left
+to settle; "Abandonner le brouillon" forgets it; the last entry saved may
+be removed, nothing earlier. A draft whose character changed since asks
+to start again or to keep the draft over those changes. A starting level
+above 1 is simply the levels validated during creation: no target level
+is stored. The COC2 XP earned ("+1 XP (fin de séance)") and the sequels
+acquired in play are editor choices, saved at once like the creation
+ones; a sequel is recorded after the engine shows what it changes. A
+capacité is shown by its identifier through `Ability.svelte`
+(`abilityLabel`), today "Voie X, rang n", where its name, description and
+effect will show later. *Why drafts:* a level is gained at once, with the
+Game Master; a half-spent level saved on the way would leave the
+character in between.
+
 **FE-OVERRIDES: Breaking a rule is never easier than respecting it.** The
 editor offers the options within the rules first; anything else goes
 through an explicit out-of-rules choice. Nothing is disabled or deleted:
@@ -120,7 +155,9 @@ holds them in French, keyed by rule identifier and filled with the
 violation's parameters; a rule without a message shows its identifier.
 
 **FE-SHEET: The sheet, for play.** `/characters/{id}/sheet` shows a
-character on one page, its creation read only: a resource bar kept in
+character on one page, its creation and progression read only (the COF2
+level and its d4°, the voies held now with each capacité and the level or
+spending it came from, the COC2 XP left and sequels acquired): a resource bar kept in
 reach (COF2 PV, PM for a character who knows a spell, PC and DR; COC2 the
 échelle de santé, its states from the catalogue, ADR ENG-HEALTH-STATES),
 then characteristics, combat and weapons, voies, traits and equipment as
@@ -139,7 +176,11 @@ notes) and the values with the equipment in play, and the sheet shows the
 findings of the rules that hold in play (`inPlay`) under "À savoir"
 (ADR ENG-IN-PLAY). The screen is kept on through the Screen Wake Lock API
 while the sheet shows, with a toggle. An unfinished character still
-shows, under a banner that leads back to the editor. A friend's character
+shows, under a banner that leads back to the editor, its creation or its
+progression. The user's own sheet offers the next level-up or spending
+once the character is complete, and, for COC2, links to the editor to
+record the XP of a session and, once the échelle de santé is full, a
+sequel: the sheet itself saves nothing. A friend's character
 (`friend` given to `CharacterSheet`) is only read: its maxima, its
 creation equipment, no counter, edit, restoring nor wake lock, and
 nothing kept on the device (the engine sheets get no `PlayState`, and

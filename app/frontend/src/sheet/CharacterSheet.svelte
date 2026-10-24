@@ -10,8 +10,9 @@
   import { untrack } from "svelte";
 
   import type { Character, Friend } from "../api";
-  import { ENGINES, unsettled } from "../engines";
-  import { characterPath, follow, friendPath } from "../router.svelte";
+  import { ENGINES, unsettled, unsettledAll } from "../engines";
+  import { nextLabel } from "../progression/progression";
+  import { characterPath, characterProgressionPath, follow, friendPath } from "../router.svelte";
   import ThemePicker from "../ThemePicker.svelte";
   import { keepAwake, wakeLock } from "../wakelock.svelte";
   import { type Equipment, type Sheet, catalog, evaluateInPlay } from "../wasm/palimpseste_wasm";
@@ -89,6 +90,9 @@
   // The creation's: they do not follow the equipment in play.
   const notes = $derived(view ? notesOf(view.sheet, choices) : []);
   const open = $derived(view ? unsettled(view.sheet.steps) : 0);
+  // What the level-ups or spendings of XP leave to settle; the next one
+  // starts only from a complete character (ADR FE-PROGRESSION).
+  const later = $derived(view ? unsettledAll(view.sheet) - open : 0);
 
   // Cooking mode: the screen stays on while the user's own sheet is shown.
   $effect(() => {
@@ -113,6 +117,13 @@
     <span class="ms-auto flex flex-wrap items-center gap-2 print:hidden">
       {#if !owner}
         <Button color="alternative" class="min-h-11" href={characterPath(initial.id)} onclick={follow}>Modifier</Button>
+        {#if open + later === 0}
+          <Button class="min-h-11" href={characterProgressionPath(initial.id, "new")} onclick={follow}>
+            {nextLabel(choices)}
+          </Button>
+        {:else}
+          <Button class="min-h-11" disabled title="Terminez d’abord le personnage">{nextLabel(choices)}</Button>
+        {/if}
       {/if}
       {#if wakeLock.supported && !owner}
         <Button
@@ -133,6 +144,11 @@
     <Alert color="yellow" role="note" class="my-3">
       Création inachevée : {open} point{open > 1 ? "s" : ""} à régler.
       {#if !owner}<A href={characterPath(initial.id)} onclick={follow}>Reprendre la création</A>{/if}
+    </Alert>
+  {:else if later > 0}
+    <Alert color="yellow" role="note" class="my-3">
+      Progression inachevée : {later} point{later > 1 ? "s" : ""} à régler.
+      {#if !owner}<A href={`${characterPath(initial.id)}#progression`} onclick={follow}>Reprendre la progression</A>{/if}
     </Alert>
   {/if}
 
@@ -167,6 +183,7 @@
         equipment={view.equipment}
         {play}
         {notes}
+        characterId={owner ? undefined : initial.id}
       />
     {/if}
   {/if}
