@@ -58,4 +58,9 @@ mod tests {
         assert_eq!(pair(ana, ben), (ana, ben));
         assert_eq!(pair(ben, ana), (ana, ben));
     }
+
+    #[test]
+    fn ids_show_as_their_number_in_logs() {
+        assert_eq!(FriendshipId(7).to_string(), "7");
+    }
 }

@@ -727,6 +727,78 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_link_failing_in_the_database_fails_the_sign_in() {
+        let mut providers = MockIdentityProviders::new();
+        providers
+            .expect_verify()
+            .returning(|_, _, _| Ok(verified()));
+        let mut repo = MockPalimpsesteRepository::new();
+        repo.expect_take_sign_in()
+            .returning(|_| Ok(Some(pending(Some(ANA.user)))));
+        repo.expect_link_identity()
+            .returning(|_, _, _, _| Err(anyhow!("disk I/O error").into()));
+        let result = service(repo, providers)
+            .finish_sign_in(&dex(), Some(SignInId::from_cookie("id")), answer("state"))
+            .await;
+        assert!(matches!(
+            result,
+            Err(Error::SignInFailed { linking: true, .. })
+        ));
+    }
+
+    #[tokio::test]
+    async fn a_callback_for_another_provider_or_without_a_code_fails() {
+        let refused = [
+            ("other", answer("state")),
+            (
+                "dex",
+                ProviderAnswer {
+                    error: Some("access_denied".into()),
+                    ..answer("state")
+                },
+            ),
+            (
+                "dex",
+                ProviderAnswer {
+                    code: None,
+                    ..answer("state")
+                },
+            ),
+        ];
+        for (provider, answer) in refused {
+            let mut repo = MockPalimpsesteRepository::new();
+            repo.expect_take_sign_in()
+                .returning(|_| Ok(Some(pending(None))));
+            let mut providers = MockIdentityProviders::new();
+            providers.expect_verify().never();
+            let result = service(repo, providers)
+                .finish_sign_in(&provider.into(), Some(SignInId::from_cookie("id")), answer)
+                .await;
+            assert!(
+                matches!(result, Err(Error::SignInFailed { linking: false, .. })),
+                "{provider}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_failed_sign_in_keeps_the_errors_telling_more() {
+        assert!(matches!(
+            sign_in_failed(true, Error::NoRegistration),
+            Error::SignInFailed { linking: true, .. }
+        ));
+        assert!(matches!(
+            sign_in_failed(false, Error::ProviderAlreadyLinked),
+            Error::ProviderAlreadyLinked
+        ));
+        let failed = sign_in_failed(false, anyhow!("first").into());
+        assert!(matches!(
+            sign_in_failed(true, failed),
+            Error::SignInFailed { linking: false, .. }
+        ));
+    }
+
+    #[tokio::test]
     async fn identities_are_named_by_their_provider() {
         let mut repo = MockPalimpsesteRepository::new();
         repo.expect_identities().with(eq(ANA.user)).returning(|_| {

@@ -114,4 +114,9 @@ mod tests {
         assert_eq!(CharacterName::parse(" Brune ").unwrap().as_str(), "Brune");
         assert!(matches!(CharacterName::parse(" "), Err(Error::BlankName)));
     }
+
+    #[test]
+    fn ids_show_as_their_number_in_logs() {
+        assert_eq!(CharacterId(7).to_string(), "7");
+    }
 }

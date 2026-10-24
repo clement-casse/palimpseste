@@ -120,4 +120,9 @@ mod tests {
         );
         assert_ne!(token.hash().0, token.as_str());
     }
+
+    #[test]
+    fn ids_show_as_their_number_in_logs() {
+        assert_eq!(InvitationId(7).to_string(), "7");
+    }
 }
