@@ -6,7 +6,7 @@
 use co_kernel::{RuleId, ValueId};
 
 use crate::{
-    ALLOCATED_POINTS, Domaine, Protection, Trait, Value, Voie, Weapon,
+    ALLOCATED_POINTS, Domaine, Protection, Sequel, Trait, Value, Voie, Weapon,
     rules::{
         ADVANTAGES, AGE, AGE_BRACKET, DISADVANTAGES, DOMAINE_VALUE, EXPERIENCE_EARNED,
         SOCIAL_CLASS_VALUE,
@@ -26,9 +26,9 @@ const CHOICES: [(ValueId, &str); 7] = [
 ];
 
 /// The French display name of what `id` names: a content (domaine, trait,
-/// weapon, protection, voie), a choice, a value, or a capacité
-/// (`<voie>.<rank>`, ADR ENG-VALUE-IDS). `None` for an identifier the
-/// engine does not emit.
+/// weapon, protection, voie), a sequel acquired in play, a choice, a value,
+/// or a capacité (`<voie>.<rank>`, ADR ENG-VALUE-IDS). `None` for an
+/// identifier the engine does not emit.
 #[must_use]
 pub fn label(id: &str) -> Option<String> {
     CHOICES
@@ -36,6 +36,12 @@ pub fn label(id: &str) -> Option<String> {
         .find(|(choice, _)| choice.as_str() == id)
         .map(|(_, name)| *name)
         .or_else(|| content_name(id))
+        .or_else(|| {
+            Sequel::ALL
+                .into_iter()
+                .find(|sequel| sequel.acquired_id().as_str() == id)
+                .map(Sequel::acquired_name)
+        })
         .map(str::to_owned)
         .or_else(|| Value::from_id(id).map(Value::name))
         .or_else(|| ability_name(id))
@@ -82,6 +88,7 @@ mod tests {
             .chain(Trait::ALL.iter().map(|t| t.id()))
             .chain(Weapon::ALL.iter().map(|w| w.id()))
             .chain(Protection::ALL.iter().map(|p| p.id()))
+            .chain(Sequel::ALL.iter().map(|s| s.acquired_id()))
             .chain(CHOICES.into_iter().map(|(choice, _)| choice))
             .chain(Value::all().map(Value::id))
             .map(|id| id.as_str().to_owned());
@@ -124,7 +131,7 @@ mod tests {
 
     /// A character emitting many subjects and sources: every voie at ranks
     /// 1, 2 and 4, rank 5 bought with XP, every trait, weapon and
-    /// protection, and adjustments.
+    /// protection, the sequels acquired in play, and adjustments.
     fn busy() -> Character {
         let adjustment = || Adjustment::new(1, Author::new("gm"), "test reason");
         let character = Character::new()
@@ -147,7 +154,9 @@ mod tests {
             .fold(XpSpending::new(), |s, voie| s.with_rank(voie, 5))
             .with_trait(Trait::ClasseSuperieure, 3)
             .with_trait_given_up(Trait::Rapide);
-        let character = character
+        let character = Sequel::ALL
+            .into_iter()
+            .fold(character, Character::with_acquired_sequel)
             .with_xp_spending(spending)
             .with_raised_characteristic(Voie::Langues, Characteristic::For);
         Weapon::ALL

@@ -19,7 +19,7 @@ builds a complete character. Read it first.
 | `domaine.rs` | `Domaine` (18), its voie slots and social class requirements | COC.CRE.DOMAINE, COC.CNT.DOMAINES |
 | `voie.rs` | `Voie` (18), the characteristic each rank 5 raises, the checks on the ranks acquired | CO.VOIE.* (the kernel's `voie_rank_violations`), COC.CRE.CAPACITY-POINTS, COC.CRE.MAX-VOIES |
 | `experience.rs` | `Experience`, `XpSpending`, the XP left and the checks on each spending | COC.PRG.COST, ONE-RANK, LIMITS, XP-USE |
-| `traits.rs` | `Trait`, `Sequel`, `TraitPoints`, `SocialClass` | COC.CRE.TRAITS, COC.CNT.TRAITS, COC.CRE.SOCIAL-CLASS |
+| `traits.rs` | `Trait`, `Sequel` (and its identifier once acquired in play), `TraitPoints`, `SocialClass` | COC.CRE.TRAITS, COC.CNT.TRAITS, COC.CRE.SOCIAL-CLASS |
 | `characteristics.rs` | the characteristic points allocated, `ALLOCATED_POINTS`, starting and current values, the rank-5 raises | COC.CRE.CARAC-*, COC.PRG.CARAC |
 | `secondary.rs` | Init, DEF, ATC/ATD, CG, health scale | COC.DER.* |
 | `weapon.rs` | `Weapon` (one variant per table row, `MainsNues` included), damage dice and DM, bonus critique, critical range | COC.EQP.MELEE, COC.EQP.RANGED, COC.DER.DM-BONUS, COC.DER.CRIT-* |

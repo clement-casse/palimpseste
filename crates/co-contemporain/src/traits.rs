@@ -89,6 +89,40 @@ pub enum Sequel {
     Autre,
 }
 
+impl Sequel {
+    /// Every sequel, in declaration order.
+    pub const ALL: [Self; 3] = [Self::DiminueCorps, Self::DiminueEsprit, Self::Autre];
+
+    /// The identifier of the sequel acquired in play, apart from the trait
+    /// Séquelle taken at creation.
+    #[must_use]
+    pub const fn acquired_id(self) -> ValueId {
+        ValueId::from_static(match self {
+            Self::DiminueCorps => "coc.acquired-sequel.diminue-corps",
+            Self::DiminueEsprit => "coc.acquired-sequel.diminue-esprit",
+            Self::Autre => "coc.acquired-sequel.autre",
+        })
+    }
+
+    /// Returns the sequel whose [`acquired_id`](Self::acquired_id) is `id`.
+    #[must_use]
+    pub fn from_acquired_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|sequel| sequel.acquired_id().as_str() == id)
+    }
+
+    /// The French display name of the sequel acquired in play.
+    #[must_use]
+    pub const fn acquired_name(self) -> &'static str {
+        match self {
+            Self::DiminueCorps => "Séquelle acquise : diminué (corps)",
+            Self::DiminueEsprit => "Séquelle acquise : diminué (esprit)",
+            Self::Autre => "Séquelle acquise (autre)",
+        }
+    }
+}
+
 /// The points of a trait, as a magnitude: the trait's side gives the sign.
 ///
 /// No game bounds: the points each trait allows are checked by validation.
