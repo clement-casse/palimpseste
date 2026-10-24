@@ -57,7 +57,12 @@ adjustment yields one notice, even when its value is uncomputable.
 (`Value`), budgets, traits, domaine, age and social class are named by a
 `ValueId`, as subjects and as sources. A capacité contributes as
 `Source::Ability` with an identifier per voie and rank (`coc.crime.2`); no
-capacité name is stored. A weapon value builds its identifier from the
+capacité name is stored. That identifier is the one key a capacité is
+named by everywhere: `Voie::ability(rank)` builds it,
+`Voie::from_ability_id` reads it back, and the choices document, the
+catalog and the interface use it, so the capacités' names, descriptions
+and effects, a later delivery, attach to it without changing anything
+that names a capacité. A weapon value builds its identifier from the
 weapon (`cof.damage.epee-longue.one-handed`), so `Value::id` is not
 `const`.
 
@@ -205,8 +210,24 @@ checkable. The creation budgets and limits (capacity points, maximum voies
 and rank, the domaine's voies, the starting equipment, the trait balance
 and class, the characteristic limits) read the creation choices only;
 `capacity_points_spent`, `voie_count`, `advantages` and `disadvantages`
-count them, while `social_class` reads the current traits. The experience
-findings sit in `Step::Voies`, COC.PRG.XP-USE in `Step::Traits`.
+count them, while `social_class` reads the current traits.
+`Character::spending_offer(number)` gives what a spending offers within
+the rules (`SpendingOffer`): the XP left, the ranks it may buy (the next
+rank of each voie it does not advance yet, rank 1 of a voie not held
+while fewer than six are, each within the XP left, `xp_cost`), the trait
+change raising the social class one class with its cost, and the cost of
+curing Toxicomane.
+
+**ENG-COC-PLACEMENT: A spending's findings belong to it.**
+`Character::placement(&violation)` gives a creation `Step`, or a
+`SpendingStep` (Rangs, Traits, Caractéristiques) of a spending numbered
+from 1. The experience findings carry their spending as a `spending`
+parameter: COC.PRG.COST on a capacité, ONE-RANK and LIMITS go to its
+ranks, XP-USE to its traits; XP spent beyond the XP earned goes to the
+last spending's ranks. A rank 5's characteristic (COC.PRG.CARAC) goes
+where the rank was bought (`bought_in`), and a voie's structure to the
+last spending buying a rank of it, unless the creation ranks alone raise
+it. Everything else stays in its creation step.
 
 **ENG-COC-RANK-FIVE: Rank 5 raises a characteristic (D-20).** Each voie's
 rank 5 raises one characteristic: `Voie::rank_five_raises` gives the fixed
@@ -287,8 +308,15 @@ orphan point is exchanged (`OrphanExchange`: 1 PC, 1 DR, 2 PV or 2 PM, the
 level-up as source) once no rank 1 or 2 is left in the main profil's voies
 or the voie de peuple slot, a voie still to open counting while fewer than
 six are held; earlier, it is a deviation of COF.PRG.ORPHAN. The 2 PM add
-to nothing without a spell. The progression findings sit in
-`Step::Voies`. *Why a history, not the current ranks and a level:* the
+to nothing without a spell. `Character::level_offer(level)` gives what a
+level-up offers within the rules (`LevelOffer`): its points available
+and spent; the capacités it may acquire, the next rank of each voie held,
+rank 1 of a main-profil voie not opened while fewer than six are held,
+rank 1 of an empty voie de peuple slot, each at its required level
+(`required_level`) and within the points left (`rank_cost`); the top
+ranks it may forget, the protected ones with their reason, and how many;
+and whether the orphan point may be exchanged. The interface offers
+these first, anything else as an out-of-rules choice (ADR FE-OVERRIDES). *Why a history, not the current ranks and a level:* the
 points of each level, the level a rank was acquired at, and the changement
 d'orientation (the rank-1 capacités of level 1 are never forgotten) are
 read per level.
@@ -347,7 +375,24 @@ held without an option is `Incomplete` of COF.CNT.VOIE; one with a default
 keeps it; an option the capacité does not offer is a `standard` deviation
 of COF.CNT.VOIE with the capacité as subject, and a characteristic raised
 anyway. Grosse tête puts INT in place of CON in the level-1 term of the PV
-only.
+only. `AbilityOption` has `ALL`, `id()` (`cof.option.int`), `from_id()`
+and `name()` (ADR ENG-CATALOGUE); `ability_option_required` says whether
+a capacité has no effect until one is chosen.
+
+**ENG-COF-PLACEMENT: A level-up's findings belong to it.**
+`Character::placement(&violation)` gives where a violation is settled: a
+creation `Step`, or a `LevelStep` (Capacités, Options, Changement
+d'orientation, Point orphelin) of the level-up that reached a `Level`.
+The progression rules carry their level, as subject (`cof.level.<n>`) or
+as a `level` parameter: COF.PRG.POINTS, COST, LEVEL-REQ, ORDER,
+NEW-VOIES, HYBRID and MAX-VOIES go to its capacités, REORIENT to its
+orientation, ORPHAN to its orphan point; COF.PRG.LEVEL-REQ raised by the
+creation ranks stays in the voies step. A capacité's option (COF.CNT.VOIE)
+goes where the capacité was acquired (`acquired_at`), and a voie's
+structure (CO.VOIE.*) to the last level-up changing the voie, unless the
+creation ranks alone raise it. Everything else stays in its creation
+step (`Step::of`). *Why:* the editor shows a level-up's findings in that
+level's form, and the creation steps count only their own.
 
 **ENG-COF-PM: Every spell counts (D-23).** `Voie::is_spell` follows the
 spell markers of the co-rules catalogue for every voie and rank. PM is

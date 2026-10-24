@@ -351,9 +351,21 @@ impl Voie {
         VoieId::new(self.slug())
     }
 
-    /// Returns the identifier of the capacité at `rank` in this voie.
-    pub(crate) fn ability(self, rank: Rank) -> AbilityId {
+    /// Returns the identifier of the capacité at `rank` in this voie,
+    /// `<voie>.<rank>` (ADR ENG-VALUE-IDS): the one key every capacité is
+    /// named by.
+    #[must_use]
+    pub fn ability(self, rank: Rank) -> AbilityId {
         AbilityId::new(format!("{}.{}", self.slug(), rank.get()))
+    }
+
+    /// Returns the voie and rank of the capacité whose
+    /// [`ability`](Self::ability) identifier is `id`.
+    #[must_use]
+    pub fn from_ability_id(id: &str) -> Option<(Self, Rank)> {
+        let (voie, rank) = id.rsplit_once('.')?;
+        let rank: u8 = rank.parse().ok()?;
+        Some((Self::from_id(voie)?, Rank::new(rank)))
     }
 
     /// The profil the voie belongs to: `None` for a voie de peuple and the
@@ -694,6 +706,13 @@ mod tests {
     fn ability_ids_name_voie_and_rank() {
         assert_eq!(Voie::Rage.ability(Rank::new(1)).as_str(), "cof.rage.1");
         assert_eq!(Voie::MeneurDHomme.id().as_str(), "cof.meneur-d-homme");
+        assert_eq!(
+            Voie::from_ability_id("cof.meneur-d-homme.3"),
+            Some((Voie::MeneurDHomme, Rank::new(3)))
+        );
+        for bad in ["cof.rage", "cof.rage.x", "cof.unknown.1", ""] {
+            assert_eq!(Voie::from_ability_id(bad), None, "{bad}");
+        }
     }
 
     #[test]
