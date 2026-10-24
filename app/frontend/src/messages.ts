@@ -67,6 +67,18 @@ const MESSAGES: Record<string, Message> = {
   "COF.PRG.NEW-VOIES": (s, p) => `${s} : cette voie ne peut pas être ouverte (niveau ${p.level}).`,
   "COF.PRG.HYBRID": (s, p) => `${s} : voie d'un autre profil ouverte au niveau ${p.level} (hybride).`,
   "COF.PRG.MAX-VOIES": (s, p) => `${s} : ${p.voies} voies, ${p.max} au plus.`,
+  "COF.PRG.ORPHAN": (s) =>
+    `${s} : le point orphelin ne s'échange qu'une fois toutes les capacités de rang 1 et 2 acquises.`,
+  "COF.PRG.REORIENT": (s, p) =>
+    p.reason === undefined
+      ? `${s} : ${p.forgotten} capacités oubliées, ${p.max} au plus.`
+      : p.reason === "not-held"
+        ? `${s} : oubliée sans avoir été acquise (niveau ${p.level}).`
+        : p.reason === "free"
+          ? `${s} : capacité gratuite, elle ne s'oublie pas.`
+          : p.reason === "level-one"
+            ? `${s} : capacité de rang 1 du profil prise au niveau 1, elle ne s'oublie pas.`
+            : `${s} : oubliez d'abord les rangs supérieurs de la voie.`,
   "COF.CNT.VOIE": (s, _p, v) =>
     v.category.kind === "incomplete"
       ? `${s} : choisissez l'option de la capacité.`
@@ -120,6 +132,18 @@ const MESSAGES: Record<string, Message> = {
     `${s} vaut ${signed(p.value)}, jamais hors de [${p.min}, ${signed(p.max)}] à la création.`,
   "COC.CRE.EQUIPMENT": (s, p) =>
     `${s} : ${p.quantity} de plus que l'équipement de départ des voies.`,
+  "COC.PRG.COST": (s, p) =>
+    p.value === undefined
+      ? `${s} : déjà acquise, achetée de nouveau avec de l'XP.`
+      : `${p.value} XP : plus d'XP dépensée que gagnée.`,
+  "COC.PRG.ONE-RANK": (s) => `${s} : un seul rang de la voie à la fois, dans l'ordre.`,
+  "COC.PRG.LIMITS": (_s, p) => `${p.voies} voies, ${p.max} au plus.`,
+  "COC.PRG.XP-USE": (s) =>
+    `${s} : l'XP n'achète que des rangs, une classe sociale de plus ou la guérison d'une toxicomanie.`,
+  "COC.PRG.CARAC": (s, _p, v) =>
+    v.category.kind === "incomplete"
+      ? `${s} : choisissez la caractéristique augmentée.`
+      : `${s} : cette caractéristique n'est pas offerte par le rang 5.`,
 };
 
 /** The French message of `violation`. */
