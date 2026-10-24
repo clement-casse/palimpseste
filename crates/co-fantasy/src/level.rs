@@ -1340,4 +1340,19 @@ mod tests {
         let offer = character.level_offer(Level::from(6));
         assert_eq!(offer.map(|offer| offer.orphan_allowed()), Some(true));
     }
+
+    #[test]
+    fn an_empty_voie_de_peuple_slot_is_offered_at_a_level() {
+        // A humain guerrier who chose no voie de peuple at creation.
+        let character = Character::new()
+            .with_profil(Profil::Guerrier)
+            .with_peuple(Peuple::Humain)
+            .with_rank(Voie::Bouclier, 1)
+            .with_rank(Voie::Soldat, 1)
+            .with_level_up(LevelUp::new());
+        let offer = character.level_offer(Level::from(2));
+        assert!(
+            offer.is_some_and(|offer| offer.acquirable().contains(&(Voie::Humain, Rank::new(1))))
+        );
+    }
 }

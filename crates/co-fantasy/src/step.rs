@@ -440,4 +440,22 @@ mod tests {
         assert_eq!(ids, ["abilities", "options", "orientation", "orphan"]);
         assert!(LevelStep::ALL.iter().all(|step| !step.name().is_empty()));
     }
+
+    #[test]
+    fn a_finding_without_its_usual_subject_stays_in_its_creation_step() {
+        use co_kernel::{Mechanic, Severity};
+        let character = guerrier();
+        let mechanic = Mechanic::new("test");
+        let option = Violation::incomplete(CONTENT_VOIE, mechanic, Subject::Character);
+        assert_eq!(
+            character.placement(&option),
+            Placement::Creation(Step::Voies)
+        );
+        let order =
+            Violation::deviation(VOIE_ORDER, mechanic, Subject::Character, Severity::Standard);
+        assert_eq!(
+            character.placement(&order),
+            Placement::Creation(Step::Voies)
+        );
+    }
 }
