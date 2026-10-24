@@ -38,6 +38,8 @@
     signed,
     valueOf,
   } from "./edits";
+  import LaterRanks from "../progression/LaterRanks.svelte";
+  import RankFivePicker from "../progression/RankFivePicker.svelte";
   import Items from "./Items.svelte";
   import RankPicker from "./RankPicker.svelte";
 
@@ -47,12 +49,14 @@
     sheet,
     details,
     step,
+    characterId,
   }: {
     choices: ContemporainDocument;
     catalog: ContemporainCatalog;
     sheet: Sheet;
     details: ContemporainDetails;
     step: string;
+    characterId: number;
   } = $props();
 
   const voieNames = $derived(namesOf(catalog.voies));
@@ -162,13 +166,19 @@
           {voie.name}
           {#if domaineVoies.has(voie.id)}<Badge>domaine</Badge>{/if}
         </span>
-        <RankPicker
-          ranks={ranksOf(choices.voies, voie.id)}
-          onchange={(ranks) => setRanks(choices, voie.id, ranks)}
-        />
+        <span class="inline-flex flex-wrap items-center gap-2">
+          <RankPicker
+            ranks={ranksOf(choices.voies, voie.id)}
+            onchange={(ranks) => setRanks(choices, voie.id, ranks)}
+          />
+          <LaterRanks {catalog} held={details.abilitiesHeld} voie={voie.id} {characterId} />
+        </span>
       </ListgroupItem>
     {/each}
   </Listgroup>
+  {#each details.rankFive.filter((line) => line.progression == null && line.choice.length > 0) as line (line.voie)}
+    <RankFivePicker bind:choices {catalog} {line} />
+  {/each}
 {:else if step === "traits"}
   <P weight="semibold">
     Avantages {signed(details.advantages)} · Désavantages {signed(details.disadvantages)} · Solde

@@ -33,6 +33,7 @@
   import Restore from "./Restore.svelte";
   import Tile from "./Tile.svelte";
   import { damage, range, shown, weaponSlugs } from "./values";
+  import { currentVoies } from "../progression/progression";
   import VoieRanks from "./VoieRanks.svelte";
 
   let {
@@ -63,7 +64,7 @@
     [
       profil ? `${profil.name}${details.family ? ` (${details.family.name})` : ""}` : "Profil à choisir",
       peuple?.name ?? "Peuple à choisir",
-      "Niveau 1",
+      `Niveau ${details.level} (d4° : ${details.evolutiveDie})`,
     ].join(" · "),
   );
 
@@ -188,7 +189,14 @@
   </Block>
 
   <Block title="Voies" notes={marksAt(notes, ...steps("voies"))}>
-    <VoieRanks voies={choices.voies ?? []} names={namesOf(catalog.voies)} {notes} />
+    <VoieRanks
+      voies={currentVoies(catalog, details.abilitiesHeld)}
+      names={namesOf(catalog.voies)}
+      {notes}
+      {catalog}
+      held={details.abilitiesHeld}
+      levels
+    />
   </Block>
 
   <EquipmentSection

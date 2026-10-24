@@ -11,6 +11,7 @@
   import FriendsPage from "./friends/FriendsPage.svelte";
   import InvitationPage from "./friends/InvitationPage.svelte";
   import NotFound from "./NotFound.svelte";
+  import ProgressionPage from "./progression/ProgressionPage.svelte";
   import ProfilePage from "./ProfilePage.svelte";
   import Register from "./Register.svelte";
   import {
@@ -46,7 +47,10 @@
 
   const page = $derived(match(route.path));
   const wide = $derived(
-    page.name === "character" || page.name === "character-sheet" || page.name === "friend-sheet",
+    page.name === "character" ||
+      page.name === "character-sheet" ||
+      page.name === "character-progression" ||
+      page.name === "friend-sheet",
   );
 
   // Signed out, only the sign-in page and creating an account; signed in,
@@ -96,6 +100,8 @@
       <CharacterPage id={page.id} />
     {:else if page.name === "character-sheet"}
       <SheetPage id={page.id} />
+    {:else if page.name === "character-progression"}
+      <ProgressionPage id={page.id} number={page.number} />
     {:else if page.name === "profile"}
       <ProfilePage user={session.user} />
     {:else if page.name === "friends"}

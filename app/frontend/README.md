@@ -54,7 +54,7 @@ src/
 ├── api.ts                      the REST client: types and calls; a 401 signs out
 ├── errors.ts                   describe(): what an error means, in French
 ├── messages.ts                 French violation messages, keyed by rule identifier
-├── engines.ts                  engine display names, unsettled(): what is left to settle
+├── engines.ts                  engine display names, unsettled() and unsettledAll(): what is left to settle
 ├── index.css                   design tokens, element defaults, shared utilities
 ├── SignIn, Register, ProfilePage, ProfileFields, Characters, CharacterItem,
 │   NotFound, StatusBanner, ErrorMessage, ThemePicker (.svelte)
@@ -68,6 +68,15 @@ src/
 │   │   RankPicker, Items (.svelte)
 │   ├── Overrides.svelte, OverrideDialog.svelte, override.ts   waivers and adjustments
 │   └── edits.ts                helpers to read and change a document
+├── progression/                level-ups and spendings of XP, /characters/{id}/progression/{n}
+│   ├── ProgressionPage.svelte  loads the character
+│   ├── ProgressionEditor.svelte the draft, its steps, the summary, validate, abandon, remove
+│   ├── FantasyLevelForm.svelte, ContemporainSpendingForm.svelte   per-engine steps, bind:choices
+│   ├── ProgressionSection.svelte the editor's "Progression" step; COC2 XP and sequels
+│   ├── Ability.svelte          a capacité, shown by its identifier
+│   ├── AbilityOptionPicker, RankFivePicker, LaterRanks, Differences (.svelte)
+│   ├── drafts.ts               the draft kept in localStorage until validated
+│   └── progression.ts          numbering, copies, differences, abilityLabel()
 ├── sheet/                      the character sheet, /characters/{id}/sheet
 │   ├── SheetPage.svelte        loads the character
 │   ├── CharacterSheet.svelte   evaluateInPlay(), header, unfinished banner, the screen kept on
@@ -86,8 +95,10 @@ src/
 ```
 
 Pages (ADR FE-PAGES): `/` lists the characters, `/characters/{id}` edits
-one (the current step is in the hash), `/characters/{id}/sheet` shows its
-sheet for play, `/profile`, `/login` and `/register`. Any other path shows
+one (the current step is in the hash), `/characters/{id}/progression/{n}`
+prepares a level-up or spending of XP as a draft (ADR FE-PROGRESSION),
+`/characters/{id}/sheet` shows its sheet for play, `/profile`, `/login`
+and `/register`. Any other path shows
 `NotFound.svelte`.
 
 ## Conventions

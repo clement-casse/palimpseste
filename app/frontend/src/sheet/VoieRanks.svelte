@@ -3,7 +3,9 @@
   // 1 to 5 are written out, since nothing hides what the document holds.
   import { Indicator, Listgroup, ListgroupItem, P } from "flowbite-svelte";
 
-  import type { VoieEntry } from "../wasm/palimpseste_wasm";
+  import Ability from "../progression/Ability.svelte";
+  import { type Abilities } from "../progression/progression";
+  import type { HeldAbility, VoieEntry } from "../wasm/palimpseste_wasm";
   import Marks from "./Marks.svelte";
   import { type Note, marksAt } from "./notes";
 
@@ -11,7 +13,25 @@
     voies,
     names,
     notes,
-  }: { voies: VoieEntry[]; names: Map<string, string>; notes: Note[] } = $props();
+    catalog,
+    held = [],
+    levels = false,
+  }: {
+    voies: VoieEntry[];
+    names: Map<string, string>;
+    notes: Note[];
+    /** Names each capacité held, by identifier. */
+    catalog?: Abilities;
+    /** The capacités held, with where each was gained. */
+    held?: HeldAbility[];
+    /** Whether they were gained at COF2 levels, else COC2 spendings of XP. */
+    levels?: boolean;
+  } = $props();
+
+  /** The capacités held in voie `id`, with where each was gained. */
+  function heldIn(id: string): HeldAbility[] {
+    return held.filter((h) => catalog?.abilities.find((a) => a.id === h.ability)?.voie === id);
+  }
 
   const RANKS = [1, 2, 3, 4, 5];
 </script>
@@ -36,6 +56,16 @@
           {/each}
           {#if others.length > 0}<span aria-hidden="true">+ rang {others.join(", ")}</span>{/if}
         </span>
+        {#if catalog && heldIn(voie.id).length > 0}
+          <ul class="w-full text-sm text-gray-500 dark:text-gray-400">
+            {#each heldIn(voie.id) as h (h.ability)}
+              <li>
+                <Ability {catalog} id={h.ability} />{#if h.progression != null}
+                  · {levels ? `niveau ${h.progression}` : `dépense d’XP ${h.progression}`}{/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </ListgroupItem>
     {/each}
   </Listgroup>
