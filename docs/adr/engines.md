@@ -176,7 +176,7 @@ weapons. The rank-4 capacités of the combat voies are computed: Fin
 bretteur, Sniper and Disciple (critical on 18-20, a characteristic added to
 the DM and the bonus critique), and Canonnier (1d6 more with heavy weapons,
 the bonus critique following the dice as D-30 has it for the unarmed rank
-2).
+2, D-41).
 
 **ENG-COC-PROTECTIONS: RD and malus, never DEF.** Protections add RD, and
 their malus to Init, ATC and AGI tests, never to AGI or DEF (D-04, D-05).
@@ -196,7 +196,7 @@ each spending's changes to the creation traits. `Value::Experience` is the
 XP left: the XP earned (`coc.experience-earned`), less n per rank n bought
 (the capacité as source), twice the trait value of each social class
 climbed, the class left below the middle class and the class reached
-above it (2 x max(|before|, |after|) per class, the social class as
+above it (2 x max(|before|, |after|) per class, D-40, the social class as
 source), and twice Toxicomane's points to cure it (COC.PRG.COST,
 COC.PRG.XP-USE). Spending more than earned is a deviation of COC.PRG.COST
 on `Value::Experience`; a rank bought again, one of COC.PRG.COST on the
@@ -208,7 +208,8 @@ or set), of COC.PRG.XP-USE with the trait as subject, and it costs
 nothing. The Game Master's agreement (COC.PRG.GM-VALIDATION) is not
 checkable. The creation budgets and limits (capacity points, maximum voies
 and rank, the domaine's voies, the starting equipment, the trait balance
-and class, the characteristic limits) read the creation choices only;
+and class, the characteristic limits) read the creation choices only, a
+voie opened with XP granting no checked starting equipment (D-44);
 `capacity_points_spent`, `voie_count`, `advantages` and `disadvantages`
 count them, while `social_class` reads the current traits.
 `Character::spending_offer(number)` gives what a spending offers within
@@ -244,14 +245,14 @@ at step 20, COC.CNT.SCALES), never counted in the trait balance and named
 by `Sequel::acquired_id`. Diminué (corps) lowers the current CON by 2 and
 shortens the échelle de santé by 4 steps, Diminué (esprit) lowers the
 current INT by 2; their maximum of +3 is not rechecked, and any other
-sequel changes nothing (D-21).
+sequel changes nothing (D-21, D-42).
 
 **ENG-COC-STARTING: The creation limits read the starting values.**
 `Character::characteristic` is the current value: the starting value,
 with the ranks bought with XP and the sequels acquired in play. The
 characteristic limits (CARAC-PHYSICAL, CARAC-LIMITS) read the starting
 value, from the creation choices only, so growth after creation never
-breaks them.
+breaks them (D-43).
 
 ## COF2
 
@@ -303,11 +304,12 @@ capacité per level, two with INT +2 or more (the current INT), each held,
 from the top rank of its voie down, never the free rank 1 of the voie de
 peuple slot nor a rank-1 capacité of the main profil chosen at creation:
 any other is a deviation of COF.PRG.REORIENT, the capacité as subject and
-the reason as parameter (the count beyond the limit takes the level-up). The
+the reason as parameter (the count beyond the limit takes the level-up;
+D-36). The
 orphan point is exchanged (`OrphanExchange`: 1 PC, 1 DR, 2 PV or 2 PM, the
 level-up as source) once no rank 1 or 2 is left in the main profil's voies
 or the voie de peuple slot, a voie still to open counting while fewer than
-six are held; earlier, it is a deviation of COF.PRG.ORPHAN. The 2 PM add
+six are held (D-37); earlier, it is a deviation of COF.PRG.ORPHAN. The 2 PM add
 to nothing without a spell. `Character::level_offer(level)` gives what a
 level-up offers within the rules (`LevelOffer`): its points available
 and spent; the capacités it may acquire, the next rank of each voie held,
@@ -345,7 +347,7 @@ plus n, a characteristic, a characteristic up to the rank, per rank 5 in a
 profil's voies), the equipment or level it needs and the option it depends
 on. The rank used is the highest held in the voie (CO.VOIE.RANK-SCALING);
 a "+n at rank k" in the catalogue is the total reached, a "+1 at rank k"
-after a first amount is added to it. Equipment conditions read the
+after a first amount is added to it (D-33). Equipment conditions read the
 equipment given, so `InPlay` follows them. The critical range never starts
 below 16, a `Source::Rule(COF.DER.CRIT-RANGE)` making up the difference.
 `Value::DamageReduction` is `None` while no capacité gives RD. Through the
@@ -356,8 +358,8 @@ circumstances (outdoors, against large creatures, a companion in sight,
 two weapons in hand), effects on one weapon's attack (Haches et marteaux's
 attack, Précision, Attaque en finesse), capacités whose content the
 co-rules skill lacks (the weapon categories of Armes de prédilection,
-Science du critique, Spécialisation; a bone armour for Armure d'os),
-unclear ones (Pacte démoniaque's VOL to DR), unarmed attacks, capacités
+Science du critique, Spécialisation, D-35; a bone armour for Armure d'os),
+unclear ones (Pacte démoniaque's VOL to DR, D-39), unarmed attacks, capacités
 calling other capacités, and competence bonuses. *Why tables:* about sixty
 effects share a few shapes; a general effect engine stays excluded.
 
@@ -370,12 +372,12 @@ armour (Armure lourde, Vêtements sacrés) or the thrown weapons variant
 (Archer émérite). `with_ability_option(voie, rank, option)` stores it,
 keyed by the capacité; `ability_options_offered` lists the options a
 capacité offers the character, the lowest characteristics read on the
-starting values, ties included. A capacité with no default (the raises)
+starting values, ties included (D-34). A capacité with no default (the raises)
 held without an option is `Incomplete` of COF.CNT.VOIE; one with a default
 keeps it; an option the capacité does not offer is a `standard` deviation
 of COF.CNT.VOIE with the capacité as subject, and a characteristic raised
 anyway. Grosse tête puts INT in place of CON in the level-1 term of the PV
-only. `AbilityOption` has `ALL`, `id()` (`cof.option.int`), `from_id()`
+only (D-38). `AbilityOption` has `ALL`, `id()` (`cof.option.int`), `from_id()`
 and `name()` (ADR ENG-CATALOGUE); `ability_option_required` says whether
 a capacité has no effect until one is chosen.
 

@@ -127,6 +127,16 @@ These are enforced in review (see [docs/adr/frontend.md](../../docs/adr/frontend
   waiver: never as a side effect of another choice, an out-of-rules option
   or a validation, never in bulk. Every waiver stays listed in the editor
   and marked on the sheet.
+- **Progression violations first by `progression`.** A violation of a
+  level-up or spending carries its number in `progression`, and its `step`
+  is a step of that entry, whose ids repeat creation ones
+  (`characteristics`, `traits`): filter on `progression == null` before
+  `step` for a creation step.
+- **A capacité is shown from its identifier** (`cof.rage.2`) through
+  `Ability.svelte` or `abilityLabel()`, never by parsing the identifier: its
+  name, description and effect will attach there. Components that only name
+  capacités take `Abilities` (`{ abilities }`), since a catalog narrowed by
+  engine has no `engine` field to match the tagged `Catalog`.
 - **New rules need a message.** Add the French text to `messages.ts`,
   keyed by rule identifier and filled with the violation's parameters.
   Without it, the identifier is shown.
@@ -147,7 +157,10 @@ the code as `*.test.ts` and query what users see: roles, labels, text.
 Components run in their browser build inside jsdom. The real engines load
 from the `.wasm` bytes (`src/test/setup.ts`). `fetch` is stubbed per test
 with `stubBackend()`, which also records the requests, so tests can assert
-what was saved.
+what was saved. `lhagva()` and `amelia()` (`src/test/backend.ts`) are the
+book's worked characters, complete, so they pass the progression gate;
+`emptyDocument(engine)` gives an incomplete one. The editor's saves wait
+600 ms (fake timers); a level-up or spending saves at once on validation.
 
 `@types/node` is referenced by test files only, so app code cannot use
 Node APIs. Run `frontend:check` and `frontend:test` separately from
