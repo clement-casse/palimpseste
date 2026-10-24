@@ -20,7 +20,7 @@ complete nain guerrier. Read it first.
 | `profil.rs` | `Family` (4), `Profil` (14), `RecoveryDie`, weapon mastery | COF.CNT.FAMILIES, COF.CNT.PROFILS |
 | `peuple.rs` | `Peuple` (8), its modifiers and voie de peuple | COF.CRE.PEUPLE, COF.CNT.PEUPLES |
 | `characteristics.rs` | `Series` (3), the series assignment, peuple modifiers, bounds, `SERIES_VALUE` | COF.CRE.CARAC-* |
-| `voie.rs` | `Voie` (the 78 reachable at level 1), the checks on the ranks chosen at creation | CO.VOIE.* (the kernel's `voie_rank_violations`), COF.PRG.LEVEL-REQ, COF.CRE.MAGE-EXTRA |
+| `voie.rs` | `Voie` (the 78 reachable at level 1), the names of its capacités, the checks on the ranks chosen at creation | CO.VOIE.* (the kernel's `voie_rank_violations`), COF.PRG.LEVEL-REQ, COF.CRE.MAGE-EXTRA |
 | `level.rs` | `Level` (with its dé évolutif), `LevelUp` (ranks acquired and forgotten, orphan point), `OrphanExchange`, the checks on each level-up | COF.PRG.POINTS, COST, LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES, REORIENT, ORPHAN, COF.DER.D4 |
 | `derived.rs` | PV, DR, PC, PM, Init, DEF, RD, attacks, each adding its table of capacité effects | COF.DER.*, COF.PRG.PV |
 | `ability.rs` | `AbilityOption`, the options capacités offer, the per-value tables of capacité effects and characteristic raises (D-13, D-22) | COF.CNT.VOIE, COF.CNT.EFFECT-SHAPES |
@@ -44,7 +44,8 @@ design decisions are in [docs/adr/engines.md](../../docs/adr/engines.md)
   that reads it. There are no data files (ADR ENG-CONTENT,
   ADR ENG-CATALOGUE).
 - **Names.** `Value::FIXED` lists the values in the book order and
-  `Value::name()` names them. `label(id)` names every identifier the engine
+  `Value::name()` names them; `Voie::ability_name(rank)` names each
+  capacité. `label(id)` names every identifier the engine
   emits as a violation subject or a breakdown source, and
   `term_label(rule)` the terms a formula sets (the level), so that the
   front end restates none of them (ADR ENG-CATALOGUE).

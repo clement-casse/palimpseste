@@ -368,6 +368,19 @@ impl Voie {
         Some((Self::from_id(voie)?, Rank::new(rank)))
     }
 
+    /// The French display name of the capacité at `rank` in this voie
+    /// (COF.CNT.VOIES, D-45); `None` outside ranks 1 to 5. The voie du
+    /// mage's rank 1 is Occultisme: the peuple capacité it keeps has its own
+    /// name, in the peuple's voie.
+    #[must_use]
+    pub fn ability_name(self, rank: Rank) -> Option<&'static str> {
+        let index = usize::from(rank.get()).checked_sub(1)?;
+        ABILITY_NAMES
+            .iter()
+            .find(|(voie, _)| *voie == self)
+            .and_then(|(_, names)| names.get(index).copied())
+    }
+
     /// The profil the voie belongs to: `None` for a voie de peuple and the
     /// voie du mage.
     #[must_use]
@@ -512,6 +525,784 @@ impl Voie {
     }
 }
 
+/// The names of the capacités of each voie, ranks 1 to 5 (COF.CNT.VOIES, D-45).
+const ABILITY_NAMES: [(Voie, [&str; 5]); 78] = [
+    (
+        Voie::Artilleur,
+        [
+            "Mécanismes",
+            "Arme à répétition",
+            "Tir de barrage",
+            "Canon double",
+            "Couleuvrine",
+        ],
+    ),
+    (
+        Voie::Explosifs,
+        [
+            "Tir de grenaille",
+            "Démolition",
+            "Poudre puissante",
+            "Piège explosif",
+            "Boulet explosif",
+        ],
+    ),
+    (
+        Voie::Mercenaire,
+        [
+            "Pilier de bar",
+            "Mort ou vif",
+            "Combattant aguerri",
+            "Constitution héroïque",
+            "Combat de masse",
+        ],
+    ),
+    (
+        Voie::Pistolero,
+        [
+            "Plus vite que son ombre",
+            "Ajuster le tir",
+            "Tir double",
+            "Agilité héroïque",
+            "As de la gâchette",
+        ],
+    ),
+    (
+        Voie::Precision,
+        [
+            "Joli coup",
+            "Défaut dans la cuirasse",
+            "Tir précis",
+            "Tireur d'élite",
+            "Tir fatal",
+        ],
+    ),
+    (
+        Voie::Escrime,
+        [
+            "Précision",
+            "Feinte",
+            "Intelligence du combat",
+            "Attaque flamboyante",
+            "Botte mortelle",
+        ],
+    ),
+    (
+        Voie::Musicien,
+        [
+            "Chant des héros",
+            "Chant de réconfort",
+            "Attaque sonore",
+            "Zone de silence",
+            "Danse irrésistible",
+        ],
+    ),
+    (
+        Voie::Saltimbanque,
+        [
+            "Acrobate",
+            "Grâce féline",
+            "Lanceur de couteau",
+            "Liberté d'action",
+            "Esquive acrobatique",
+        ],
+    ),
+    (
+        Voie::Seduction,
+        [
+            "Charmant",
+            "Dentelles et rapière",
+            "Baratineur de génie",
+            "Charisme héroïque",
+            "Suggestion",
+        ],
+    ),
+    (
+        Voie::Vagabond,
+        [
+            "Rumeurs et légendes",
+            "Éclectique",
+            "Attirail",
+            "Compréhension des langues",
+            "Déguisement",
+        ],
+    ),
+    (
+        Voie::Archer,
+        [
+            "Archer émérite",
+            "Tir chirurgical",
+            "Dans le mille",
+            "Tir rapide",
+            "Flèche de mort",
+        ],
+    ),
+    (
+        Voie::CompagnonAnimal,
+        [
+            "Le loup",
+            "Travail d'équipe",
+            "Lien empathique",
+            "Loup alpha",
+            "Tactiques de meute",
+        ],
+    ),
+    (
+        Voie::Survie,
+        [
+            "Survie",
+            "Nature nourricière",
+            "Grand pas",
+            "Constitution héroïque",
+            "Increvable",
+        ],
+    ),
+    (
+        Voie::Traqueur,
+        [
+            "Éclaireur",
+            "Attaque éclair",
+            "Chasseur émérite",
+            "Perception héroïque",
+            "Repli",
+        ],
+    ),
+    (
+        Voie::CombatADeuxArmes,
+        [
+            "Attaque à suivre",
+            "Parade croisée",
+            "Droite - gauche",
+            "Combattant héroïque",
+            "Double peine",
+        ],
+    ),
+    (
+        Voie::Assassin,
+        [
+            "Discrétion",
+            "Attaque sournoise",
+            "Attaque par surprise",
+            "Disparition",
+            "Ouverture mortelle",
+        ],
+    ),
+    (
+        Voie::Aventurier,
+        [
+            "Baratin",
+            "Provocation",
+            "Souplesse du félin",
+            "Charisme héroïque",
+            "Attaque paralysante",
+        ],
+    ),
+    (
+        Voie::Deplacement,
+        [
+            "Agile",
+            "Réflexes félins",
+            "Acrobaties",
+            "Agilité héroïque",
+            "Esquive de la magie",
+        ],
+    ),
+    (
+        Voie::Roublard,
+        [
+            "Doigts agiles",
+            "Aux aguets",
+            "Feindre la mort",
+            "Expert en criminalité",
+            "Maître du poison",
+        ],
+    ),
+    (
+        Voie::Spadassin,
+        [
+            "Attaque en finesse",
+            "Esquive fatale",
+            "Frappe chirurgicale",
+            "Ambidextrie",
+            "Botte secrète",
+        ],
+    ),
+    (
+        Voie::Brute,
+        [
+            "Argument de taille",
+            "Tour de force",
+            "Attaque brutale",
+            "Force héroïque",
+            "Briseur d'os",
+        ],
+    ),
+    (
+        Voie::Pagne,
+        [
+            "Vigueur",
+            "Peau de pierre",
+            "Tatouages",
+            "Constitution héroïque",
+            "Peau d'acier",
+        ],
+    ),
+    (
+        Voie::Pourfendeur,
+        [
+            "Réflexes éclair",
+            "Charge",
+            "Enchaînement",
+            "Déchaînement d'acier",
+            "Attaque tourbillon",
+        ],
+    ),
+    (
+        Voie::Primitif,
+        [
+            "Proche de la nature",
+            "Armure de vent",
+            "Vigilance",
+            "Résistance à la magie",
+            "Vitalité débordante",
+        ],
+    ),
+    (
+        Voie::Rage,
+        [
+            "Cri de guerre",
+            "Défier la mort",
+            "Rage du berserk",
+            "Même pas mal",
+            "Furie du berserk",
+        ],
+    ),
+    (
+        Voie::Cavalier,
+        [
+            "Fidèle monture",
+            "Cavalier émérite",
+            "Charge",
+            "Monture magique",
+            "Monture fantastique",
+        ],
+    ),
+    (
+        Voie::Guerre,
+        [
+            "Armure sur mesure",
+            "Encaisser un coup",
+            "Frappe du justicier",
+            "Force héroïque",
+            "Mon armure est une arme",
+        ],
+    ),
+    (
+        Voie::Preux,
+        [
+            "Ignorer la douleur",
+            "Piqûres d'insectes",
+            "Laissez-le-moi",
+            "Charisme héroïque",
+            "Seul contre tous",
+        ],
+    ),
+    (
+        Voie::MeneurDHomme,
+        [
+            "Sans peur",
+            "Intercepter",
+            "Exemplaire",
+            "Charge fantastique",
+            "Ordre de bataille",
+        ],
+    ),
+    (
+        Voie::Noblesse,
+        [
+            "Éduqué",
+            "Écuyer",
+            "Autorité naturelle",
+            "Massacrer la piétaille",
+            "Formation d'élite",
+        ],
+    ),
+    (
+        Voie::Bouclier,
+        [
+            "Protéger un allié",
+            "Parer un coup",
+            "Défense au bouclier",
+            "Absorber un sort",
+            "Renvoi de sort",
+        ],
+    ),
+    (
+        Voie::Combat,
+        [
+            "Vivacité",
+            "Manœuvre",
+            "Attaque puissante",
+            "Double attaque",
+            "Attaque circulaire",
+        ],
+    ),
+    (
+        Voie::MaitreDArmes,
+        [
+            "Armes de prédilection",
+            "Science du critique",
+            "Spécialisation",
+            "Attaque parfaite",
+            "Riposte",
+        ],
+    ),
+    (
+        Voie::Resistance,
+        [
+            "Robustesse",
+            "Résilient",
+            "Armure lourde",
+            "Constitution héroïque",
+            "Dur à cuire",
+        ],
+    ),
+    (
+        Voie::Soldat,
+        [
+            "Teigneux",
+            "Prouesse",
+            "Piqûre de rappel",
+            "Force héroïque",
+            "Rempart",
+        ],
+    ),
+    (
+        Voie::Air,
+        [
+            "Murmures dans le vent",
+            "Sous tension",
+            "Télékinésie",
+            "Foudre",
+            "Forme éthérée",
+        ],
+    ),
+    (
+        Voie::Divination,
+        [
+            "Divination",
+            "Détection de l'invisible",
+            "Clairvoyance",
+            "Perception héroïque",
+            "Prescience",
+        ],
+    ),
+    (
+        Voie::Envouteur,
+        ["Injonction", "Sommeil", "Confusion", "Amitié", "Domination"],
+    ),
+    (
+        Voie::Illusions,
+        [
+            "Mirage",
+            "Image décalée",
+            "Sort illusoire",
+            "Imitation",
+            "Exécution mentale",
+        ],
+    ),
+    (
+        Voie::Invocation,
+        [
+            "Choc",
+            "Serviteur invisible",
+            "Arme de mana",
+            "Porte dimensionnelle",
+            "Mur de mana",
+        ],
+    ),
+    (
+        Voie::Artefacts,
+        [
+            "Bâton de mage",
+            "Ouverture - fermeture",
+            "Sac sans fond",
+            "Frappe des arcanes",
+            "Artefact étrange",
+        ],
+    ),
+    (
+        Voie::Elixirs,
+        [
+            "Fortifiant",
+            "Feu grégeois",
+            "Élixir de guérison",
+            "Élixirs mineurs",
+            "Élixirs majeurs",
+        ],
+    ),
+    (
+        Voie::Metal,
+        [
+            "Morsure de la forge",
+            "Métal brûlant",
+            "Magnétisme",
+            "Métal hurlant",
+            "Endurer",
+        ],
+    ),
+    (
+        Voie::Golem,
+        [
+            "Grosse tête",
+            "Golem",
+            "Protecteur",
+            "Statuette",
+            "Golem supérieur",
+        ],
+    ),
+    (
+        Voie::Runes,
+        [
+            "Runes de défense",
+            "Rune de puissance",
+            "Rune de protection",
+            "Rune d'énergie",
+            "Rune de garde",
+        ],
+    ),
+    (
+        Voie::MagieDesArcanes,
+        [
+            "Projectile de mana",
+            "Lévitation",
+            "Forme gazeuse",
+            "Accélération",
+            "Désintégration",
+        ],
+    ),
+    (
+        Voie::MagieDestructrice,
+        [
+            "Arc de feu",
+            "Saper les forces",
+            "Flèche de feu",
+            "Explosion de feu",
+            "Appel de la foudre",
+        ],
+    ),
+    (
+        Voie::MagieElementaire,
+        [
+            "Asphyxie",
+            "Maîtrise des éléments",
+            "Arme élémentaire",
+            "Respiration aquatique",
+            "Armure de pierre",
+        ],
+    ),
+    (
+        Voie::MagieProtectrice,
+        [
+            "Armure de mana",
+            "Chute ralentie",
+            "Déphasage",
+            "Cercle de protection",
+            "Interruption du temps",
+        ],
+    ),
+    (
+        Voie::MagieUniverselle,
+        [
+            "Lumière",
+            "Familier",
+            "Invisibilité",
+            "Vol",
+            "Téléportation",
+        ],
+    ),
+    (
+        Voie::Demon,
+        [
+            "Malédiction",
+            "Beauté de la succube",
+            "Pacte démoniaque",
+            "Aspect du démon",
+            "Invocation d'un démon",
+        ],
+    ),
+    (
+        Voie::Mort,
+        [
+            "Siphon des âmes",
+            "Masque mortuaire",
+            "Baiser du vampire",
+            "Peur",
+            "Briser les cœurs",
+        ],
+    ),
+    (
+        Voie::OutreTombe,
+        [
+            "Un pied dans la tombe",
+            "Armure d'os",
+            "Animation des morts",
+            "Ensevelissement",
+            "Armée des morts",
+        ],
+    ),
+    (
+        Voie::Sang,
+        [
+            "Saignements",
+            "Sang mordant",
+            "Exsangue",
+            "Rituel de sang",
+            "Lien de sang",
+        ],
+    ),
+    (
+        Voie::SombreMagie,
+        [
+            "Ténèbres",
+            "Reptation",
+            "Strangulation",
+            "Manteau d'ombre",
+            "Pacte ténébreux",
+        ],
+    ),
+    (
+        Voie::Animaux,
+        [
+            "Langage des animaux",
+            "Petit compagnon",
+            "Nuée d'insectes",
+            "Masque du prédateur",
+            "Forme animale",
+        ],
+    ),
+    (
+        Voie::Fauve,
+        [
+            "Vitesse du félin",
+            "Panthère",
+            "Attaque bondissante",
+            "Grand félin",
+            "Les sept vies du chat",
+        ],
+    ),
+    (
+        Voie::Nature,
+        [
+            "Maître de la survie",
+            "Terrains difficiles",
+            "Bâton de druide",
+            "Constitution héroïque",
+            "Résistant",
+        ],
+    ),
+    (
+        Voie::Protecteur,
+        [
+            "Baies magiques",
+            "Forêt vivante",
+            "Régénération",
+            "Perception héroïque",
+            "Forme d'arbre",
+        ],
+    ),
+    (
+        Voie::Vegetaux,
+        [
+            "Peau d'écorce",
+            "Prison végétale",
+            "Flèche vivante",
+            "Animation d'un arbre",
+            "Porte végétale",
+        ],
+    ),
+    (
+        Voie::EnergieVitale,
+        [
+            "Mains d'énergie",
+            "Projection du ki",
+            "Invulnérable",
+            "Pression mortelle",
+            "Ascétisme",
+        ],
+    ),
+    (
+        Voie::Maitrise,
+        [
+            "Agilité du singe",
+            "Griffes du tigre",
+            "Morsure du serpent",
+            "Fureur du dragon",
+            "Moment de perfection",
+        ],
+    ),
+    (
+        Voie::Meditation,
+        [
+            "Pacifisme",
+            "Transe de guérison",
+            "Maîtrise du ki",
+            "Volonté héroïque",
+            "Projection mentale",
+        ],
+    ),
+    (
+        Voie::Poing,
+        [
+            "Poings de fer",
+            "Peau de fer",
+            "Parade de projectiles",
+            "Déluge de coups",
+            "Puissance du ki",
+        ],
+    ),
+    (
+        Voie::Vent,
+        [
+            "Pas du vent",
+            "Course du vent",
+            "Course des airs",
+            "Agilité héroïque",
+            "Passe-muraille",
+        ],
+    ),
+    (
+        Voie::Foi,
+        [
+            "Prédicateur",
+            "Miracle mineur",
+            "Arme de lumière",
+            "Ailes célestes",
+            "Foudres divines",
+        ],
+    ),
+    (
+        Voie::GuerreSainte,
+        [
+            "Arme bénie",
+            "Bouclier de la foi",
+            "Châtiment divin",
+            "Marteau de la foi",
+            "Mot de pouvoir",
+        ],
+    ),
+    (
+        Voie::Priere,
+        [
+            "Bénédiction",
+            "Sanctuaire",
+            "Destruction du mal",
+            "Volonté héroïque",
+            "Intervention divine",
+        ],
+    ),
+    (
+        Voie::Soins,
+        [
+            "Récupération mineure",
+            "Vigueur divine",
+            "Récupération majeure",
+            "Phénix",
+            "Rétablissement",
+        ],
+    ),
+    (
+        Voie::Spiritualite,
+        [
+            "Vêtements sacrés",
+            "Augure",
+            "Délivrance",
+            "Charisme héroïque",
+            "Marche des plans",
+        ],
+    ),
+    (
+        Voie::DemiOrc,
+        [
+            "Impressionnant",
+            "Talent pour la violence",
+            "Critique brutal",
+            "Attaque sanglante",
+            "Colosse",
+        ],
+    ),
+    (
+        Voie::ElfeHaut,
+        [
+            "Lumière intérieure",
+            "Force d'âme",
+            "Talent pour la magie",
+            "Immortel",
+            "Supériorité elfique",
+        ],
+    ),
+    (
+        Voie::ElfeSylvain,
+        [
+            "Lumière des étoiles",
+            "Enfant de la forêt",
+            "Archer émérite",
+            "Flèche sanglante",
+            "Supériorité elfique",
+        ],
+    ),
+    (
+        Voie::Gnome,
+        [
+            "Don étrange",
+            "Petit pote",
+            "Insignifiant",
+            "Merveille technologique",
+            "Bonne nature",
+        ],
+    ),
+    (
+        Voie::Halfelin,
+        [
+            "Petite taille",
+            "Résistance légendaire",
+            "Bon pour le moral",
+            "Petit veinard",
+            "Vif et bien nourri",
+        ],
+    ),
+    (
+        Voie::Humain,
+        [
+            "Diversité",
+            "Instinct de survie",
+            "Touche-à-tout",
+            "Loup parmi les loups",
+            "Polyvalence",
+        ],
+    ),
+    (
+        Voie::Nain,
+        [
+            "Habitant des tunnels",
+            "Haches et marteaux",
+            "Résistance à la magie",
+            "Fils du roc",
+            "Ténacité",
+        ],
+    ),
+    (
+        Voie::Mage,
+        [
+            "Occultisme",
+            "Maîtrise de la magie",
+            "Tour de magie",
+            "Esprit supérieur",
+            "Tempête de mana",
+        ],
+    ),
+];
+
 /// Voies chosen at level 1 besides the voie de peuple (COF.CRE.VOIES).
 const PROFIL_VOIE_COUNT: i32 = 2;
 
@@ -655,6 +1446,8 @@ fn check_mage_extra(character: &Character, violations: &mut Vec<Violation>) {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use co_kernel::Category;
 
     use super::*;
@@ -713,6 +1506,33 @@ mod tests {
         for bad in ["cof.rage", "cof.rage.x", "cof.unknown.1", ""] {
             assert_eq!(Voie::from_ability_id(bad), None, "{bad}");
         }
+    }
+
+    #[test]
+    fn every_capacite_is_named() {
+        for voie in Voie::ALL {
+            let names: BTreeSet<_> = (1..=5)
+                .map(|rank| voie.ability_name(Rank::new(rank)))
+                .collect();
+            assert_eq!(names.len(), 5, "{voie:?}");
+            assert!(names.iter().all(|name| name.is_some_and(|n| !n.is_empty())));
+            assert_eq!(voie.ability_name(Rank::new(0)), None);
+            assert_eq!(voie.ability_name(Rank::new(6)), None);
+        }
+        // Lhagva's and Ionas's capacités (D-02).
+        assert_eq!(
+            Voie::Pourfendeur.ability_name(Rank::new(1)),
+            Some("Réflexes éclair")
+        );
+        assert_eq!(
+            Voie::Rage.ability_name(Rank::new(2)),
+            Some("Défier la mort")
+        );
+        assert_eq!(
+            Voie::ElfeHaut.ability_name(Rank::new(1)),
+            Some("Lumière intérieure")
+        );
+        assert_eq!(Voie::Mage.ability_name(Rank::new(1)), Some("Occultisme"));
     }
 
     #[test]

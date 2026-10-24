@@ -62,7 +62,7 @@ named by everywhere: `Voie::ability(rank)` builds it,
 `Voie::from_ability_id` reads it back, and the choices document, the
 catalog and the interface use it, so names and effects attach to it
 without changing anything that names a capacité.
-`Voie::ability_name(rank)` gives a COC2 capacité's French name, from the
+`Voie::ability_name(rank)` gives a capacité's French name, from the
 co-rules catalogue (D-45); `label` names a capacité by its voie and rank.
 A weapon value builds its identifier from the
 weapon (`cof.damage.epee-longue.one-handed`), so `Value::id` is not
@@ -427,8 +427,10 @@ and displays with the fewest coins (COF.EQP.CURRENCY). The purse is the
 - Spending, at campaign initialization (D-25): prices, purchases, the COC2
   era and the availability it decides, a negative balance; and where the
   campaign concept lives.
-- The demi-elfe upbringing as a choice, and capacité names per voie and
-  rank, each with a decision entry in the co-rules skill.
+- The demi-elfe upbringing as a choice, with a decision entry in the
+  co-rules skill.
+- `label` naming a capacité by its name rather than its voie and rank,
+  with the application's catalog and tests.
 - Hybrids after level 1 and their PV per level, prestige voies, and the
   capacités calling other capacités (COF.PRG.CALL), all out of scope.
 - Per-weapon attack values, for the capacités changing one weapon's attack;
