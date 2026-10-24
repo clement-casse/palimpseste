@@ -23,9 +23,11 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AbilityOption {
     /// A characteristic: the one raised (Supériorité elfique of the elfe
-    /// haut, Combattant héroïque, the lowest characteristic), or the one used
+    /// haut, Combattant héroïque, the lowest characteristic), the one used
     /// in a formula (Peau de pierre: CON in DEF; Charisme héroïque: CHA for
-    /// PM; Endurer: CON to PM; Grosse tête: INT for the level-1 PV).
+    /// PM; Endurer: CON to PM; Grosse tête: INT for the level-1 PV), or the
+    /// one whose tests get a bonus (Tatouages) or a dé bonus (Formation
+    /// d'élite).
     Characteristic(Characteristic),
     /// The family's +1 PC exchanged for +1 DR (Éclaireur).
     RecoveryDice,
@@ -105,11 +107,22 @@ enum Offer {
     Lowest,
 }
 
+/// Every characteristic, as options.
+const ANY_CHARACTERISTIC: [AbilityOption; 7] = {
+    let [agi, con, force, per, cha, int, vol, ..] = AbilityOption::ALL;
+    [agi, con, force, per, cha, int, vol]
+};
+
 /// The capacités offering options, as the co-rules catalogue describes them.
 const fn offer(voie: Voie, rank: u8) -> Option<Offer> {
     use AbilityOption::{Armour, Characteristic as C, RecoveryDice, Thrown};
     use Characteristic::{Agi, Cha, Con, For, Int};
     Some(match (voie, rank) {
+        // Tatouages' bonus and Formation d'élite's dé bonus to the tests of
+        // a characteristic (D-50).
+        (Voie::Pagne, 3) | (Voie::Noblesse, 5) => {
+            Offer::Options(Need::Required, &ANY_CHARACTERISTIC)
+        }
         (Voie::ElfeHaut, 5) => Offer::Options(Need::Required, &[C(Int), C(Cha)]),
         (Voie::CombatADeuxArmes, 4) => Offer::Options(Need::Required, &[C(Agi), C(For)]),
         (Voie::Humain | Voie::Maitrise | Voie::Meditation | Voie::Vent, 5) => Offer::Lowest,
@@ -190,8 +203,11 @@ pub(crate) enum Amount {
     Characteristic(Characteristic),
     /// The current value of a characteristic, at most the rank reached.
     CharacteristicUpToRank(Characteristic),
-    /// This much per voie of the profil whose rank 5 is held.
-    PerRankFive(Profil, i32),
+    /// This much per voie of the profil whose rank (the `u8`) is held.
+    PerVoieAt(Profil, u8, i32),
+    /// A competence bonus of a voie de profil: 2 + the rank reached, at most
+    /// +7 (COF.DER.COMPETENCE).
+    Competence,
 }
 
 /// What the equipment, or the level, must be for an effect to apply.
@@ -235,7 +251,7 @@ pub(crate) struct Effect {
 impl Effect {
     /// An effect of the capacité at `rank` in `voie`, whatever the equipment
     /// and the options.
-    const fn new(voie: Voie, rank: u8, amount: Amount) -> Self {
+    pub(crate) const fn new(voie: Voie, rank: u8, amount: Amount) -> Self {
         Self {
             voie,
             rank,
@@ -246,18 +262,30 @@ impl Effect {
     }
 
     /// A flat amount.
-    const fn flat(voie: Voie, rank: u8, amount: i32) -> Self {
+    pub(crate) const fn flat(voie: Voie, rank: u8, amount: i32) -> Self {
         Self::new(voie, rank, Amount::Flat(amount))
     }
 
-    const fn only(mut self, condition: Condition) -> Self {
+    /// The same effect, only with `condition` met.
+    pub(crate) const fn only(mut self, condition: Condition) -> Self {
         self.condition = condition;
         self
     }
 
-    const fn when(mut self, when: When) -> Self {
+    /// The same effect, only `when` the option allows it.
+    pub(crate) const fn when(mut self, when: When) -> Self {
         self.when = when;
         self
+    }
+
+    /// The voie of the capacité.
+    pub(crate) const fn voie(&self) -> Voie {
+        self.voie
+    }
+
+    /// The rank of the capacité.
+    pub(crate) const fn rank(&self) -> u8 {
+        self.rank
     }
 
     /// The amount the effect gives the character, `None` when it does not
@@ -296,19 +324,23 @@ impl Effect {
             Amount::RankPlus(amount) => i32::from(rank) + amount,
             Amount::Characteristic(c) => values[c].get(),
             Amount::CharacteristicUpToRank(c) => values[c].get().min(i32::from(rank)),
-            Amount::PerRankFive(profil, amount) => {
-                let rank_five = Rank::new(5);
+            Amount::PerVoieAt(profil, held, amount) => {
+                let held = Rank::new(held);
                 let voies = profil
                     .voies()
                     .iter()
-                    .filter(|voie| character.has_rank(**voie, rank_five))
+                    .filter(|voie| character.has_rank(**voie, held))
                     .count();
                 amount * i32::try_from(voies).unwrap_or(0)
             }
+            Amount::Competence => (i32::from(rank) + 2).min(COMPETENCE_MAX),
         };
         Some(amount)
     }
 }
+
+/// The highest competence bonus of a voie de profil (COF.DER.COMPETENCE).
+const COMPETENCE_MAX: i32 = 7;
 
 /// Adds every effect of `effects` that applies to the character.
 pub(crate) fn apply(
@@ -336,8 +368,13 @@ pub(crate) fn any(character: &Character, values: &Characteristics, effects: &[Ef
 }
 
 use Amount::{
-    Characteristic as Carac, CharacteristicUpToRank, PerRank, PerRankFive, RankPlus, Steps,
+    Characteristic as Carac, CharacteristicUpToRank, PerRank, PerVoieAt, RankPlus, Steps,
 };
+
+/// "+1 per rank 5 held in a voie of `profil`".
+const fn per_rank_five(profil: Profil) -> Amount {
+    PerVoieAt(profil, 5, 1)
+}
 
 /// "+1 at rank 1, +2 at rank 3, +3 at rank 5."
 const ONE_TWO_THREE: Amount = Steps(&[(1, 1), (3, 2), (5, 3)]);
@@ -395,7 +432,7 @@ pub(crate) const INITIATIVE: &[Effect] = &[
     Effect::flat(Voie::Air, 1, 1),
     // Divination: +1 at rank 3, +1 per rank 5 in an ensorceleur voie.
     Effect::new(Voie::Divination, 1, Steps(&[(1, 1), (3, 2)])),
-    Effect::new(Voie::Divination, 1, PerRankFive(Profil::Ensorceleur, 1)),
+    Effect::new(Voie::Divination, 1, per_rank_five(Profil::Ensorceleur)),
     // Vitesse du félin.
     Effect::flat(Voie::Fauve, 1, 3),
     // Agile.
@@ -424,7 +461,7 @@ pub(crate) const DEFENCE: &[Effect] = &[
     Effect::flat(Voie::Air, 1, 1),
     // Divination: +1 at rank 3, +1 per rank 5 in an ensorceleur voie.
     Effect::new(Voie::Divination, 1, Steps(&[(1, 1), (3, 2)])),
-    Effect::new(Voie::Divination, 1, PerRankFive(Profil::Ensorceleur, 1)),
+    Effect::new(Voie::Divination, 1, per_rank_five(Profil::Ensorceleur)),
     // Petite taille.
     Effect::flat(Voie::Halfelin, 1, 1),
     // Vitesse du félin.
@@ -459,7 +496,7 @@ pub(crate) const DEFENCE: &[Effect] = &[
     // Rempart.
     Effect::flat(Voie::Soldat, 5, 1),
     // Tactiques de meute: +1 per rank 5 in a rôdeur voie.
-    Effect::new(Voie::CompagnonAnimal, 5, PerRankFive(Profil::Rodeur, 1)),
+    Effect::new(Voie::CompagnonAnimal, 5, per_rank_five(Profil::Rodeur)),
     // Peau de pierre, unless CON replaces AGI.
     Effect::new(Voie::Pagne, 2, Steps(&[(2, 1), (4, 2)])).when(When::NotChosen(
         AbilityOption::Characteristic(Characteristic::Con),
@@ -485,7 +522,7 @@ pub(crate) const DEFENCE: &[Effect] = &[
     // Défense au bouclier, with a shield.
     Effect::new(Voie::Bouclier, 3, Steps(&[(3, 1), (5, 2)])).only(Condition::Shield),
     // Armure sur mesure: in plate, +1 per rank 5 in a chevalier voie.
-    Effect::new(Voie::Guerre, 1, PerRankFive(Profil::Chevalier, 1)).only(Condition::Plate),
+    Effect::new(Voie::Guerre, 1, per_rank_five(Profil::Chevalier)).only(Condition::Plate),
 ];
 
 /// Effects on RD (COF.CNT.EFFECT-SHAPES: damage reduction).
@@ -608,7 +645,7 @@ pub(crate) const DAMAGE: &[WeaponEffect] = &[
     WeaponEffect::new(Weapons::Powder, Effect::flat(Voie::Explosifs, 3, 1)),
     WeaponEffect::new(
         Weapons::Powder,
-        Effect::new(Voie::Explosifs, 3, PerRankFive(Profil::Arquebusier, 1)),
+        Effect::new(Voie::Explosifs, 3, per_rank_five(Profil::Arquebusier)),
     ),
     // Archer émérite: PER to the bows, or FOR to the thrown weapons.
     WeaponEffect::new(

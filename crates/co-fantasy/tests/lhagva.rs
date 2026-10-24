@@ -80,6 +80,36 @@ fn resources() {
 }
 
 #[test]
+fn test_bonuses_come_from_her_three_capacites() {
+    let lhagva = lhagva();
+    let bonuses: Vec<_> = lhagva
+        .test_bonuses()
+        .into_iter()
+        .map(|bonus| {
+            (
+                bonus.ability(),
+                bonus.characteristics(),
+                total(&lhagva, Value::TestBonus(bonus)),
+            )
+        })
+        .collect();
+    // Réflexes éclair: rank + 2 to AGI dodge tests; Cri de guerre: rank + 2
+    // to resist fear; Diversité: +3 on two origin domains.
+    assert_eq!(
+        bonuses,
+        [
+            (
+                Voie::Pourfendeur.ability(1.into()),
+                [Characteristic::Agi].as_slice(),
+                Some(3)
+            ),
+            (Voie::Rage.ability(1.into()), [].as_slice(), Some(3)),
+            (Voie::Humain.ability(1.into()), [].as_slice(), Some(3)),
+        ]
+    );
+}
+
+#[test]
 fn luck_comes_from_diversite() {
     let luck = lhagva().value(Value::LuckPoints);
     let breakdown: Vec<_> = luck

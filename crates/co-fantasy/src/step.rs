@@ -119,6 +119,11 @@ impl Step {
             return match violation.subject() {
                 Subject::Characteristic(_) => Self::Characteristics,
                 Subject::Value(id) if *id == Value::Money.id() => Self::Equipment,
+                Subject::Value(id)
+                    if matches!(Value::from_id(id.as_str()), Some(Value::TestBonus(_))) =>
+                {
+                    Self::Voies
+                }
                 _ => Self::Derived,
             };
         }

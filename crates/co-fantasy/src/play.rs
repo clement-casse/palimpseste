@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use co_kernel::{DerivedValue, Quantity, ViolationReport};
 
-use crate::{Armour, Character, Item, Shield, Value, armour, weapon};
+use crate::{Armour, BonusDie, Character, Item, Shield, Value, armour, weapon};
 
 /// What a character wears and carries: an armour, a shield and items.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -70,6 +70,13 @@ impl InPlay {
     #[must_use]
     pub fn value(&self, value: Value) -> Option<DerivedValue> {
         self.character.value(value)
+    }
+
+    /// Returns the dé bonus to tests of the capacités held, with the
+    /// equipment in play, as [`Character::bonus_dice`] does.
+    #[must_use]
+    pub fn bonus_dice(&self) -> Vec<BonusDie> {
+        self.character.bonus_dice()
     }
 
     /// Returns the findings of the rules that hold in play, matched against
