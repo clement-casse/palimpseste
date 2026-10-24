@@ -1,7 +1,9 @@
-//! The choices of a COC2 character at creation.
+//! The choices of a COC2 character: at creation, then the experience spent
+//! and the sequels acquired in play.
 
 use co_contemporain::{
-    Character, Domaine, Equipment, Protection, Target as EngineTarget, Trait, Value, Voie, Weapon,
+    Character, Domaine, Equipment, Protection, Sequel, Target as EngineTarget, Trait, Value, Voie,
+    Weapon, XpSpending,
 };
 use co_kernel::Characteristic as KernelCharacteristic;
 use serde::{Deserialize, Serialize};
@@ -9,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
 use crate::{
-    AdjustmentEntry, Error, ItemEntry, PerCharacteristic, Target, VERSION, VoieEntry, WaiverEntry,
-    check_version, content, filled,
+    AdjustmentEntry, Characteristic, Error, ItemEntry, PerCharacteristic, Target, VERSION,
+    VoieEntry, WaiverEntry, check_version, content, filled,
 };
 
 /// The choices of a COC2 character, mirroring `co_contemporain::Character`.
@@ -26,9 +28,22 @@ pub struct ContemporainDocument {
     /// The domaine's identifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub domaine: Option<String>,
-    /// The ranks acquired per voie.
+    /// The ranks acquired per voie at creation.
     #[serde(default)]
     pub voies: Vec<VoieEntry>,
+    /// The XP earned since creation.
+    #[serde(default)]
+    pub experience: u32,
+    /// The spendings of XP, in order.
+    #[serde(default)]
+    pub xp_spendings: Vec<XpSpendingEntry>,
+    /// The characteristic chosen for each rank 5 offering a choice.
+    #[serde(default)]
+    pub raised_characteristics: Vec<RaisedCharacteristicEntry>,
+    /// The identifiers of the sequels acquired in play
+    /// (`coc.acquired-sequel.diminue-corps`).
+    #[serde(default)]
+    pub acquired_sequels: Vec<String>,
     /// The traits distinctifs taken.
     #[serde(default)]
     pub traits: Vec<TraitEntry>,
@@ -47,6 +62,39 @@ pub struct ContemporainDocument {
     /// The waivers granted.
     #[serde(default)]
     pub waivers: Vec<WaiverEntry>,
+}
+
+/// What one spending of XP buys.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(Tsify))]
+pub struct XpSpendingEntry {
+    /// The identifiers of the capacités bought (`coc.crime.3`).
+    #[serde(default)]
+    pub abilities: Vec<String>,
+    /// The trait changes bought.
+    #[serde(default)]
+    pub traits: Vec<TraitChangeEntry>,
+}
+
+/// A trait set to new points, or given up, by a spending of XP.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(Tsify))]
+pub struct TraitChangeEntry {
+    /// The trait's identifier.
+    pub id: String,
+    /// The trait's new points; none gives the trait up.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub points: Option<u8>,
+}
+
+/// The characteristic a voie's rank 5 raises, chosen among its options.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(Tsify))]
+pub struct RaisedCharacteristicEntry {
+    /// The voie's identifier.
+    pub voie: String,
+    /// The characteristic raised.
+    pub characteristic: Characteristic,
 }
 
 /// A trait distinctif taken, with its points.
@@ -68,6 +116,10 @@ impl ContemporainDocument {
             age: None,
             domaine: None,
             voies: Vec::new(),
+            experience: 0,
+            xp_spendings: Vec::new(),
+            raised_characteristics: Vec::new(),
+            acquired_sequels: Vec::new(),
             traits: Vec::new(),
             carac_points: PerCharacteristic::default(),
             items: Vec::new(),
@@ -107,6 +159,18 @@ impl ContemporainDocument {
                 character = character.with_carac_points(characteristic, points);
             }
         }
+        character = character.with_experience(self.experience);
+        for entry in &self.xp_spendings {
+            character = character.with_xp_spending(entry.spending()?);
+        }
+        for entry in &self.raised_characteristics {
+            let voie = content("voie", &entry.voie, Voie::from_id)?;
+            character = character.with_raised_characteristic(voie, entry.characteristic.into());
+        }
+        for id in &self.acquired_sequels {
+            character =
+                character.with_acquired_sequel(content("sequel", id, Sequel::from_acquired_id)?);
+        }
         character = character.with_equipment(equipment(&self.protections, &self.items)?);
         for entry in &self.adjustments {
             let target = match &entry.target {
@@ -119,6 +183,24 @@ impl ContemporainDocument {
             character = character.with_waiver(entry.waiver()?);
         }
         Ok(character)
+    }
+}
+
+impl XpSpendingEntry {
+    fn spending(&self) -> Result<XpSpending, Error> {
+        let mut spending = XpSpending::new();
+        for id in &self.abilities {
+            let (voie, rank) = content("ability", id, Voie::from_ability_id)?;
+            spending = spending.with_rank(voie, rank);
+        }
+        for change in &self.traits {
+            let t = content("trait", &change.id, Trait::from_id)?;
+            spending = match change.points {
+                Some(points) => spending.with_trait(t, points),
+                None => spending.with_trait_given_up(t),
+            };
+        }
+        Ok(spending)
     }
 }
 

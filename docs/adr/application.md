@@ -48,8 +48,17 @@ no official Rust server.
 
 **APP-DOCUMENT: Versioned, per engine, naming content by identifier.**
 `Document` is tagged by `engine` (`contemporain`, `fantasy`) and carries a
-`version` (now 1); each engine variant holds the choices, the adjustments
-and the waivers, mirroring the engine builders. Content is named by the
+`version` (now 2); each engine variant holds the choices, the adjustments
+and the waivers, mirroring the engine builders. Version 2 added the
+progression: COF2 `levelUps` (the capacités acquired and forgotten, the
+orphan exchange) and `abilityOptions`; COC2 `experience`, `xpSpendings`
+(capacités bought, trait changes), `raisedCharacteristics` and
+`acquiredSequels`. A capacité is named by its identifier (`cof.rage.2`,
+ADR ENG-VALUE-IDS), the key its name, description and effects will later
+attach to. Only the current version is read: a format change bumps the
+version and the backend migrates or deletes the stored documents (ADR
+BE-STORE), so an old build meeting a new document refuses it instead of
+dropping what it does not know. Content is named by the
 engines' identifiers (ADR ENG-CATALOGUE), so the content enums are not
 mirrored and the engines stay free of `serde`. A document converts one
 way, to an engine `Character`: it is the source of truth, and the engines

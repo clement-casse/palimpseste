@@ -1,8 +1,8 @@
-//! The choices of a COF2 character at level 1.
+//! The choices of a COF2 character: at level 1, then at each level-up.
 
 use co_fantasy::{
-    Armour, Character, Equipment, Money, Peuple, Profil, Series, Shield, Target as EngineTarget,
-    Value, Voie, Weapon,
+    AbilityOption, Armour, Character, Equipment, LevelUp, Money, OrphanExchange, Peuple, Profil,
+    Series, Shield, Target as EngineTarget, Value, Voie, Weapon,
 };
 use co_kernel::Characteristic as KernelCharacteristic;
 use serde::{Deserialize, Serialize};
@@ -40,9 +40,15 @@ pub struct FantasyDocument {
     /// The characteristic the peuple lowers, when chosen.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub peuple_malus: Option<Characteristic>,
-    /// The ranks acquired per voie.
+    /// The ranks acquired per voie at creation.
     #[serde(default)]
     pub voies: Vec<VoieEntry>,
+    /// The level-ups, in order: the first reaches level 2.
+    #[serde(default)]
+    pub level_ups: Vec<LevelUpEntry>,
+    /// The option chosen for each capacité offering one.
+    #[serde(default)]
+    pub ability_options: Vec<AbilityOptionEntry>,
     /// The armour worn.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub armour: Option<String>,
@@ -76,6 +82,8 @@ impl FantasyDocument {
             peuple_bonus: None,
             peuple_malus: None,
             voies: Vec::new(),
+            level_ups: Vec::new(),
+            ability_options: Vec::new(),
             armour: None,
             shield: None,
             items: Vec::new(),
@@ -119,6 +127,14 @@ impl FantasyDocument {
                 character = character.with_rank(voie, *rank);
             }
         }
+        for entry in &self.level_ups {
+            character = character.with_level_up(entry.level_up()?);
+        }
+        for entry in &self.ability_options {
+            let (voie, rank) = ability(&entry.ability)?;
+            let option = content("ability option", &entry.option, AbilityOption::from_id)?;
+            character = character.with_ability_option(voie, rank, option);
+        }
         character = character.with_equipment(equipment(
             self.armour.as_deref(),
             self.shield.as_deref(),
@@ -139,6 +155,57 @@ impl FantasyDocument {
         }
         Ok(character)
     }
+}
+
+/// The capacités acquired and forgotten at one level-up, and the exchange of
+/// its orphan point.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(Tsify))]
+pub struct LevelUpEntry {
+    /// The identifiers of the capacités acquired (`cof.rage.2`).
+    #[serde(default)]
+    pub abilities: Vec<String>,
+    /// The identifiers of the capacités forgotten (changement
+    /// d'orientation).
+    #[serde(default)]
+    pub forgotten: Vec<String>,
+    /// The identifier of what the orphan point is exchanged for.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub orphan: Option<String>,
+}
+
+impl LevelUpEntry {
+    fn level_up(&self) -> Result<LevelUp, Error> {
+        let mut level_up = LevelUp::new();
+        for id in &self.abilities {
+            let (voie, rank) = ability(id)?;
+            level_up = level_up.with_rank(voie, rank);
+        }
+        for id in &self.forgotten {
+            let (voie, rank) = ability(id)?;
+            level_up = level_up.with_forgotten(voie, rank);
+        }
+        if let Some(id) = &self.orphan {
+            level_up =
+                level_up.with_orphan(content("orphan exchange", id, OrphanExchange::from_id)?);
+        }
+        Ok(level_up)
+    }
+}
+
+/// The option chosen for a capacité.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(Tsify))]
+pub struct AbilityOptionEntry {
+    /// The capacité's identifier (`cof.elfe-haut.5`).
+    pub ability: String,
+    /// The option's identifier (`cof.option.int`).
+    pub option: String,
+}
+
+/// The voie and rank of the capacité `id` names.
+fn ability(id: &str) -> Result<(Voie, co_kernel::Rank), Error> {
+    content("ability", id, Voie::from_ability_id)
 }
 
 /// What a COF2 character wears and carries in play, in place of its
