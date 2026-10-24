@@ -1,6 +1,8 @@
 //! Traits distinctifs (COC.CRE.TRAITS, COC.CNT.TRAITS) and social class
 //! (COC.CRE.SOCIAL-CLASS).
 
+use std::collections::BTreeMap;
+
 use co_kernel::{Severity, Subject, ValueId, Violation};
 
 use crate::{
@@ -340,10 +342,16 @@ impl Trait {
     }
 }
 
-/// The social class set by the class traits, or `None` when they contradict
-/// each other or carry points outside the catalogue (D-19).
+/// The social class set by the class traits chosen at creation, or `None`
+/// when they contradict each other or carry points outside the catalogue
+/// (D-19).
 pub(crate) fn social_class(character: &Character) -> Option<SocialClass> {
-    let points = |t| character.trait_points(t).map(TraitPoints::get);
+    social_class_of(&character.creation_traits())
+}
+
+/// The social class set by the class traits of `traits` (D-19).
+pub(crate) fn social_class_of(traits: &BTreeMap<Trait, TraitPoints>) -> Option<SocialClass> {
+    let points = |t| traits.get(&t).map(|points| points.get());
     match (
         points(Trait::ClasseSuperieure),
         points(Trait::ClasseInferieure),

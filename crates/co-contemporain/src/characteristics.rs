@@ -1,4 +1,5 @@
-//! Starting characteristics (COC.CRE.CARAC, D-07, D-08, D-10, D-17).
+//! Characteristics (COC.CRE.CARAC, COC.PRG.CARAC, D-07, D-08, D-10, D-17,
+//! D-20).
 
 use co_kernel::{
     Characteristic, DerivedValue, Rank, Severity, Source, Subject, ValueId, Violation,
@@ -6,7 +7,9 @@ use co_kernel::{
 
 use crate::{
     Character, Sequel, Trait, Value, Voie,
-    rules::{CARAC_LIMITS, CARAC_LOWERED, CARAC_MECHANIC, CARAC_PHYSICAL, CARAC_POINTS},
+    rules::{
+        CARAC_GROWTH, CARAC_LIMITS, CARAC_LOWERED, CARAC_MECHANIC, CARAC_PHYSICAL, CARAC_POINTS,
+    },
 };
 
 /// Breakdown source of the characteristic points allocated by the player.
@@ -37,9 +40,27 @@ fn trait_modifier(t: Trait, c: Characteristic) -> i32 {
     }
 }
 
+/// The choices a characteristic is computed from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Scope {
+    /// The creation choices only: the starting value the creation limits
+    /// read.
+    Starting,
+    /// The creation choices and the XP spendings.
+    Current,
+}
+
+/// The rank whose capacité raises a characteristic (COC.PRG.CARAC).
+const RAISING_RANK: Rank = Rank::new(5);
+
 /// The value of `c` before adjustments: allocated points, then trait and
-/// capacité modifiers on top (D-08, D-10).
-pub(crate) fn characteristic(character: &Character, c: Characteristic) -> DerivedValue {
+/// capacité modifiers on top (D-08, D-10): Athlétisme rank 1 and the
+/// characteristic each rank 5 raises (D-20).
+pub(crate) fn characteristic(
+    character: &Character,
+    c: Characteristic,
+    scope: Scope,
+) -> DerivedValue {
     let mut value = DerivedValue::new().with(
         Source::Value(ALLOCATED_POINTS),
         character.allocated_points(c),
@@ -50,9 +71,24 @@ pub(crate) fn characteristic(character: &Character, c: Characteristic) -> Derive
             value = value.with(Source::Value(t.id()), modifier);
         }
     }
+    let voies = match scope {
+        Scope::Starting => character.creation_ranks().clone(),
+        Scope::Current => character.voies(),
+    };
     let first_rank = Rank::new(1);
-    if c == Characteristic::Con && character.has_rank(Voie::Athletisme, first_rank) {
+    if c == Characteristic::Con
+        && voies
+            .get(&Voie::Athletisme)
+            .is_some_and(|ranks| ranks.contains(&first_rank))
+    {
         value = value.with(Source::Ability(Voie::Athletisme.ability(first_rank)), 1);
+    }
+    for (voie, ranks) in &voies {
+        let raised = voie.rank_five_raises().contains(&c)
+            || character.raised_characteristic(*voie) == Some(c);
+        if ranks.contains(&RAISING_RANK) && raised {
+            value = value.with(Source::Ability(voie.ability(RAISING_RANK)), 1);
+        }
     }
     value
 }
@@ -77,6 +113,31 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     check_lowered(character, violations);
     check_physical(character, violations);
     check_limits(character, violations);
+    check_rank_five(character, violations);
+}
+
+/// COC.PRG.CARAC: a rank 5 offering a choice has the characteristic it
+/// raises chosen among its options.
+fn check_rank_five(character: &Character, violations: &mut Vec<Violation>) {
+    for (voie, ranks) in character.voies() {
+        if !ranks.contains(&RAISING_RANK) {
+            continue;
+        }
+        let choice = voie.rank_five_choice();
+        let subject = Subject::Ability(voie.ability(RAISING_RANK));
+        match character.raised_characteristic(voie) {
+            None if !choice.is_empty() => {
+                violations.push(Violation::incomplete(CARAC_GROWTH, CARAC_MECHANIC, subject));
+            }
+            Some(c) if !choice.contains(&c) => violations.push(Violation::deviation(
+                CARAC_GROWTH,
+                CARAC_MECHANIC,
+                subject,
+                Severity::Standard,
+            )),
+            _ => {}
+        }
+    }
 }
 
 /// COC.CRE.CARAC-POINTS: the characteristic points spent exactly.
@@ -126,7 +187,7 @@ fn check_physical(character: &Character, violations: &mut Vec<Violation>) {
     let Some(limits) = character.age_bracket().map(crate::AgeBracket::limits) else {
         return;
     };
-    let values = character.characteristics();
+    let values = character.starting_characteristics();
     for c in PHYSICAL {
         let value = values[c].get();
         if !(limits.physical_min..=limits.physical_max).contains(&value) {
@@ -147,7 +208,7 @@ fn check_physical(character: &Character, violations: &mut Vec<Violation>) {
 
 /// COC.CRE.CARAC-LIMITS (absolute): every starting value within its limits.
 fn check_limits(character: &Character, violations: &mut Vec<Violation>) {
-    for (c, value) in character.characteristics().iter() {
+    for (c, value) in character.starting_characteristics().iter() {
         let value = value.get();
         let max = absolute_max(character, c);
         if !(ABSOLUTE_MIN..=max).contains(&value) {
@@ -327,7 +388,7 @@ mod tests {
             .with_trait(Trait::ForceDeLaNature, 2)
             .with_trait(Trait::DUnAutreAge, 2)
             .with_rank(Voie::Athletisme, 1);
-        let con = characteristic(&character, Characteristic::Con);
+        let con = characteristic(&character, Characteristic::Con, Scope::Current);
         let sources: Vec<_> = con
             .contributions()
             .iter()
@@ -343,6 +404,63 @@ mod tests {
             ]
         );
         assert_eq!(con.total(), 2);
-        assert_eq!(characteristic(&character, Characteristic::For).total(), -1);
+        assert_eq!(
+            characteristic(&character, Characteristic::For, Scope::Current).total(),
+            -1
+        );
+    }
+
+    #[test]
+    fn rank_five_raises_a_characteristic() {
+        let ranks = |c: Character, voie| (1..=5).fold(c, |c, rank| c.with_rank(voie, rank));
+        // Langues raises INT without a choice; Corporations raises two.
+        let linguist = ranks(Character::new(), Voie::Langues);
+        assert_eq!(linguist.characteristics()[Characteristic::Int].get(), 1);
+        let boss = ranks(Character::new(), Voie::Corporations);
+        assert_eq!(boss.characteristics()[Characteristic::Cha].get(), 1);
+        assert_eq!(boss.characteristics()[Characteristic::Int].get(), 1);
+        assert_eq!(carac_violations(&boss), []);
+        // Crime offers PER or CHA: incomplete until chosen.
+        let criminal = ranks(Character::new(), Voie::Crime);
+        let growth = |c: &Character| -> Vec<Category> {
+            carac_violations(c)
+                .into_iter()
+                .filter(|v| v.rule() == &CARAC_GROWTH)
+                .map(|v| v.category())
+                .collect()
+        };
+        assert_eq!(growth(&criminal), [Category::Incomplete]);
+        let chosen = criminal.with_raised_characteristic(Voie::Crime, Characteristic::Cha);
+        assert_eq!(growth(&chosen), []);
+        assert_eq!(chosen.characteristics()[Characteristic::Cha].get(), 1);
+        // A characteristic the rank 5 does not offer deviates, and is raised.
+        let other = chosen.with_raised_characteristic(Voie::Crime, Characteristic::For);
+        assert_eq!(
+            growth(&other),
+            [Category::Deviation(co_kernel::Severity::Standard)]
+        );
+        assert_eq!(other.characteristics()[Characteristic::For].get(), 1);
+        assert_eq!(
+            other.without_raised_characteristic(Voie::Crime),
+            ranks(Character::new(), Voie::Crime)
+        );
+    }
+
+    #[test]
+    fn growth_after_creation_never_breaks_the_creation_limits() {
+        // A starting +5 raised by a rank 5 bought with XP.
+        let character = (1..=4)
+            .fold(
+                Character::new().with_carac_points(Characteristic::Int, 5),
+                |c, rank| c.with_rank(Voie::Langues, rank),
+            )
+            .with_experience(5)
+            .with_xp_spending(crate::XpSpending::new().with_rank(Voie::Langues, 5));
+        assert_eq!(character.characteristics()[Characteristic::Int].get(), 6);
+        assert!(
+            carac_violations(&character)
+                .iter()
+                .all(|v| v.rule() != &CARAC_LIMITS)
+        );
     }
 }

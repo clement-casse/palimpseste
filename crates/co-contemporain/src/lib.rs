@@ -1,9 +1,10 @@
 //! Chroniques Oubliées Contemporain, second edition (COC2): character
-//! creation, core rules only.
+//! creation and the experience spent after it, core rules only.
 //!
 //! A [`Character`] holds the creation choices (age, domaine, voie ranks,
-//! traits, characteristic points, items carried, protections worn) with the
-//! Game Master's adjustments and waivers. Every other value is computed with
+//! traits, characteristic points, items carried, protections worn), the XP
+//! earned and each [`XpSpending`], the characteristic each rank 5 raises,
+//! and the Game Master's adjustments and waivers. Every other value is computed with
 //! its breakdown, and every broken rule is reported as a violation. Rule
 //! identifiers trace to the co-rules skill.
 //!
@@ -44,6 +45,7 @@ mod character;
 mod characteristics;
 mod domaine;
 mod equipment;
+mod experience;
 mod health;
 mod label;
 mod play;
@@ -60,6 +62,7 @@ pub use character::{AttackMode, Character, Target, Value};
 pub use characteristics::ALLOCATED_POINTS;
 pub use domaine::Domaine;
 pub use equipment::Item;
+pub use experience::{Experience, XpSpending};
 pub use health::{HEALTH_SCALE_STEPS, HealthState};
 pub use label::{label, term_label};
 pub use play::{Equipment, InPlay};

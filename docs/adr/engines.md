@@ -1,8 +1,8 @@
 # Engines
 
 `co-contemporain` (COC2) and `co-fantasy` (COF2): the core rules of
-character creation, at level 1 for COF2, and the COF2 levels gained after
-it (scope in AGENTS.md). The acceptance tests are the books' worked
+character creation, at level 1 for COF2, then the COF2 levels and the COC2
+experience gained after it (scope in AGENTS.md). The acceptance tests are the books' worked
 characters: Amelia Steele (COC2), Lhagva and Ionas (COF2, at levels 1
 and 2). Rule identifiers (`COF.CRE.CARAC-SERIES`) and
 rule interpretations (D-xx) come from the co-rules skill.
@@ -167,8 +167,11 @@ dice.
 weapon (D-12), never carried; the combat à mains nues rank 2 changes its
 dice. Unarmed and contact weapons add the contact DM bonus, adjustments
 included. The bonus critique is computed from the dice, `None` for area
-weapons. The rank-4 capacités of the armes de contact and armes à distance
-are computed.
+weapons. The rank-4 capacités of the combat voies are computed: Fin
+bretteur, Sniper and Disciple (critical on 18-20, a characteristic added to
+the DM and the bonus critique), and Canonnier (1d6 more with heavy weapons,
+the bonus critique following the dice as D-30 has it for the unarmed rank
+2).
 
 **ENG-COC-PROTECTIONS: RD and malus, never DEF.** Protections add RD, and
 their malus to Init, ATC and AGI tests, never to AGI or DEF (D-04, D-05).
@@ -176,6 +179,50 @@ No voie gives a protection (D-30).
 
 **ENG-COC-MONEY: No money at creation.** The book gives none: the social
 class describes a lifestyle, not an amount.
+
+**ENG-COC-EXPERIENCE: XP spendings are an ordered history.** The character
+stores the XP earned (`Experience`, set by `with_experience`, 1 per
+session by default, COC.PRG.XP-GAIN) and each `XpSpending` in order
+(`with_xp_spending` appends one, `without_xp_spending` gives up the last).
+A spending buys ranks and changes traits: `with_trait` sets a class
+trait's points, `with_trait_given_up` gives a trait up. The current ranks
+join the creation ranks and every spending's; the current traits apply
+each spending's changes to the creation traits. `Value::Experience` is the
+XP left: the XP earned (`coc.experience-earned`), less n per rank n bought
+(the capacité as source), twice the trait value of each social class
+climbed, the class left below the middle class and the class reached
+above it (2 x max(|before|, |after|) per class, the social class as
+source), and twice Toxicomane's points to cure it (COC.PRG.COST,
+COC.PRG.XP-USE). Spending more than earned is a deviation of COC.PRG.COST
+on `Value::Experience`; a rank bought again, one of COC.PRG.COST on the
+capacité. A second rank of a voie in one spending, or a rank bought before
+the rank below, is a deviation of COC.PRG.ONE-RANK (D-09) with the
+capacité as subject; beyond six voies once a spending opens one, of
+COC.PRG.LIMITS; any other trait change (a class going down, a trait taken
+or set), of COC.PRG.XP-USE with the trait as subject, and it costs
+nothing. The Game Master's agreement (COC.PRG.GM-VALIDATION) is not
+checkable. The creation budgets and limits (capacity points, maximum voies
+and rank, the domaine's voies, the starting equipment, the trait balance
+and class, the characteristic limits) read the creation choices only;
+`capacity_points_spent`, `voie_count`, `advantages` and `disadvantages`
+count them, while `social_class` reads the current traits. The experience
+findings sit in `Step::Voies`, COC.PRG.XP-USE in `Step::Traits`.
+
+**ENG-COC-RANK-FIVE: Rank 5 raises a characteristic (D-20).** Each voie's
+rank 5 raises one characteristic: `Voie::rank_five_raises` gives the fixed
+ones (two for the corporations), `Voie::rank_five_choice` the two or three
+to choose from, stored by `with_raised_characteristic`. A rank 5 held
+without its choice is `Incomplete` of COC.PRG.CARAC, a characteristic not
+offered a deviation of it with the capacité as subject, and raised anyway.
+The raise counts at creation too, a rank 5 there being a deviation of the
+maximum rank.
+
+**ENG-COC-STARTING: The creation limits read the starting values.**
+`Character::characteristic` is the current value: the starting value,
+with the ranks bought with XP. The
+characteristic limits (CARAC-PHYSICAL, CARAC-LIMITS) read the starting
+value, from the creation choices only, so growth after creation never
+breaks them.
 
 ## COF2
 

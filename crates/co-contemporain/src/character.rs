@@ -1,4 +1,5 @@
-//! A COC2 character at creation: choices only, everything else computed.
+//! A COC2 character: its creation choices and the experience spent since;
+//! everything else computed.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -8,9 +9,10 @@ use co_kernel::{
 };
 
 use crate::{
-    Age, AgeBracket, Domaine, Equipment, InPlay, Item, Protection, SocialClass, Trait, TraitPoints,
-    Voie, Weapon, age, characteristics, domaine, equipment, protection, secondary, traits, voie,
-    weapon,
+    Age, AgeBracket, Domaine, Equipment, Experience, InPlay, Item, Protection, SocialClass, Trait,
+    TraitPoints, Voie, Weapon, XpSpending, age,
+    characteristics::{self, Scope},
+    domaine, equipment, experience, protection, secondary, traits, voie, weapon,
 };
 
 /// The weapon category an attack value applies to.
@@ -75,6 +77,8 @@ pub enum Value {
     MaxVoies,
     /// Highest rank allowed at creation (COC.CRE.AGE-BRACKET).
     MaxRank,
+    /// XP left: earned, less the XP spent (COC.PRG.COST).
+    Experience,
     /// DM added to a weapon's dice (COC.DER.DM-BONUS).
     Damage(Weapon),
     /// Bonus critique of a weapon (COC.DER.CRIT-BONUS).
@@ -94,11 +98,12 @@ impl Value {
     /// budgets, then the secondary characteristics and the effects of the
     /// protections worn. [`from_id`](Self::from_id) searches it, so it lists
     /// every such value, shown or not.
-    pub const FIXED: [Self; 15] = [
+    pub const FIXED: [Self; 16] = [
         Self::CaracPoints,
         Self::CapacityPoints,
         Self::MaxVoies,
         Self::MaxRank,
+        Self::Experience,
         Self::Initiative,
         Self::Defence,
         Self::Attack(AttackMode::Unarmed),
@@ -144,6 +149,7 @@ impl Value {
             Self::CapacityPoints => "Points de capacité",
             Self::MaxVoies => "Voies au maximum",
             Self::MaxRank => "Rang maximum",
+            Self::Experience => "Points d'expérience (XP)",
             Self::Damage(weapon) => return format!("DM {}", weapon.name()),
             Self::CriticalBonus(weapon) => return format!("Bonus critique {}", weapon.name()),
             Self::CriticalRange(weapon) => return format!("Zone de critique {}", weapon.name()),
@@ -172,6 +178,7 @@ impl Value {
             Self::CapacityPoints => "coc.capacity-points",
             Self::MaxVoies => "coc.max-voies",
             Self::MaxRank => "coc.max-rank",
+            Self::Experience => "coc.experience",
         })
     }
 }
@@ -179,7 +186,7 @@ impl Value {
 /// What a manual adjustment applies to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Target {
-    /// A starting characteristic.
+    /// A characteristic.
     Characteristic(Characteristic),
     /// Another computed value.
     Value(Value),
@@ -194,8 +201,9 @@ impl Target {
     }
 }
 
-/// The choices made for a character at creation, with the adjustments and
-/// waivers granted on them.
+/// The choices made for a character at creation and since: the XP earned
+/// and each spending of it, the characteristic each rank 5 raises; with the
+/// adjustments and waivers granted on them.
 ///
 /// Every value is computed from these choices, never stored. Any choice can
 /// be made in any order, and out-of-rule choices are kept: they show up as
@@ -207,6 +215,9 @@ pub struct Character {
     voies: BTreeMap<Voie, BTreeSet<Rank>>,
     traits: BTreeMap<Trait, TraitPoints>,
     allocated: Characteristics,
+    experience: Experience,
+    spendings: Vec<XpSpending>,
+    raised: BTreeMap<Voie, Characteristic>,
     equipment: Equipment,
     adjustments: Vec<(Target, Adjustment)>,
     waivers: Vec<Waiver>,
@@ -233,14 +244,15 @@ impl Character {
         self
     }
 
-    /// Acquires `rank` in `voie`.
+    /// Acquires `rank` in `voie` at creation.
     #[must_use]
     pub fn with_rank(mut self, voie: Voie, rank: impl Into<Rank>) -> Self {
         self.voies.entry(voie).or_default().insert(rank.into());
         self
     }
 
-    /// Gives up `rank` in `voie`; the voie is dropped once it has no rank left.
+    /// Gives up `rank` in `voie` at creation; the voie is dropped once it has
+    /// no rank left.
     #[must_use]
     pub fn without_rank(mut self, voie: Voie, rank: impl Into<Rank>) -> Self {
         if let Some(ranks) = self.voies.get_mut(&voie) {
@@ -272,6 +284,46 @@ impl Character {
     pub fn with_carac_points(mut self, characteristic: Characteristic, points: i32) -> Self {
         self.allocated
             .set(characteristic, CharacteristicValue::new(points));
+        self
+    }
+
+    /// Sets the XP earned since creation (COC.PRG.XP-GAIN).
+    #[must_use]
+    pub fn with_experience(mut self, experience: impl Into<Experience>) -> Self {
+        self.experience = experience.into();
+        self
+    }
+
+    /// Spends XP on what `spending` buys, after the earlier spendings.
+    #[must_use]
+    pub fn with_xp_spending(mut self, spending: XpSpending) -> Self {
+        self.spendings.push(spending);
+        self
+    }
+
+    /// Gives up the last spending of XP.
+    #[must_use]
+    pub fn without_xp_spending(mut self) -> Self {
+        self.spendings.pop();
+        self
+    }
+
+    /// Chooses the characteristic the rank 5 of `voie` raises, among
+    /// [`Voie::rank_five_choice`] (COC.PRG.CARAC).
+    #[must_use]
+    pub fn with_raised_characteristic(
+        mut self,
+        voie: Voie,
+        characteristic: Characteristic,
+    ) -> Self {
+        self.raised.insert(voie, characteristic);
+        self
+    }
+
+    /// Gives up the characteristic chosen for the rank 5 of `voie`.
+    #[must_use]
+    pub fn without_raised_characteristic(mut self, voie: Voie) -> Self {
+        self.raised.remove(&voie);
         self
     }
 
@@ -331,19 +383,33 @@ impl Character {
         self.age.and_then(AgeBracket::of)
     }
 
-    /// Returns the starting value of `characteristic` and its breakdown.
+    /// Returns the value of `characteristic` and its breakdown: the starting
+    /// value, with the ranks bought with XP.
     #[must_use]
     pub fn characteristic(&self, characteristic: Characteristic) -> DerivedValue {
         self.adjusted(
             Target::Characteristic(characteristic),
-            characteristics::characteristic(self, characteristic),
+            characteristics::characteristic(self, characteristic, Scope::Current),
         )
     }
 
-    /// Returns the seven starting values.
+    /// Returns the seven values.
     #[must_use]
     pub fn characteristics(&self) -> Characteristics {
         Characteristics::from_fn(|c| self.characteristic(c).total().into())
+    }
+
+    /// The seven starting values, adjusted: from the creation choices only,
+    /// the values the creation limits read.
+    pub(crate) fn starting_characteristics(&self) -> Characteristics {
+        Characteristics::from_fn(|c| {
+            self.adjusted(
+                Target::Characteristic(c),
+                characteristics::characteristic(self, c, Scope::Starting),
+            )
+            .total()
+            .into()
+        })
     }
 
     /// Returns `value` and its breakdown.
@@ -365,6 +431,7 @@ impl Character {
             Value::CaracPoints | Value::CapacityPoints | Value::MaxVoies | Value::MaxRank => {
                 age::budget(self, value)?
             }
+            Value::Experience => experience::experience(self),
             Value::Damage(w) => weapon::damage(self, &values, w),
             Value::CriticalBonus(w) => weapon::critical_bonus(self, &values, w)?,
             Value::CriticalRange(w) => weapon::critical_range(self, w),
@@ -375,7 +442,8 @@ impl Character {
     }
 
     /// Returns the dice rolled for the DM of `weapon`: the table's, 1d6
-    /// unarmed with the combat à mains nues rank 2.
+    /// unarmed with the combat à mains nues rank 2, 1d6 more with heavy
+    /// weapons with the armes lourdes rank 4.
     #[must_use]
     pub fn damage_dice(&self, weapon: Weapon) -> Dice {
         weapon::damage_dice(self, weapon)
@@ -393,35 +461,35 @@ impl Character {
             .sum()
     }
 
-    /// Returns the capacity points spent: one per rank acquired.
+    /// Returns the capacity points spent at creation: one per rank chosen.
     #[must_use]
     pub fn capacity_points_spent(&self) -> i32 {
         self.voies.values().flatten().fold(0, |spent, _| spent + 1)
     }
 
-    /// Returns the number of voies with at least one rank.
+    /// Returns the number of voies with at least one rank chosen at creation.
     #[must_use]
     pub fn voie_count(&self) -> i32 {
         self.voies.keys().fold(0, |count, _| count + 1)
     }
 
-    /// Returns the sum of the advantages (positive).
+    /// Returns the sum of the advantages taken at creation (positive).
     #[must_use]
     pub fn advantages(&self) -> i32 {
         self.trait_values().filter(|value| *value > 0).sum()
     }
 
-    /// Returns the sum of the disadvantages (negative).
+    /// Returns the sum of the disadvantages taken at creation (negative).
     #[must_use]
     pub fn disadvantages(&self) -> i32 {
         self.trait_values().filter(|value| *value < 0).sum()
     }
 
-    /// Returns the social class, or `None` when the class traits make it
-    /// uncomputable.
+    /// Returns the social class, with the classes bought with XP, or `None`
+    /// when the class traits make it uncomputable.
     #[must_use]
     pub fn social_class(&self) -> Option<SocialClass> {
-        traits::social_class(self)
+        traits::social_class_of(&self.current_traits())
     }
 
     /// Returns every violation, in mechanic order; the report sorts them.
@@ -434,6 +502,7 @@ impl Character {
         traits::check(self, &mut violations);
         characteristics::check(self, &mut violations);
         equipment::check(self, &mut violations);
+        experience::check(self, &mut violations);
         violations.extend(
             self.adjustments
                 .iter()
@@ -464,24 +533,76 @@ impl Character {
         self.domaine
     }
 
-    pub(crate) fn voies(&self) -> impl Iterator<Item = (Voie, &BTreeSet<Rank>)> {
+    /// The ranks chosen at creation.
+    pub(crate) const fn creation_ranks(&self) -> &BTreeMap<Voie, BTreeSet<Rank>> {
+        &self.voies
+    }
+
+    /// The ranks chosen at creation, in voie order.
+    pub(crate) fn creation_voies(&self) -> impl Iterator<Item = (Voie, &BTreeSet<Rank>)> {
         self.voies.iter().map(|(voie, ranks)| (*voie, ranks))
     }
 
-    pub(crate) fn has_voie(&self, voie: Voie) -> bool {
+    /// The current ranks: those chosen at creation and those bought with XP.
+    pub(crate) fn voies(&self) -> BTreeMap<Voie, BTreeSet<Rank>> {
+        let mut voies = self.voies.clone();
+        for spending in &self.spendings {
+            spending.apply_ranks(&mut voies);
+        }
+        voies
+    }
+
+    pub(crate) fn has_creation_voie(&self, voie: Voie) -> bool {
         self.voies.contains_key(&voie)
     }
 
+    /// The ranks held in `voie`, at creation or bought with XP.
+    fn held(&self, voie: Voie) -> impl Iterator<Item = Rank> + '_ {
+        let created = self.voies.get(&voie).into_iter().flatten().copied();
+        let bought = self
+            .spendings
+            .iter()
+            .flat_map(XpSpending::ranks)
+            .filter(move |(bought, _)| *bought == voie)
+            .map(|(_, rank)| rank);
+        created.chain(bought)
+    }
+
     pub(crate) fn has_rank(&self, voie: Voie, rank: Rank) -> bool {
-        self.voies
-            .get(&voie)
-            .is_some_and(|ranks| ranks.contains(&rank))
+        self.held(voie).any(|held| held == rank)
     }
 
     pub(crate) fn highest_rank(&self, voie: Voie) -> Option<Rank> {
-        self.voies
-            .get(&voie)
-            .and_then(|ranks| ranks.last().copied())
+        self.held(voie).max()
+    }
+
+    pub(crate) const fn experience(&self) -> Experience {
+        self.experience
+    }
+
+    /// The XP spendings, in order.
+    pub(crate) fn spendings(&self) -> impl Iterator<Item = &XpSpending> {
+        self.spendings.iter()
+    }
+
+    /// The characteristic chosen for the rank 5 of `voie`.
+    pub(crate) fn raised_characteristic(&self, voie: Voie) -> Option<Characteristic> {
+        self.raised.get(&voie).copied()
+    }
+
+    /// The traits taken at creation, with their points.
+    pub(crate) fn creation_traits(&self) -> BTreeMap<Trait, TraitPoints> {
+        self.traits.clone()
+    }
+
+    /// The traits held now: those taken at creation, changed by the XP
+    /// spendings.
+    pub(crate) fn current_traits(&self) -> BTreeMap<Trait, TraitPoints> {
+        let mut traits = self.traits.clone();
+        for spending in &self.spendings {
+            spending.apply_traits(&mut traits);
+        }
+        traits
     }
 
     pub(crate) fn traits(&self) -> impl Iterator<Item = (Trait, TraitPoints)> + '_ {
@@ -490,10 +611,6 @@ impl Character {
 
     pub(crate) fn has_trait(&self, t: Trait) -> bool {
         self.traits.contains_key(&t)
-    }
-
-    pub(crate) fn trait_points(&self, t: Trait) -> Option<TraitPoints> {
-        self.traits.get(&t).copied()
     }
 
     pub(crate) fn allocated_points(&self, characteristic: Characteristic) -> i32 {

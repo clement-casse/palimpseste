@@ -11,8 +11,9 @@ use co_kernel::{
 use crate::{
     Value,
     rules::{
-        AGE_BRACKET, CAPACITY_POINTS, CARAC_LIMITS, CARAC_LOWERED, CARAC_PHYSICAL, CARAC_POINTS,
-        DOMAINE, DOMAINES, EQUIPMENT, MAX_VOIES, SOCIAL_CLASS, TRAIT_POINTS, TRAITS,
+        AGE_BRACKET, CAPACITY_POINTS, CARAC_GROWTH, CARAC_LIMITS, CARAC_LOWERED, CARAC_PHYSICAL,
+        CARAC_POINTS, DOMAINE, DOMAINES, EQUIPMENT, MAX_VOIES, ONE_RANK, PRG_COST, PRG_LIMITS,
+        SOCIAL_CLASS, TRAIT_POINTS, TRAITS, XP_USE,
     },
 };
 
@@ -40,13 +41,18 @@ pub enum Step {
 
 /// The step of each rule; the domaine and adjustment notices are refined in
 /// [`Step::of`].
-const RULE_STEPS: [(RuleId, Step); 15] = [
+const RULE_STEPS: [(RuleId, Step); 20] = [
     (AGE_BRACKET, Step::DomaineAndAge),
     (DOMAINE, Step::DomaineAndAge),
     (VOIE_STRUCTURE, Step::Voies),
     (VOIE_ORDER, Step::Voies),
     (CAPACITY_POINTS, Step::Voies),
     (MAX_VOIES, Step::Voies),
+    (PRG_COST, Step::Voies),
+    (ONE_RANK, Step::Voies),
+    (PRG_LIMITS, Step::Voies),
+    (XP_USE, Step::Traits),
+    (CARAC_GROWTH, Step::Characteristics),
     (DOMAINES, Step::Traits),
     (TRAITS, Step::Traits),
     (TRAIT_POINTS, Step::Traits),

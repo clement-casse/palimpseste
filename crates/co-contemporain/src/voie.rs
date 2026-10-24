@@ -1,6 +1,8 @@
 //! The 18 voies (COC.CNT.VOIES) and the checks on acquired ranks.
 
-use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId, voie_rank_violations};
+use co_kernel::{
+    AbilityId, Characteristic, Rank, Severity, Subject, Violation, VoieId, voie_rank_violations,
+};
 
 use crate::{
     AttackMode, Character, Value,
@@ -114,6 +116,41 @@ impl Voie {
         }
     }
 
+    /// The characteristics the voie's rank 5 raises by 1 whatever the choice
+    /// (COC.PRG.CARAC, COC.CNT.VOIES); empty when it raises the one chosen
+    /// in [`rank_five_choice`](Self::rank_five_choice).
+    #[must_use]
+    pub const fn rank_five_raises(self) -> &'static [Characteristic] {
+        use Characteristic::{Agi, Cha, Con, Int};
+        match self {
+            Self::ArtsEtArtisanats => &[Cha],
+            Self::Corporations => &[Cha, Int],
+            Self::Langues | Self::Medecine | Self::Technologie | Self::Sciences => &[Int],
+            Self::Survie => &[Con],
+            Self::Vehicules => &[Agi],
+            _ => &[],
+        }
+    }
+
+    /// The characteristics the voie's rank 5 offers to raise by 1, one to
+    /// choose; empty when it raises fixed ones.
+    #[must_use]
+    pub const fn rank_five_choice(self) -> &'static [Characteristic] {
+        use Characteristic::{Agi, Cha, Con, For, Int, Per, Vol};
+        match self {
+            Self::ArmesDeContact | Self::CombatAMainsNues => &[For, Agi],
+            Self::ArmesADistance => &[Agi, Per],
+            Self::ArmesLourdes => &[For, Per],
+            Self::Athletisme => &[For, Agi, Con],
+            Self::Crime => &[Per, Cha],
+            Self::Discours => &[Cha, Int],
+            Self::Furtivite => &[Per, Agi],
+            Self::Investigation => &[Int, Per],
+            Self::Psychologie => &[Per, Vol],
+            _ => &[],
+        }
+    }
+
     /// Returns the kernel identifier of the voie.
     #[must_use]
     pub fn id(self) -> VoieId {
@@ -152,11 +189,11 @@ impl Voie {
 /// Voies allowed in total, whatever the age bracket (COC.CRE.MAX-VOIES).
 const ABSOLUTE_MAX_VOIES: i32 = 6;
 
-/// Checks the acquired ranks against the voie structure (ADR KER-VOIE) and
-/// the creation budgets.
+/// Checks the current ranks against the voie structure (ADR KER-VOIE), and
+/// the ranks chosen at creation against the creation budgets.
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     for (voie, ranks) in character.voies() {
-        violations.extend(voie_rank_violations(&voie.id(), ranks, VOIE_MECHANIC));
+        violations.extend(voie_rank_violations(&voie.id(), &ranks, VOIE_MECHANIC));
     }
     check_max_rank(character, violations);
     check_voie_budget(character, violations);
@@ -169,7 +206,7 @@ fn check_max_rank(character: &Character, violations: &mut Vec<Violation>) {
     let Some(max) = character.value(Value::MaxRank).map(|v| v.total()) else {
         return;
     };
-    for (voie, ranks) in character.voies() {
+    for (voie, ranks) in character.creation_voies() {
         if let Some(highest) = ranks.last().map(|rank| i32::from(rank.get()))
             && highest > max
         {

@@ -223,7 +223,7 @@ fn check_retained(character: &Character, domaine: Domaine, violations: &mut Vec<
     let retained = domaine
         .slots()
         .iter()
-        .filter(|slot| slot.iter().any(|voie| character.has_voie(*voie)))
+        .filter(|slot| slot.iter().any(|voie| character.has_creation_voie(*voie)))
         .fold(0_i32, |retained, _| retained + 1);
     if retained < domaine.minimum_retained() {
         violations.push(
