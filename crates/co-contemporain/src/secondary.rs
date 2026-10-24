@@ -94,16 +94,30 @@ pub(crate) fn healing_capacity(values: &Characteristics) -> DerivedValue {
         .with(Source::Rule(CG), 3)
 }
 
-/// 20 steps, 4 fewer with D'un autre âge and with Diminué (corps)
-/// (COC.DER.HEALTH-SCALE).
+/// Steps a shorter échelle de santé loses (COC.DER.HEALTH-SCALE).
+const SHORTER_SCALE: i32 = -4;
+
+/// 20 steps, 4 fewer with D'un autre âge and with Diminué (corps), taken at
+/// creation or acquired in play (COC.DER.HEALTH-SCALE).
 pub(crate) fn health_scale(character: &Character) -> DerivedValue {
-    [Trait::DUnAutreAge, Trait::Sequelle(Sequel::DiminueCorps)]
+    let value = [Trait::DUnAutreAge, Trait::Sequelle(Sequel::DiminueCorps)]
         .into_iter()
         .filter(|t| character.has_trait(*t))
         .fold(
             DerivedValue::new().with(Source::Rule(HEALTH_SCALE), HEALTH_SCALE_STEPS),
-            |value, t| value.with(Source::Value(t.id()), -4),
+            |value, t| value.with(Source::Value(t.id()), SHORTER_SCALE),
+        );
+    if character
+        .acquired_sequels()
+        .any(|sequel| sequel == Sequel::DiminueCorps)
+    {
+        value.with(
+            Source::Value(Sequel::DiminueCorps.acquired_id()),
+            SHORTER_SCALE,
         )
+    } else {
+        value
+    }
 }
 
 #[cfg(test)]

@@ -217,9 +217,17 @@ offered a deviation of it with the capacité as subject, and raised anyway.
 The raise counts at creation too, a rank 5 there being a deviation of the
 maximum rank.
 
+**ENG-COC-SEQUELS: Sequels acquired in play are apart from the trait.**
+`with_acquired_sequel` records a `Sequel` acquired in play (a critical hit
+at step 20, COC.CNT.SCALES), never counted in the trait balance and named
+by `Sequel::acquired_id`. Diminué (corps) lowers the current CON by 2 and
+shortens the échelle de santé by 4 steps, Diminué (esprit) lowers the
+current INT by 2; their maximum of +3 is not rechecked, and any other
+sequel changes nothing (D-21).
+
 **ENG-COC-STARTING: The creation limits read the starting values.**
 `Character::characteristic` is the current value: the starting value,
-with the ranks bought with XP. The
+with the ranks bought with XP and the sequels acquired in play. The
 characteristic limits (CARAC-PHYSICAL, CARAC-LIMITS) read the starting
 value, from the creation choices only, so growth after creation never
 breaks them.
@@ -364,6 +372,9 @@ and displays with the fewest coins (COF.EQP.CURRENCY). The purse is the
 
 ## Open
 
+- Lasting effects the co-rules skill lacks: COF2 mutilations, COC2 psychic
+  sequels and traumatismes, aging after creation. A COF2 resurrection's CON
+  loss is a Game Master's adjustment until it has a rule entry.
 - Spending, at campaign initialization (D-25): prices, purchases, the COC2
   era and the availability it decides, a negative balance; and where the
   campaign concept lives.

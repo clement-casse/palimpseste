@@ -4,7 +4,8 @@
 //! A [`Character`] holds the creation choices (age, domaine, voie ranks,
 //! traits, characteristic points, items carried, protections worn), the XP
 //! earned and each [`XpSpending`], the characteristic each rank 5 raises,
-//! and the Game Master's adjustments and waivers. Every other value is computed with
+//! the sequels acquired in play, and the Game Master's adjustments and
+//! waivers. Every other value is computed with
 //! its breakdown, and every broken rule is reported as a violation. Rule
 //! identifiers trace to the co-rules skill.
 //!

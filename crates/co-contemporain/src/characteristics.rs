@@ -46,16 +46,21 @@ pub(crate) enum Scope {
     /// The creation choices only: the starting value the creation limits
     /// read.
     Starting,
-    /// The creation choices and the XP spendings.
+    /// The creation choices, the XP spendings and the sequels acquired in
+    /// play.
     Current,
 }
 
 /// The rank whose capacité raises a characteristic (COC.PRG.CARAC).
 const RAISING_RANK: Rank = Rank::new(5);
+/// The change a sequel acquired in play makes to the characteristic it
+/// diminishes.
+const ACQUIRED_SEQUEL_MALUS: i32 = -2;
 
 /// The value of `c` before adjustments: allocated points, then trait and
 /// capacité modifiers on top (D-08, D-10): Athlétisme rank 1 and the
-/// characteristic each rank 5 raises (D-20).
+/// characteristic each rank 5 raises (D-20); in the current value, the
+/// sequels acquired in play.
 pub(crate) fn characteristic(
     character: &Character,
     c: Characteristic,
@@ -88,6 +93,18 @@ pub(crate) fn characteristic(
             || character.raised_characteristic(*voie) == Some(c);
         if ranks.contains(&RAISING_RANK) && raised {
             value = value.with(Source::Ability(voie.ability(RAISING_RANK)), 1);
+        }
+    }
+    if scope == Scope::Current {
+        for sequel in character.acquired_sequels() {
+            let diminished = match sequel {
+                Sequel::DiminueCorps => Some(Characteristic::Con),
+                Sequel::DiminueEsprit => Some(Characteristic::Int),
+                Sequel::Autre => None,
+            };
+            if diminished == Some(c) {
+                value = value.with(Source::Value(sequel.acquired_id()), ACQUIRED_SEQUEL_MALUS);
+            }
         }
     }
     value
@@ -461,6 +478,40 @@ mod tests {
             carac_violations(&character)
                 .iter()
                 .all(|v| v.rule() != &CARAC_LIMITS)
+        );
+    }
+
+    #[test]
+    fn acquired_sequels_lower_the_current_value_only() {
+        let character = Character::new()
+            .with_carac_points(Characteristic::Con, 1)
+            .with_acquired_sequel(Sequel::DiminueCorps)
+            .with_acquired_sequel(Sequel::DiminueEsprit)
+            .with_acquired_sequel(Sequel::Autre);
+        let values = character.characteristics();
+        assert_eq!(values[Characteristic::Con].get(), -1);
+        assert_eq!(values[Characteristic::Int].get(), -2);
+        assert_eq!(
+            character.starting_characteristics()[Characteristic::Con].get(),
+            1
+        );
+        assert_eq!(
+            character.value(Value::HealthScale).map(|v| v.total()),
+            Some(16)
+        );
+        // Neither the creation limits nor the sequel's maximum are rechecked.
+        assert!(
+            carac_violations(&character)
+                .iter()
+                .all(|v| v.rule() != &CARAC_LIMITS)
+        );
+        let healed = character
+            .without_acquired_sequel(Sequel::DiminueCorps)
+            .without_acquired_sequel(Sequel::DiminueEsprit)
+            .without_acquired_sequel(Sequel::Autre);
+        assert_eq!(
+            healed,
+            Character::new().with_carac_points(Characteristic::Con, 1)
         );
     }
 }

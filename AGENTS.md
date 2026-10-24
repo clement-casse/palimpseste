@@ -39,6 +39,7 @@ In scope:
 - **Creation budgets and limits**: characteristic points, capacity points, maximum voies and rank, trait balance, characteristic bounds, domaine voies, social class, starting equipment of the weapon voies.
 - **Experience** (ADR ENG-COC-EXPERIENCE): the XP earned (`Experience`) and each `XpSpending` in order, the ranks and trait changes it buys and the XP left (`Value::Experience`); rank n costs n XP, one rank of a voie per spending, six voies, the social class raised and Toxicomane cured with XP (COC.PRG.COST, ONE-RANK, LIMITS, XP-USE); the creation budgets and limits read the creation choices only.
 - **Characteristic growth** (ADR ENG-COC-RANK-FIVE): the characteristic each rank 5 raises, chosen when the voie offers two or three (COC.PRG.CARAC, D-20).
+- **Sequels acquired in play** (ADR ENG-COC-SEQUELS): recorded apart from the trait Séquelle, Diminué lowering the current CON or INT and shortening the health scale.
 - **Secondary characteristics**: Init, DEF, ATC and ATD per weapon category, contact DM bonus, CG, health scale length, protection RD and malus, weapon damage dice and DM, bonus critique and critical range, with the rank-4 capacités of the four combat voies.
 - **Health-scale states** (ADR ENG-HEALTH-STATES): the steps of a full échelle de santé and its states (step, name, malus), content the character sheet displays. The damage taken is not the engine's.
 - **Equipment in play** (ADR ENG-IN-PLAY): `Equipment` (protections, items), `Character::in_play` and the values of `InPlay`, computed from the equipment it is given; nothing is stored.
@@ -49,6 +50,7 @@ Out of scope, do not implement or prepare for:
 - variants (COC2 3d6, ...) and universe rules (échelle d'évolution);
 - combat resolution, arme de prédilection, weapon range, magazine and reach, items without a rule (they stay free text);
 - money, prices, purchases and the era: spending waits for campaign initialization (D-25);
+- psychic sequels and traumatismes (not in the co-rules skill), aging after creation;
 - data files and data formats, persistence, serialization, `serde`;
 - user interface, networking, users, campaigns, play state (health scale damage, resources), dice rolling.
 

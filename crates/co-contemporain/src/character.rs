@@ -1,5 +1,5 @@
-//! A COC2 character: its creation choices and the experience spent since;
-//! everything else computed.
+//! A COC2 character: its creation choices, the experience spent since and
+//! the sequels acquired in play; everything else computed.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -9,8 +9,8 @@ use co_kernel::{
 };
 
 use crate::{
-    Age, AgeBracket, Domaine, Equipment, Experience, InPlay, Item, Protection, SocialClass, Trait,
-    TraitPoints, Voie, Weapon, XpSpending, age,
+    Age, AgeBracket, Domaine, Equipment, Experience, InPlay, Item, Protection, Sequel, SocialClass,
+    Trait, TraitPoints, Voie, Weapon, XpSpending, age,
     characteristics::{self, Scope},
     domaine, equipment, experience, protection, secondary, traits, voie, weapon,
 };
@@ -202,8 +202,9 @@ impl Target {
 }
 
 /// The choices made for a character at creation and since: the XP earned
-/// and each spending of it, the characteristic each rank 5 raises; with the
-/// adjustments and waivers granted on them.
+/// and each spending of it, the characteristic each rank 5 raises, the
+/// sequels acquired in play; with the adjustments and waivers granted on
+/// them.
 ///
 /// Every value is computed from these choices, never stored. Any choice can
 /// be made in any order, and out-of-rule choices are kept: they show up as
@@ -218,6 +219,7 @@ pub struct Character {
     experience: Experience,
     spendings: Vec<XpSpending>,
     raised: BTreeMap<Voie, Characteristic>,
+    acquired_sequels: BTreeSet<Sequel>,
     equipment: Equipment,
     adjustments: Vec<(Target, Adjustment)>,
     waivers: Vec<Waiver>,
@@ -327,6 +329,21 @@ impl Character {
         self
     }
 
+    /// Records `sequel` as acquired in play, apart from the trait Séquelle
+    /// taken at creation.
+    #[must_use]
+    pub fn with_acquired_sequel(mut self, sequel: Sequel) -> Self {
+        self.acquired_sequels.insert(sequel);
+        self
+    }
+
+    /// Gives up the sequel acquired in play.
+    #[must_use]
+    pub fn without_acquired_sequel(mut self, sequel: Sequel) -> Self {
+        self.acquired_sequels.remove(&sequel);
+        self
+    }
+
     /// Carries `quantity` of `item`, replacing any quantity already carried;
     /// a quantity of 0 gives the item up.
     #[must_use]
@@ -384,7 +401,7 @@ impl Character {
     }
 
     /// Returns the value of `characteristic` and its breakdown: the starting
-    /// value, with the ranks bought with XP.
+    /// value, with the ranks bought with XP and the sequels acquired in play.
     #[must_use]
     pub fn characteristic(&self, characteristic: Characteristic) -> DerivedValue {
         self.adjusted(
@@ -588,6 +605,11 @@ impl Character {
     /// The characteristic chosen for the rank 5 of `voie`.
     pub(crate) fn raised_characteristic(&self, voie: Voie) -> Option<Characteristic> {
         self.raised.get(&voie).copied()
+    }
+
+    /// The sequels acquired in play, in sequel order.
+    pub(crate) fn acquired_sequels(&self) -> impl Iterator<Item = Sequel> + '_ {
+        self.acquired_sequels.iter().copied()
     }
 
     /// The traits taken at creation, with their points.
