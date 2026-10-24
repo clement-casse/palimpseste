@@ -125,7 +125,7 @@ computes violations.
 **BE-STORE: SQLite through `rusqlite`.** `rusqlite` (`bundled`), one
 connection, each query on `spawn_blocking`. Tables `users`, `identities`,
 `sessions`, `logins`, `registrations`, `characters`, `invitations` and
-`friendships` (version 2); a document is stored as JSON text
+`friendships` (version 3); a document is stored as JSON text
 next to a version counter, its `ETag`. Foreign keys are enforced on the
 connection. The schema version is `PRAGMA user_version`, and opening the
 store migrates in one transaction: a database of no version (new, or older
@@ -138,7 +138,8 @@ table others reference also needs the opening to turn them off around the
 transaction and check them before the commit. *Why not `sqlx`:* a handful
 of queries, and no database at build time. *Why a version number:* an
 index, a constraint or a data change adds no column whose absence could
-trigger it.
+trigger it. Version 3 deleted the characters, whose documents moved to
+version 2 (ADR APP-DOCUMENT), and kept everything else.
 
 ## Sign-in and users
 

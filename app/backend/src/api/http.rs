@@ -690,7 +690,7 @@ mod tests {
         assert_eq!(brune["engine"], "fantasy");
         assert_eq!(brune["version"], 1);
         assert_eq!(brune["document"]["engine"], "fantasy");
-        assert_eq!(brune["document"]["version"], 1);
+        assert_eq!(brune["document"]["version"], 2);
 
         let (status, max) = app
             .send_json(
@@ -887,10 +887,10 @@ mod tests {
                 "unknown weapon",
                 with("/items/0/id", json!("cof.weapon.laser")),
             ),
-            ("unsupported version", with("/version", json!(2))),
+            ("unsupported version", with("/version", json!(1))),
             (
                 "other engine",
-                json!({"engine": "contemporain", "version": 1}),
+                json!({"engine": "contemporain", "version": 2}),
             ),
             ("unknown engine", with("/engine", json!("pathfinder"))),
             ("negative rank", with("/voies/0/ranks", json!([-1]))),

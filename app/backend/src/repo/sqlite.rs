@@ -106,7 +106,7 @@ const INDEXES: &str = "
 /// a migration turn off: rebuilding a table others reference (`users`)
 /// first makes `SqliteRepo::with` turn them off around `migrate`, and check
 /// them with `PRAGMA foreign_key_check` before the commit.
-const MIGRATIONS: [&str; 1] = [
+const MIGRATIONS: [&str; 2] = [
     // 2: invitations and friendships (ADR BE-INVITATIONS, ADR BE-FRIENDS).
     // One friendship per pair of users, the lower id first.
     "CREATE TABLE invitations (
@@ -124,6 +124,10 @@ const MIGRATIONS: [&str; 1] = [
          UNIQUE (user_low, user_high)
      );
      CREATE INDEX friendships_high ON friendships (user_high);",
+    // 3: the choices document moves to version 2, which reads no version 1
+    // (ADR APP-DOCUMENT); the characters stored before are deleted, the
+    // accounts, identities and friendships kept (ADR BE-STORE).
+    "DELETE FROM characters;",
 ];
 
 const USER_COLUMNS: &str = "users.id, users.nickname, users.profile";
@@ -1831,6 +1835,25 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn migrating_to_version_3_deletes_the_characters_only() {
+        let mut connection = Connection::open_in_memory().unwrap();
+        migrate(&mut connection, &MIGRATIONS[..1]).unwrap();
+        assert_eq!(schema_version(&connection), 2);
+        let repo = SqliteRepo {
+            connection: Arc::new(Mutex::new(connection)),
+        };
+        let ana = sign_up(&repo, "a", "Ana").await;
+        repo.create_character(ana.id, &brune_name(), &Document::empty(Engine::Fantasy))
+            .await
+            .unwrap();
+        migrate(&mut lock(&repo.connection), &MIGRATIONS).unwrap();
+        assert_eq!(schema_version(&lock(&repo.connection)), last_version());
+        assert_eq!(repo.characters(ana.id).await.unwrap(), []);
+        // The account stays, with its identity.
+        assert_eq!(repo.identities(ana.id).await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
     async fn migrates_a_database_of_adr_0009() {
         let path = std::env::temp_dir().join(format!(
             "palimpseste-store-migration-{}.sqlite3",
@@ -1873,7 +1896,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_database_from_before_the_versioning_keeps_its_data() {
+    async fn a_database_from_before_the_versioning_keeps_its_accounts() {
         let path = std::env::temp_dir().join(format!(
             "palimpseste-store-unversioned-{}.sqlite3",
             std::process::id()
@@ -1896,10 +1919,9 @@ mod tests {
         };
         let reopened = SqliteRepo::open(&path).await.unwrap();
         assert_eq!(schema_version(&lock(&reopened.connection)), last_version());
-        assert_eq!(
-            reopened.character(ana.id, brune.id).await.unwrap(),
-            Some(brune)
-        );
+        // The account stays; the character goes with version 3.
+        assert_eq!(reopened.identities(ana.id).await.unwrap().len(), 1);
+        assert_eq!(reopened.character(ana.id, brune.id).await.unwrap(), None);
         drop(reopened);
         std::fs::remove_file(&path).unwrap();
     }

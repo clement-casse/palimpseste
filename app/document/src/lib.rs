@@ -15,7 +15,7 @@
 //! use palimpseste_document::{Document, Engine};
 //!
 //! let document: Document = serde_json::from_str(
-//!     r#"{"engine": "fantasy", "version": 1, "profil": "cof.profil.guerrier"}"#,
+//!     r#"{"engine": "fantasy", "version": 2, "profil": "cof.profil.guerrier"}"#,
 //! )?;
 //! assert_eq!(document.engine(), Engine::Fantasy);
 //! assert!(document.check().is_ok());
@@ -26,14 +26,20 @@ mod contemporain;
 mod fantasy;
 
 use co_kernel::{AbilityId, Adjustment, Author, RuleId, ValueId, VoieId, Waiver};
-pub use contemporain::{ContemporainDocument, ContemporainEquipment, TraitEntry};
-pub use fantasy::{FantasyDocument, FantasyEquipment};
+pub use contemporain::{
+    ContemporainDocument, ContemporainEquipment, RaisedCharacteristicEntry, TraitChangeEntry,
+    TraitEntry, XpSpendingEntry,
+};
+pub use fantasy::{AbilityOptionEntry, FantasyDocument, FantasyEquipment, LevelUpEntry};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ts")]
 use tsify::Tsify;
 
-/// The document version this crate reads and writes.
-pub const VERSION: u32 = 1;
+/// The document version this crate reads and writes. Version 2 added the
+/// progression (COF2 level-ups and capacité options, COC2 experience, the
+/// characteristics raised at rank 5, the sequels acquired in play); version
+/// 1 is no longer read (ADR APP-DOCUMENT).
+pub const VERSION: u32 = 2;
 
 /// Why a document, or an equipment in play, cannot be read. A rule broken is
 /// never one of them.

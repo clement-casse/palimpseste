@@ -5,8 +5,10 @@ use co_kernel::{
     Adjustment, Author, Characteristic as C, RuleId, Subject as KernelSubject, Waiver,
 };
 use palimpseste_document::{
-    AdjustmentEntry, Characteristic, ContemporainDocument, ContemporainEquipment, Document, Engine,
-    Equipment, Error, FantasyDocument, FantasyEquipment, ItemEntry, Subject, Target, WaiverEntry,
+    AbilityOptionEntry, AdjustmentEntry, Characteristic, ContemporainDocument,
+    ContemporainEquipment, Document, Engine, Equipment, Error, FantasyDocument, FantasyEquipment,
+    ItemEntry, LevelUpEntry, RaisedCharacteristicEntry, Subject, Target, TraitChangeEntry,
+    WaiverEntry, XpSpendingEntry,
 };
 
 /// Fixture helpers; a test module, so they may unwrap.
@@ -165,9 +167,10 @@ fn adjustments_and_waivers_convert() {
 
 #[test]
 fn unreadable_documents_say_why() {
+    // Version 1 is no longer read (ADR APP-DOCUMENT).
     let mut document = FantasyDocument::empty();
-    document.version = 2;
-    assert_eq!(document.to_character(), Err(Error::UnsupportedVersion(2)));
+    document.version = 1;
+    assert_eq!(document.to_character(), Err(Error::UnsupportedVersion(1)));
 
     let mut document = FantasyDocument::empty();
     document.profil = Some("cof.profil.paladin".into());
@@ -261,4 +264,131 @@ fn equipment_in_play_converts_and_says_why_it_cannot() {
         ..ContemporainEquipment::default()
     };
     assert_eq!(blank.to_equipment(), Err(Error::Empty("item name")));
+}
+
+#[test]
+fn level_ups_and_options_convert() {
+    let Document::Fantasy(mut document) = fixture("lhagva") else {
+        panic!("fantasy document expected");
+    };
+    document.level_ups = vec![LevelUpEntry {
+        abilities: vec!["cof.pourfendeur.2".into(), "cof.rage.2".into()],
+        forgotten: Vec::new(),
+        orphan: None,
+    }];
+    document.ability_options = vec![AbilityOptionEntry {
+        ability: "cof.archer.1".into(),
+        option: "cof.option.thrown".into(),
+    }];
+    let character = document.to_character().unwrap();
+    assert_eq!(character.level().get(), 2);
+    let vigour = character.value(co_fantasy::Value::VigourPoints);
+    assert_eq!(vigour.map(|v| v.total()), Some(19));
+    let expected = fantasy(&fixture("lhagva"))
+        .with_level_up(
+            co_fantasy::LevelUp::new()
+                .with_rank(co_fantasy::Voie::Pourfendeur, 2)
+                .with_rank(co_fantasy::Voie::Rage, 2),
+        )
+        .with_ability_option(
+            co_fantasy::Voie::Archer,
+            1,
+            co_fantasy::AbilityOption::Thrown,
+        );
+    assert_eq!(character, expected);
+
+    let forgetting = LevelUpEntry {
+        abilities: vec!["cof.combat.1".into()],
+        forgotten: vec!["cof.rage.2".into()],
+        orphan: Some("cof.orphan.luck-point".into()),
+    };
+    document.level_ups.push(forgetting);
+    let character = document.to_character().unwrap();
+    assert_eq!(character.level().get(), 3);
+}
+
+#[test]
+fn experience_and_acquired_sequels_convert() {
+    let Document::Contemporain(mut document) = fixture("amelia-steele") else {
+        panic!("contemporain document expected");
+    };
+    document.experience = 6;
+    document.xp_spendings = vec![XpSpendingEntry {
+        abilities: vec!["coc.survie.2".into()],
+        traits: vec![TraitChangeEntry {
+            id: "coc.trait.classe-superieure".into(),
+            points: Some(1),
+        }],
+    }];
+    document.raised_characteristics = vec![RaisedCharacteristicEntry {
+        voie: "coc.crime".into(),
+        characteristic: Characteristic::Cha,
+    }];
+    document.acquired_sequels = vec!["coc.acquired-sequel.diminue-corps".into()];
+    let character = document.to_character().unwrap();
+    let expected = contemporain(&fixture("amelia-steele"))
+        .with_experience(6)
+        .with_xp_spending(
+            co_contemporain::XpSpending::new()
+                .with_rank(co_contemporain::Voie::Survie, 2)
+                .with_trait(co_contemporain::Trait::ClasseSuperieure, 1),
+        )
+        .with_raised_characteristic(co_contemporain::Voie::Crime, C::Cha)
+        .with_acquired_sequel(co_contemporain::Sequel::DiminueCorps);
+    assert_eq!(character, expected);
+
+    // A trait without points is given up.
+    document.xp_spendings[0].traits[0].points = None;
+    let given_up = document.to_character().unwrap();
+    assert_ne!(given_up, expected);
+}
+
+#[test]
+fn unknown_progression_identifiers_are_unreadable() {
+    let kind = |result: Result<_, Error>| match result {
+        Err(Error::UnknownContent { kind, .. }) => kind,
+        other => panic!("unknown content expected, got {other:?}"),
+    };
+    let mut document = FantasyDocument::empty();
+    document.level_ups = vec![LevelUpEntry {
+        abilities: vec!["cof.rage.x".into()],
+        ..LevelUpEntry::default()
+    }];
+    assert_eq!(kind(document.to_character().map(|_| ())), "ability");
+    document.level_ups = vec![LevelUpEntry {
+        orphan: Some("cof.orphan.gold".into()),
+        ..LevelUpEntry::default()
+    }];
+    assert_eq!(kind(document.to_character().map(|_| ())), "orphan exchange");
+    document.level_ups = Vec::new();
+    document.ability_options = vec![AbilityOptionEntry {
+        ability: "cof.archer.1".into(),
+        option: "cof.option.unknown".into(),
+    }];
+    assert_eq!(kind(document.to_character().map(|_| ())), "ability option");
+
+    let mut document = ContemporainDocument::empty();
+    document.acquired_sequels = vec!["coc.acquired-sequel.unknown".into()];
+    assert_eq!(kind(document.to_character().map(|_| ())), "sequel");
+    document.acquired_sequels = Vec::new();
+    document.xp_spendings = vec![XpSpendingEntry {
+        abilities: vec!["coc.unknown.1".into()],
+        traits: Vec::new(),
+    }];
+    assert_eq!(kind(document.to_character().map(|_| ())), "ability");
+}
+
+#[test]
+fn progression_json_names_follow_the_typescript_conventions() {
+    let mut document = FantasyDocument::empty();
+    document.level_ups = vec![LevelUpEntry {
+        abilities: vec!["cof.rage.2".into()],
+        ..LevelUpEntry::default()
+    }];
+    let json = serde_json::to_value(Document::Fantasy(document)).unwrap();
+    assert_eq!(json["version"], 2);
+    assert_eq!(json["levelUps"][0]["abilities"][0], "cof.rage.2");
+    let json = serde_json::to_value(Document::Contemporain(ContemporainDocument::empty())).unwrap();
+    assert_eq!(json["xpSpendings"], serde_json::json!([]));
+    assert_eq!(json["acquiredSequels"], serde_json::json!([]));
 }
