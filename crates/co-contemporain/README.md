@@ -22,6 +22,7 @@ builds a complete character. Read it first.
 | `traits.rs` | `Trait`, `Sequel` (and its identifier once acquired in play), `TraitPoints`, `SocialClass` | COC.CRE.TRAITS, COC.CNT.TRAITS, COC.CRE.SOCIAL-CLASS |
 | `characteristics.rs` | the characteristic points allocated, `ALLOCATED_POINTS`, starting and current values, the rank-5 raises | COC.CRE.CARAC-*, COC.PRG.CARAC |
 | `secondary.rs` | Init, DEF, ATC/ATD, CG, health scale | COC.DER.* |
+| `test_bonus.rs` | `TestBonus` and `BonusDie`: the capacités' permanent test bonuses and dé bonus, with their upgrades | COC.CNT.VOIES, D-50 |
 | `weapon.rs` | `Weapon` (one variant per table row, `MainsNues` included), damage dice and DM, bonus critique, critical range | COC.EQP.MELEE, COC.EQP.RANGED, COC.DER.DM-BONUS, COC.DER.CRIT-* |
 | `protection.rs` | `Protection`: RD and malus, never DEF | COC.EQP.PROTECTIONS |
 | `equipment.rs` | `Item` (a weapon, or free text named by the kernel's `ItemName`), the starting equipment of the voies | COC.CRE.EQUIPMENT |
@@ -66,8 +67,8 @@ decisions are in [docs/adr/engines.md](../../docs/adr/engines.md) (`ENG-*`,
 
 **Adding a value:** add the variant to `Value`, its identifier to `id()`,
 its name to `name()`, and the variant to `Value::FIXED` unless it is a
-weapon value: `from_id`, and so the adjustments of the choices document,
-find it there, and the sheet lists it in that order. A new choice the violations name
+weapon value or a test bonus, which `Value::all` adds: `from_id`, and so
+the adjustments of the choices document, find it there, and the sheet lists it in that order. A new choice the violations name
 (a `ValueId` in `rules.rs`) gets its name in `CHOICES` in `label.rs`.
 
 **Adding a rule:**

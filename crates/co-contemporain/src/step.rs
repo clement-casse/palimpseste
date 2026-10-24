@@ -106,7 +106,8 @@ impl Step {
     /// The step where `violation` is settled. The voies retained from the
     /// domaine are settled with the voies, a missing domaine with the
     /// domaine. An adjustment notice belongs to the step of what it adjusts:
-    /// a characteristic or its points, a voie budget, or a secondary value.
+    /// a characteristic or its points, a voie budget or a capacité's test
+    /// bonus, or a secondary value.
     #[must_use]
     pub fn of(violation: &Violation) -> Self {
         let rule = violation.rule();
@@ -117,7 +118,8 @@ impl Step {
                 Subject::Value(id)
                     if [Value::CapacityPoints, Value::MaxVoies, Value::MaxRank]
                         .iter()
-                        .any(|value| *id == value.id()) =>
+                        .any(|value| *id == value.id())
+                        || matches!(Value::from_id(id.as_str()), Some(Value::TestBonus(_))) =>
                 {
                     Self::Voies
                 }

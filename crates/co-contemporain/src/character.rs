@@ -9,10 +9,11 @@ use co_kernel::{
 };
 
 use crate::{
-    Age, AgeBracket, Domaine, Equipment, Experience, InPlay, Item, Placement, Protection, Sequel,
-    SocialClass, SpendingOffer, Trait, TraitPoints, Voie, Weapon, XpSpending, age,
+    Age, AgeBracket, BonusDie, Domaine, Equipment, Experience, InPlay, Item, Placement, Protection,
+    Sequel, SocialClass, SpendingOffer, TestBonus, Trait, TraitPoints, Voie, Weapon, XpSpending,
+    age,
     characteristics::{self, Scope},
-    domaine, equipment, experience, protection, secondary, step, traits, voie, weapon,
+    domaine, equipment, experience, protection, secondary, step, test_bonus, traits, voie, weapon,
 };
 
 /// The weapon category an attack value applies to.
@@ -91,13 +92,15 @@ pub enum Value {
     /// Modifier to AGI tests from the protections worn (COC.EQP.PROTECTIONS,
     /// D-05).
     AgiTestModifier,
+    /// A capacité's permanent bonus to some tests (COC.CNT.VOIES, D-50).
+    TestBonus(TestBonus),
 }
 
 impl Value {
-    /// Every value but the weapon values, in the book order: the creation
-    /// budgets, then the secondary characteristics and the effects of the
-    /// protections worn. [`from_id`](Self::from_id) searches it, so it lists
-    /// every such value, shown or not.
+    /// Every value but the weapon values and the test bonuses, in the book
+    /// order: the creation budgets, then the secondary characteristics and
+    /// the effects of the protections worn. [`from_id`](Self::from_id)
+    /// searches it, so it lists every such value, shown or not.
     pub const FIXED: [Self; 16] = [
         Self::CaracPoints,
         Self::CapacityPoints,
@@ -123,7 +126,8 @@ impl Value {
         Self::all().find(|value| value.id().as_str() == id)
     }
 
-    /// Every value, the weapon values for every weapon.
+    /// Every value, the weapon values for every weapon and the test bonuses
+    /// of every capacité.
     pub(crate) fn all() -> impl Iterator<Item = Self> {
         let weapons = Weapon::ALL.into_iter().flat_map(|weapon| {
             [
@@ -132,7 +136,10 @@ impl Value {
                 Self::CriticalRange(weapon),
             ]
         });
-        Self::FIXED.into_iter().chain(weapons)
+        Self::FIXED
+            .into_iter()
+            .chain(weapons)
+            .chain(TestBonus::all().map(Self::TestBonus))
     }
 
     /// The French display name of the value.
@@ -155,6 +162,7 @@ impl Value {
             Self::CriticalRange(weapon) => return format!("Zone de critique {}", weapon.name()),
             Self::DamageReduction => "Réduction des dommages (RD)",
             Self::AgiTestModifier => "Modificateur aux tests d'AGI",
+            Self::TestBonus(bonus) => return bonus.name(),
         };
         name.to_owned()
     }
@@ -166,6 +174,7 @@ impl Value {
             Self::Damage(w) => return weapon::value_id("damage", w),
             Self::CriticalBonus(w) => return weapon::value_id("critical-bonus", w),
             Self::CriticalRange(w) => return weapon::value_id("critical-range", w),
+            Self::TestBonus(bonus) => return bonus.id(),
             Self::DamageReduction => "coc.damage-reduction",
             Self::AgiTestModifier => "coc.agi-test-modifier",
             Self::Initiative => "coc.initiative",
@@ -432,9 +441,9 @@ impl Character {
     /// Returns `value` and its breakdown.
     ///
     /// The budgets (`CaracPoints`, `CapacityPoints`, `MaxVoies`, `MaxRank`)
-    /// are `None` while the age bracket is unknown, and the bonus critique
-    /// of an area weapon is always `None`. Their adjustments then still
-    /// surface as notices.
+    /// are `None` while the age bracket is unknown, the bonus critique of an
+    /// area weapon is always `None`, and so is a test bonus whose capacité
+    /// is not held. Their adjustments then still surface as notices.
     #[must_use]
     pub fn value(&self, value: Value) -> Option<DerivedValue> {
         let values = self.characteristics();
@@ -454,6 +463,7 @@ impl Character {
             Value::CriticalRange(w) => weapon::critical_range(self, w),
             Value::DamageReduction => protection::damage_reduction(self),
             Value::AgiTestModifier => protection::with_malus(DerivedValue::new(), self),
+            Value::TestBonus(bonus) => test_bonus::value(self, bonus)?,
         };
         Some(self.adjusted(Target::Value(value), base))
     }
@@ -493,6 +503,21 @@ impl Character {
             .iter()
             .rposition(|spending| spending.ranks().any(|bought| bought == (voie, rank)))
             .map(|index| index + 1)
+    }
+
+    /// Returns the permanent test bonuses of the capacités held now, in voie
+    /// and rank order; [`value`](Self::value) computes each as a
+    /// [`Value::TestBonus`] (D-50).
+    #[must_use]
+    pub fn test_bonuses(&self) -> Vec<TestBonus> {
+        test_bonus::held(self)
+    }
+
+    /// Returns the dé bonus to tests of the capacités held now, in voie and
+    /// rank order (D-50).
+    #[must_use]
+    pub fn bonus_dice(&self) -> Vec<BonusDie> {
+        test_bonus::bonus_dice(self)
     }
 
     /// Returns the dice rolled for the DM of `weapon`: the table's, 1d6
