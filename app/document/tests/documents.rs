@@ -392,3 +392,95 @@ fn progression_json_names_follow_the_typescript_conventions() {
     assert_eq!(json["xpSpendings"], serde_json::json!([]));
     assert_eq!(json["acquiredSequels"], serde_json::json!([]));
 }
+
+#[test]
+fn fantasy_adjustments_peuple_malus_and_waivers_convert() {
+    let waiver = |subject: Subject| WaiverEntry {
+        rule: "COF.CNT.VOIE".into(),
+        subject,
+        author: "gm".into(),
+        reason: "house rule".into(),
+    };
+    let adjustment = |target: Target| AdjustmentEntry {
+        target,
+        amount: 1,
+        author: "gm".into(),
+        reason: "blessing".into(),
+    };
+    let mut document = FantasyDocument::empty();
+    document.peuple_bonus = Some(Characteristic::Vol);
+    document.peuple_malus = Some(Characteristic::Con);
+    document.adjustments = vec![
+        adjustment(Target::Characteristic(Characteristic::Per)),
+        adjustment(Target::Value("cof.defence".into())),
+    ];
+    document.waivers = vec![
+        waiver(Subject::Ability("cof.rage.2".into())),
+        waiver(Subject::Voie("cof.rage".into())),
+        waiver(Subject::Characteristic(Characteristic::Int)),
+    ];
+    let blessing = || Adjustment::new(1, Author::new("gm"), "blessing");
+    let house_rule = |subject| {
+        Waiver::new(
+            RuleId::new("COF.CNT.VOIE"),
+            subject,
+            Author::new("gm"),
+            "house rule",
+        )
+    };
+    let expected = co_fantasy::Character::new()
+        .with_peuple_bonus(C::Vol)
+        .with_peuple_malus(C::Con)
+        .with_adjustment(co_fantasy::Target::Characteristic(C::Per), blessing())
+        .with_adjustment(
+            co_fantasy::Target::Value(co_fantasy::Value::Defence),
+            blessing(),
+        )
+        .with_waiver(house_rule(KernelSubject::Ability(
+            co_kernel::AbilityId::new("cof.rage.2"),
+        )))
+        .with_waiver(house_rule(KernelSubject::Voie(co_kernel::VoieId::new(
+            "cof.rage",
+        ))))
+        .with_waiver(house_rule(KernelSubject::Characteristic(C::Int)));
+    assert_eq!(document.to_character(), Ok(expected));
+}
+
+#[test]
+fn every_characteristic_and_subject_converts_both_ways() {
+    let characteristics = [
+        (Characteristic::Agi, C::Agi),
+        (Characteristic::Con, C::Con),
+        (Characteristic::For, C::For),
+        (Characteristic::Per, C::Per),
+        (Characteristic::Cha, C::Cha),
+        (Characteristic::Int, C::Int),
+        (Characteristic::Vol, C::Vol),
+    ];
+    for (document, kernel) in characteristics {
+        assert_eq!(C::from(document), kernel);
+        assert_eq!(Characteristic::from(kernel), document);
+    }
+    let subjects = [
+        (Subject::Character, KernelSubject::Character),
+        (
+            Subject::Characteristic(Characteristic::Cha),
+            KernelSubject::Characteristic(C::Cha),
+        ),
+        (
+            Subject::Voie("cof.rage".into()),
+            KernelSubject::Voie(co_kernel::VoieId::new("cof.rage")),
+        ),
+        (
+            Subject::Ability("cof.rage.2".into()),
+            KernelSubject::Ability(co_kernel::AbilityId::new("cof.rage.2")),
+        ),
+        (
+            Subject::Value("cof.defence".into()),
+            KernelSubject::Value(co_kernel::ValueId::new("cof.defence")),
+        ),
+    ];
+    for (document, kernel) in subjects {
+        assert_eq!(Subject::from(&kernel), document);
+    }
+}
