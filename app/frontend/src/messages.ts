@@ -67,6 +67,10 @@ const MESSAGES: Record<string, Message> = {
   "COF.PRG.NEW-VOIES": (s, p) => `${s} : cette voie ne peut pas être ouverte (niveau ${p.level}).`,
   "COF.PRG.HYBRID": (s, p) => `${s} : voie d'un autre profil ouverte au niveau ${p.level} (hybride).`,
   "COF.PRG.MAX-VOIES": (s, p) => `${s} : ${p.voies} voies, ${p.max} au plus.`,
+  "COF.CNT.VOIE": (s, _p, v) =>
+    v.category.kind === "incomplete"
+      ? `${s} : choisissez l'option de la capacité.`
+      : `${s} : cette option n'est pas offerte par la capacité.`,
   "COF.DER.ARMOUR-LIMIT": (s) => `${s} : au-delà de ce que le profil permet.`,
   "COF.CRE.EQUIPMENT": (s, p) =>
     p.min === undefined
