@@ -81,7 +81,7 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     );
 
     for category in character
-        .voies()
+        .creation_voies()
         .filter_map(|(voie, _)| voie.starting_weapon())
     {
         let given = remaining.iter_mut().find(|(unit, count)| {

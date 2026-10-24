@@ -8,7 +8,7 @@ A companion application for the French tabletop RPG *Chroniques Oubliées* (COF2
 The long-term goal is a character editor, later a campaign tracker.
 Each ruleset and each variant will be a **WorldEngine**: rules written as Rust code, composed from mechanics, with game content kept as data.
 
-**Current phase: the kernel, the COC2 and COF2 character creation engines, and COF2 levels.** Everything below is scoped to them.
+**Current phase: the kernel, the COC2 and COF2 character creation engines, COF2 levels and COC2 experience.** Everything below is scoped to them.
 
 ## Current scope: `co-kernel`
 
@@ -30,14 +30,16 @@ Out of scope for the kernel: anything engine-specific (formulas, budgets, tables
 
 ## Current scope: `co-contemporain`
 
-The COC2 engine, core rules only (no variant, no universe), **character creation** only (see `docs/adr/engines.md`).
+The COC2 engine, core rules only (no variant, no universe): **character creation, and the experience spent after it** (see `docs/adr/engines.md`).
 
 In scope:
 
 - **Creation choices**: age (and the age bracket derived from it), domaine, ranks acquired per voie, traits distinctifs with their points, characteristic points allocated, items carried (weapons, free text items), protections worn.
 - **Content read by the creation rules**: the 18 domaines with their voie slots, the 18 voies, the traits catalogue and sequels, the age-bracket limits, the weapon and protection tables, as enums and `match` tables.
 - **Creation budgets and limits**: characteristic points, capacity points, maximum voies and rank, trait balance, characteristic bounds, domaine voies, social class, starting equipment of the weapon voies.
-- **Secondary characteristics**: Init, DEF, ATC and ATD per weapon category, contact DM bonus, CG, health scale length, protection RD and malus, weapon damage dice and DM, bonus critique and critical range.
+- **Experience** (ADR ENG-COC-EXPERIENCE): the XP earned (`Experience`) and each `XpSpending` in order, the ranks and trait changes it buys and the XP left (`Value::Experience`); rank n costs n XP, one rank of a voie per spending, six voies, the social class raised and Toxicomane cured with XP (COC.PRG.COST, ONE-RANK, LIMITS, XP-USE); the creation budgets and limits read the creation choices only.
+- **Characteristic growth** (ADR ENG-COC-RANK-FIVE): the characteristic each rank 5 raises, chosen when the voie offers two or three (COC.PRG.CARAC, D-20).
+- **Secondary characteristics**: Init, DEF, ATC and ATD per weapon category, contact DM bonus, CG, health scale length, protection RD and malus, weapon damage dice and DM, bonus critique and critical range, with the rank-4 capacités of the four combat voies.
 - **Health-scale states** (ADR ENG-HEALTH-STATES): the steps of a full échelle de santé and its states (step, name, malus), content the character sheet displays. The damage taken is not the engine's.
 - **Equipment in play** (ADR ENG-IN-PLAY): `Equipment` (protections, items), `Character::in_play` and the values of `InPlay`, computed from the equipment it is given; nothing is stored.
 - **Catalogue and steps** (ADR ENG-CATALOGUE, ADR ENG-STEPS): each content enum named by the choices document has `ALL`, `id()`, `from_id()` and `name()` (French display name); the content tables the creation rules read are public read-only accessors; `Value::FIXED` lists the values in the book order and `Value::name()` names them; `label` and `term_label` name every identifier the engine emits; `Step` gives the creation steps in the book order and places each violation in one.
@@ -47,7 +49,6 @@ Out of scope, do not implement or prepare for:
 - variants (COC2 3d6, ...) and universe rules (échelle d'évolution);
 - combat resolution, arme de prédilection, weapon range, magazine and reach, items without a rule (they stay free text);
 - money, prices, purchases and the era: spending waits for campaign initialization (D-25);
-- progression (XP, rank costs after creation, rank 5 characteristic increase);
 - data files and data formats, persistence, serialization, `serde`;
 - user interface, networking, users, campaigns, play state (health scale damage, resources), dice rolling.
 

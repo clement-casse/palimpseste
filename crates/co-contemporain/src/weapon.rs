@@ -2,7 +2,7 @@
 //! and critical range (COC.DER.DM-BONUS, COC.DER.CRIT-BONUS,
 //! COC.DER.CRIT-RANGE).
 
-use co_kernel::{Characteristic, Characteristics, DerivedValue, Dice, Rank, Source, ValueId};
+use co_kernel::{Characteristic, Characteristics, DerivedValue, Dice, Die, Rank, Source, ValueId};
 
 use crate::{AttackMode, Character, Value, Voie, rules::CRIT_RANGE};
 
@@ -316,7 +316,8 @@ const fn mastery(weapon: Weapon) -> Option<(Voie, Characteristic)> {
     match weapon.attack_mode() {
         AttackMode::ContactWeapon => Some((Voie::ArmesDeContact, Characteristic::Agi)),
         AttackMode::RangedWeapon => Some((Voie::ArmesADistance, Characteristic::Per)),
-        AttackMode::Unarmed | AttackMode::HeavyWeapon => None,
+        AttackMode::Unarmed => Some((Voie::CombatAMainsNues, Characteristic::Agi)),
+        AttackMode::HeavyWeapon => None,
     }
 }
 
@@ -337,13 +338,23 @@ fn with_mastery(
     }
 }
 
-/// The damage dice: the table's, and 1d6 unarmed with the rank-2 capacité
-/// of the combat à mains nues.
+/// The damage dice: the table's, 1d6 unarmed with the rank-2 capacité of
+/// the combat à mains nues, and 1d6 more with heavy weapons with Canonnier
+/// (armes lourdes rank 4).
 pub(crate) fn damage_dice(character: &Character, weapon: Weapon) -> Dice {
-    if weapon == Weapon::MainsNues && character.has_rank(Voie::CombatAMainsNues, Rank::new(2)) {
+    let dice = if weapon == Weapon::MainsNues
+        && character.has_rank(Voie::CombatAMainsNues, Rank::new(2))
+    {
         Dice::new([6])
     } else {
         weapon.dice()
+    };
+    if weapon.attack_mode() == AttackMode::HeavyWeapon
+        && character.has_rank(Voie::ArmesLourdes, Rank::new(MASTERY_RANK))
+    {
+        dice.dice().iter().copied().chain([Die::new(6)]).collect()
+    } else {
+        dice
     }
 }
 
@@ -529,5 +540,32 @@ mod tests {
             AttackMode::HeavyWeapon
         );
         assert_eq!(Weapon::Couteau.id().as_str(), "coc.weapon.couteau");
+    }
+
+    #[test]
+    fn disciple_and_canonnier_complete_the_rank_four_capacites() {
+        let character = Character::new().with_carac_points(Characteristic::Agi, 2);
+        // Disciple: unarmed 18-20, AGI to DM and bonus critique.
+        let disciple = ranks(character.clone(), Voie::CombatAMainsNues, 4);
+        assert_eq!(
+            total(&disciple, Value::CriticalRange(Weapon::MainsNues)),
+            Some(18)
+        );
+        assert_eq!(total(&disciple, Value::Damage(Weapon::MainsNues)), Some(2));
+        assert_eq!(
+            total(&disciple, Value::CriticalBonus(Weapon::MainsNues)),
+            Some(6 + 2)
+        );
+        // Canonnier: 1d6 more with heavy weapons, and the bonus critique
+        // follows the dice.
+        let canonnier = ranks(character, Voie::ArmesLourdes, 4);
+        assert_eq!(
+            canonnier.damage_dice(Weapon::LanceFlammes),
+            Dice::new([6, 6, 6])
+        );
+        assert_eq!(
+            canonnier.damage_dice(Weapon::Couteau),
+            Weapon::Couteau.dice()
+        );
     }
 }

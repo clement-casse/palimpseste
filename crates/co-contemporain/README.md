@@ -1,7 +1,7 @@
 # co-contemporain
 
-The COC2 engine: character creation under the core rules of *Chroniques
-Oubliées Contemporain*, second edition. It has no variants and no universe
+The COC2 engine: character creation, and the experience spent after it,
+under the core rules of *Chroniques Oubliées Contemporain*, second edition. It has no variants and no universe
 rules. It depends on [`co-kernel`](../co-kernel) only (ADR ENG-CRATES).
 
 A `Character` stores choices, adjustments and waivers. Everything else is
@@ -17,9 +17,10 @@ builds a complete character. Read it first.
 | `rules.rs` | every `RuleId`, `Mechanic` and engine `ValueId` constant | |
 | `age.rs` | `Age`, `AgeBracket`, the limits of each bracket | COC.CRE.AGE-BRACKET |
 | `domaine.rs` | `Domaine` (18), its voie slots and social class requirements | COC.CRE.DOMAINE, COC.CNT.DOMAINES |
-| `voie.rs` | `Voie` (18), the checks on the ranks acquired | CO.VOIE.* (the kernel's `voie_rank_violations`), COC.CRE.CAPACITY-POINTS, COC.CRE.MAX-VOIES |
+| `voie.rs` | `Voie` (18), the characteristic each rank 5 raises, the checks on the ranks acquired | CO.VOIE.* (the kernel's `voie_rank_violations`), COC.CRE.CAPACITY-POINTS, COC.CRE.MAX-VOIES |
+| `experience.rs` | `Experience`, `XpSpending`, the XP left and the checks on each spending | COC.PRG.COST, ONE-RANK, LIMITS, XP-USE |
 | `traits.rs` | `Trait`, `Sequel`, `TraitPoints`, `SocialClass` | COC.CRE.TRAITS, COC.CNT.TRAITS, COC.CRE.SOCIAL-CLASS |
-| `characteristics.rs` | the characteristic points allocated, `ALLOCATED_POINTS` | COC.CRE.CARAC-* |
+| `characteristics.rs` | the characteristic points allocated, `ALLOCATED_POINTS`, starting and current values, the rank-5 raises | COC.CRE.CARAC-*, COC.PRG.CARAC |
 | `secondary.rs` | Init, DEF, ATC/ATD, CG, health scale | COC.DER.* |
 | `weapon.rs` | `Weapon` (one variant per table row, `MainsNues` included), damage dice and DM, bonus critique, critical range | COC.EQP.MELEE, COC.EQP.RANGED, COC.DER.DM-BONUS, COC.DER.CRIT-* |
 | `protection.rs` | `Protection`: RD and malus, never DEF | COC.EQP.PROTECTIONS |

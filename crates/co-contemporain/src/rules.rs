@@ -44,6 +44,17 @@ pub(crate) const CRIT_RANGE: RuleId = RuleId::from_static("COC.DER.CRIT-RANGE");
 /// D-30).
 pub(crate) const EQUIPMENT: RuleId = RuleId::from_static("COC.CRE.EQUIPMENT");
 
+/// COC.PRG.COST: rank n costs n XP, within the XP earned.
+pub(crate) const PRG_COST: RuleId = RuleId::from_static("COC.PRG.COST");
+/// COC.PRG.ONE-RANK: one rank at a time (D-09).
+pub(crate) const ONE_RANK: RuleId = RuleId::from_static("COC.PRG.ONE-RANK");
+/// COC.PRG.LIMITS: six voies after creation.
+pub(crate) const PRG_LIMITS: RuleId = RuleId::from_static("COC.PRG.LIMITS");
+/// COC.PRG.XP-USE: what XP buys besides ranks.
+pub(crate) const XP_USE: RuleId = RuleId::from_static("COC.PRG.XP-USE");
+/// COC.PRG.CARAC: the characteristic a rank 5 raises (D-20).
+pub(crate) const CARAC_GROWTH: RuleId = RuleId::from_static("COC.PRG.CARAC");
+
 /// Age and age bracket checks.
 pub(crate) const AGE_MECHANIC: Mechanic = Mechanic::new("coc.age");
 /// Domaine checks.
@@ -54,6 +65,8 @@ pub(crate) const VOIE_MECHANIC: Mechanic = Mechanic::new("coc.voies");
 pub(crate) const TRAIT_MECHANIC: Mechanic = Mechanic::new("coc.traits");
 /// Characteristic checks.
 pub(crate) const CARAC_MECHANIC: Mechanic = Mechanic::new("coc.characteristics");
+/// XP spending checks.
+pub(crate) const EXPERIENCE_MECHANIC: Mechanic = Mechanic::new("coc.experience");
 /// Starting equipment checks.
 pub(crate) const EQUIPMENT_MECHANIC: Mechanic = Mechanic::new("coc.equipment");
 
@@ -65,5 +78,7 @@ pub(crate) const DOMAINE_VALUE: ValueId = ValueId::from_static("coc.domaine");
 pub(crate) const ADVANTAGES: ValueId = ValueId::from_static("coc.advantages");
 /// The sum of the disadvantages.
 pub(crate) const DISADVANTAGES: ValueId = ValueId::from_static("coc.disadvantages");
+/// The XP earned.
+pub(crate) const EXPERIENCE_EARNED: ValueId = ValueId::from_static("coc.experience-earned");
 /// The character's social class.
 pub(crate) const SOCIAL_CLASS_VALUE: ValueId = ValueId::from_static("coc.social-class");
