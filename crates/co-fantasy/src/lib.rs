@@ -64,6 +64,7 @@ mod play;
 mod profil;
 mod rules;
 mod step;
+mod test_bonus;
 mod voie;
 mod weapon;
 
@@ -79,5 +80,6 @@ pub use peuple::Peuple;
 pub use play::{Equipment, InPlay};
 pub use profil::{Family, Profil, RecoveryDie};
 pub use step::{LevelStep, Placement, Step};
+pub use test_bonus::{BonusDie, TestBonus};
 pub use voie::Voie;
 pub use weapon::{Weapon, WeaponUse};

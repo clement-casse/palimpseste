@@ -9,10 +9,10 @@ use co_kernel::{
 };
 
 use crate::{
-    AbilityOption, Armour, Equipment, Family, InPlay, Item, Level, LevelOffer, LevelUp, Money,
-    OrphanExchange, Peuple, Placement, Profil, RecoveryDie, Series, Shield, Voie, Weapon,
-    WeaponUse, ability, armour, characteristics, derived, equipment, level, money, peuple, profil,
-    step, voie, weapon,
+    AbilityOption, Armour, BonusDie, Equipment, Family, InPlay, Item, Level, LevelOffer, LevelUp,
+    Money, OrphanExchange, Peuple, Placement, Profil, RecoveryDie, Series, Shield, TestBonus, Voie,
+    Weapon, WeaponUse, ability, armour, characteristics, derived, equipment, level, money, peuple,
+    profil, step, test_bonus, voie, weapon,
 };
 
 /// The kind of attack an attack value applies to.
@@ -52,11 +52,14 @@ pub enum Value {
     CriticalRange(Weapon),
     /// Money held, in pc: the purse at creation (COF.CRE.EQUIPMENT).
     Money,
+    /// A capacité's permanent bonus to some tests (COF.DER.COMPETENCE,
+    /// D-50).
+    TestBonus(TestBonus),
 }
 
 impl Value {
-    /// Every value but the weapon values, in the book order (PV to the
-    /// attack values, then the money held). [`from_id`](Self::from_id)
+    /// Every value but the weapon values and the test bonuses, in the book
+    /// order (PV to the attack values, then the money held). [`from_id`](Self::from_id)
     /// searches it, so it lists every such value, shown or not.
     pub const FIXED: [Self; 11] = [
         Self::VigourPoints,
@@ -78,7 +81,8 @@ impl Value {
         Self::all().find(|value| value.id().as_str() == id)
     }
 
-    /// Every value, the weapon values for every weapon and use.
+    /// Every value, the weapon values for every weapon and use, and the test
+    /// bonuses of every capacité.
     pub(crate) fn all() -> impl Iterator<Item = Self> {
         let weapons = Weapon::ALL.into_iter().flat_map(|weapon| {
             WeaponUse::ALL
@@ -86,7 +90,10 @@ impl Value {
                 .map(move |weapon_use| Self::Damage(weapon, weapon_use))
                 .chain([Self::CriticalRange(weapon)])
         });
-        Self::FIXED.into_iter().chain(weapons)
+        Self::FIXED
+            .into_iter()
+            .chain(weapons)
+            .chain(TestBonus::all().map(Self::TestBonus))
     }
 
     /// The French display name of the value.
@@ -112,6 +119,7 @@ impl Value {
                 );
             }
             Self::CriticalRange(weapon) => return format!("Zone de critique {}", weapon.name()),
+            Self::TestBonus(bonus) => return bonus.name(),
         };
         name.to_owned()
     }
@@ -122,6 +130,7 @@ impl Value {
         ValueId::from_static(match self {
             Self::Damage(weapon, weapon_use) => return weapon::damage_id(weapon, weapon_use),
             Self::CriticalRange(weapon) => return weapon::critical_range_id(weapon),
+            Self::TestBonus(bonus) => return bonus.id(),
             Self::Money => "cof.money",
             Self::VigourPoints => "cof.vigour-points",
             Self::RecoveryDice => "cof.recovery-dice",
@@ -503,6 +512,21 @@ impl Character {
         self.profil.is_some_and(|profil| profil.masters(weapon)) || ability::masters(self, weapon)
     }
 
+    /// Returns the permanent test bonuses of the capacités held now, in voie
+    /// and rank order; [`value`](Self::value) computes each as a
+    /// [`Value::TestBonus`] (D-50).
+    #[must_use]
+    pub fn test_bonuses(&self) -> Vec<TestBonus> {
+        test_bonus::held(self)
+    }
+
+    /// Returns the dé bonus to tests of the capacités held now, with the
+    /// equipment chosen at creation, in voie and rank order (D-50).
+    #[must_use]
+    pub fn bonus_dice(&self) -> Vec<BonusDie> {
+        test_bonus::bonus_dice(self)
+    }
+
     /// Returns the die of the dés de récupération, if the profil is set.
     #[must_use]
     pub fn recovery_die(&self) -> Option<RecoveryDie> {
@@ -546,7 +570,8 @@ impl Character {
     ///
     /// PV, DR and PC are `None` while the profil is unknown, PM while no
     /// spell is known, the money while the purse is not rolled, a weapon's
-    /// DM when the weapon cannot be used that way. Their adjustments then
+    /// DM when the weapon cannot be used that way, a test bonus while its
+    /// capacité is not held or its option not chosen. Their adjustments then
     /// still surface as notices.
     #[must_use]
     pub fn value(&self, value: Value) -> Option<DerivedValue> {
@@ -563,6 +588,7 @@ impl Character {
             Value::Damage(weapon, weapon_use) => weapon::damage(self, &values, weapon, weapon_use)?,
             Value::CriticalRange(weapon) => weapon::critical_range(self, &values, weapon),
             Value::Money => money::money(self)?,
+            Value::TestBonus(bonus) => test_bonus::value(self, &values, bonus)?,
         };
         Some(self.adjusted(Target::Value(value), base))
     }

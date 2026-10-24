@@ -26,8 +26,8 @@ string: `cof.epee-longue`, `coc.crime`), `from_id()` and `name()` (the
 French display name). The content tables the rules read are public
 read-only accessors; options depending on the current choices (the voies a
 peuple slot accepts) are `Character` methods. Values are named alike:
-`Value::FIXED` lists every value but the weapon values (and COC2's test
-bonuses), in the book order,
+`Value::FIXED` lists every value but the weapon values and the test
+bonuses, in the book order,
 and `Value::name()` names each one; COC2's `AttackMode` has a `name()`, and
 an `id()` ending the identifier of its attack value. `label(id)` names every identifier the engine emits as a
 violation subject or a breakdown source (content, choices, values,
@@ -75,17 +75,25 @@ weapon (`cof.damage.epee-longue.one-handed`), so `Value::id` is not
 the characteristics its catalogue entry names (`characteristics()`, empty
 when it names none). The fields of the tests are not recorded: naming
 them would paraphrase the books. Each bonus is a `Value::TestBonus`
-(`coc.test-bonus.<voie>.<rank>.<n>`) with the capacité as source,
-adjusted like any value, its notices in the voies step, and `None` while
-the capacité is not held; `Character::test_bonuses` lists those held, and
-`Character::bonus_dice` the capacités giving a dé bonus to tests
-(`BonusDie`), with the characteristics named. Not test bonuses: those
-used once per session or scene, given to others or to attacks (a
-favoured weapon, a martial art), difficulties changed for others, a
-characteristic tested in place of another. In COC2 a bonus is flat or per
-rank reached, and a "+2 becomes +5" adds 3 to the bonus it upgrades, the
-upgrading capacité as source. *Why values:* breakdowns and adjustments
-come with them, as for every computed value.
+(`coc.test-bonus.<voie>.<rank>.<n>`, `cof.test-bonus...`) with the
+capacité as source, adjusted like any value, its notices in the voies
+step, and `None` while the capacité is not held or its option not chosen;
+`Character::test_bonuses` lists those held, and `Character::bonus_dice`
+the capacités giving a dé bonus to tests (`BonusDie`), with the
+characteristics named. Not test bonuses: those used once per session,
+scene or combat, given to others or to attacks (a favoured weapon, a
+martial art), difficulties changed for others, a characteristic tested in
+place of another. In COC2 a bonus is flat or per rank reached, and a "+2
+becomes +5" adds 3 to the bonus it upgrades, the upgrading capacité as
+source. In COF2 a "rang + 2" is 2 + the rank reached, at most +7, a voie
+de peuple's bonus +3, kept through the voie du mage like the peuple's
+other rank-1 effects (COF.DER.COMPETENCE); Tatouages gives +3 to the
+tests of the characteristic chosen, Formation d'élite a dé bonus to them
+(ADR ENG-COF-OPTIONS), and Vêtements sacrés' dé bonus holds without
+armour, so `InPlay::bonus_dice` follows the equipment. The +15 cap and
+the one bonus per source are not checked: they need the fields. *Why
+values:* breakdowns and adjustments come with them, as for every computed
+value.
 
 **ENG-FINDINGS: One finding per waiver.** Waivers match rule and subject
 and ignore severity (ADR KER-MATCHING), so two findings a waiver could
@@ -364,11 +372,12 @@ mailles.
 D-13).** Every capacité whose catalogue entry states an effect on a value
 contributes, at any rank, as `Source::Ability`. Each value reads its own
 table in `ability.rs` (PV, DR, PC, PM, Init, DEF, RD, the DM and critical
-range of the weapons, mastery, armour limits, characteristic raises), each
-row a capacité with an `Amount` (flat, by the rank reached, per rank, rank
-plus n, a characteristic, a characteristic up to the rank, per rank 5 in a
-profil's voies), the equipment or level it needs and the option it depends
-on. The rank used is the highest held in the voie (CO.VOIE.RANK-SCALING);
+range of the weapons, mastery, armour limits, characteristic raises) or
+`test_bonus.rs` (test bonuses, dé bonus), each row a capacité with an
+`Amount` (flat, by the rank reached, per rank, rank plus n, a
+characteristic, a characteristic up to the rank, per voie of a profil
+holding a rank, a competence bonus), the equipment or level it needs and
+the option it depends on. The rank used is the highest held in the voie (CO.VOIE.RANK-SCALING);
 a "+n at rank k" in the catalogue is the total reached, a "+1 at rank k"
 after a first amount is added to it (D-33). Equipment conditions read the
 equipment given, so `InPlay` follows them. The critical range never starts
@@ -382,15 +391,16 @@ two weapons in hand), effects on one weapon's attack (Haches et marteaux's
 attack, Précision, Attaque en finesse), capacités whose content the
 co-rules skill lacks (the weapon categories of Armes de prédilection,
 Science du critique, Spécialisation, D-35; a bone armour for Armure d'os),
-unclear ones (Pacte démoniaque's VOL to DR, D-39), unarmed attacks, capacités
-calling other capacités, and competence bonuses. *Why tables:* about sixty
-effects share a few shapes; a general effect engine stays excluded.
+unclear ones (Pacte démoniaque's VOL to DR, D-39), unarmed attacks, and
+capacités calling other capacités. *Why tables:* over a hundred effects
+share a few shapes; a general effect engine stays excluded.
 
 **ENG-COF-OPTIONS: Capacité options are stored choices.** Some capacités
 offer an option, an `AbilityOption`: a characteristic (raised by
 Supériorité elfique of the elfe haut, Combattant héroïque and the "lowest
 characteristic" capacités; used by Peau de pierre, Charisme héroïque,
-Endurer and Grosse tête), the exchange of PC for DR (Éclaireur), a heavier
+Endurer and Grosse tête; whose tests Tatouages and Formation d'élite
+favour, D-50), the exchange of PC for DR (Éclaireur), a heavier
 armour (Armure lourde, Vêtements sacrés) or the thrown weapons variant
 (Archer émérite). `with_ability_option(voie, rank, option)` stores it,
 keyed by the capacité; `ability_options_offered` lists the options a

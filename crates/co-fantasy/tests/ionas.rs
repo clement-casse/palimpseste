@@ -115,6 +115,35 @@ fn mana_counts_three_spells() {
 }
 
 #[test]
+fn test_bonuses_keep_lumiere_interieure_and_add_occultisme() {
+    let ionas = ionas();
+    let bonuses: Vec<_> = ionas
+        .test_bonuses()
+        .into_iter()
+        .map(|bonus| {
+            (
+                bonus.ability(),
+                bonus.characteristics(),
+                total(&ionas, Value::TestBonus(bonus)),
+            )
+        })
+        .collect();
+    // The voie du mage keeps the elfe haut's +3 to INT and CHA tests, and
+    // gives rank + 2 to magic knowledge.
+    assert_eq!(
+        bonuses,
+        [
+            (
+                Voie::ElfeHaut.ability(1.into()),
+                [Characteristic::Int, Characteristic::Cha].as_slice(),
+                Some(3)
+            ),
+            (Voie::Mage.ability(1.into()), [].as_slice(), Some(3)),
+        ]
+    );
+}
+
+#[test]
 fn initiative_and_defence() {
     let ionas = ionas();
     // Murmure dans le vent adds 1 to both.
