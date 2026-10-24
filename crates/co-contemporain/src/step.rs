@@ -381,4 +381,59 @@ mod tests {
         assert_eq!(ids, ["ranks", "traits", "characteristics"]);
         assert!(SpendingStep::ALL.iter().all(|step| !step.name().is_empty()));
     }
+
+    #[test]
+    fn a_seventh_voie_belongs_to_the_spending_opening_it() {
+        use crate::XpSpending;
+        let character = [
+            Voie::Crime,
+            Voie::Discours,
+            Voie::Furtivite,
+            Voie::Langues,
+            Voie::Medecine,
+            Voie::Sciences,
+        ]
+        .into_iter()
+        .fold(Character::new(), |c, voie| c.with_rank(voie, 1))
+        .with_experience(1)
+        .with_xp_spending(XpSpending::new().with_rank(Voie::Survie, 1));
+        assert!(placements(&character).contains(&(
+            "COC.PRG.LIMITS".to_owned(),
+            Placement::Spending(1, SpendingStep::Ranks)
+        )));
+    }
+
+    #[test]
+    fn a_gap_left_at_creation_stays_in_the_voies_step() {
+        use crate::XpSpending;
+        let character = Character::new()
+            .with_rank(Voie::Crime, 1)
+            .with_rank(Voie::Crime, 3)
+            .with_experience(1)
+            .with_xp_spending(XpSpending::new().with_rank(Voie::Medecine, 1));
+        assert!(
+            placements(&character)
+                .contains(&("CO.VOIE.ORDER".to_owned(), Placement::Creation(Step::Voies)))
+        );
+    }
+
+    #[test]
+    fn a_finding_without_its_usual_subject_stays_in_its_creation_step() {
+        use co_kernel::{Mechanic, Severity, Violation};
+
+        use crate::rules::CARAC_GROWTH;
+        let character = Character::new();
+        let mechanic = Mechanic::new("test");
+        let growth = Violation::incomplete(CARAC_GROWTH, mechanic, Subject::Character);
+        assert_eq!(
+            character.placement(&growth),
+            Placement::Creation(Step::Characteristics)
+        );
+        let order =
+            Violation::deviation(VOIE_ORDER, mechanic, Subject::Character, Severity::Standard);
+        assert_eq!(
+            character.placement(&order),
+            Placement::Creation(Step::Voies)
+        );
+    }
 }

@@ -774,4 +774,34 @@ mod tests {
         );
         assert!(offer.acquirable().contains(&(Voie::Crime, Rank::new(2))));
     }
+
+    #[test]
+    fn a_later_spending_starts_from_the_earlier_ones() {
+        let character = criminal()
+            .with_experience(10)
+            .with_xp_spending(XpSpending::new().with_rank(Voie::Crime, 3))
+            .with_xp_spending(XpSpending::new());
+        let Some(offer) = character.spending_offer(2) else {
+            panic!("spending 2 has an offer");
+        };
+        // 10 - 3 left; Crime 3 is held, so Crime 4 comes next.
+        assert_eq!(offer.xp_left(), 7);
+        let acquirable = pairs(offer.acquirable());
+        assert!(acquirable.contains(&(Voie::Crime, 4)));
+        assert!(!acquirable.contains(&(Voie::Crime, 3)));
+    }
+
+    #[test]
+    fn the_marginal_class_rises_to_the_classe_populaire() {
+        let marginal = Character::new()
+            .with_trait(Trait::ClasseInferieure, 2)
+            .with_experience(4)
+            .with_xp_spending(XpSpending::new());
+        assert_eq!(
+            marginal
+                .spending_offer(1)
+                .and_then(|offer| offer.class_rise()),
+            Some((Trait::ClasseInferieure, Some(TraitPoints::new(1)), 4))
+        );
+    }
 }
