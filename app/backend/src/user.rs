@@ -144,4 +144,9 @@ mod tests {
         let long = nickname_candidates(&"x".repeat(40)).next().unwrap();
         assert_eq!(long.0, "x".repeat(NICKNAME_BASE_LENGTH));
     }
+
+    #[test]
+    fn ids_show_as_their_number_in_logs() {
+        assert_eq!(UserId(7).to_string(), "7");
+    }
 }

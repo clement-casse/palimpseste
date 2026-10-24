@@ -937,4 +937,41 @@ mod tests {
         assert!(session(true).ends_with("; Secure"));
         assert!(!session(false).contains("Secure"));
     }
+
+    #[tokio::test]
+    async fn technical_failures_of_a_sign_in_are_not_detailed() {
+        let down = || ProviderId::from("down");
+        let mut service = crate::MockPalimpsesteService::new();
+        service
+            .expect_session_user()
+            .returning(|_| Err(anyhow::anyhow!("the database is gone").into()));
+        service
+            .expect_start_sign_in()
+            .withf(move |provider, _| *provider == down())
+            .returning(|_, link| {
+                Err(Error::SignInFailed {
+                    linking: link.is_some(),
+                    cause: anyhow::anyhow!("discovery failed"),
+                })
+            });
+        service
+            .expect_start_sign_in()
+            .withf(move |provider, _| *provider != down())
+            .returning(|_, _| Err(anyhow::anyhow!("the database is gone").into()));
+        service
+            .expect_finish_sign_in()
+            .returning(|_, _, _| Err(anyhow::anyhow!("the database is gone").into()));
+        let dir = std::env::temp_dir().join("palimpseste-backend-auth");
+        let app = HttpApi::new(Arc::new(service), &dir, "http://localhost:3000/").router();
+
+        let link = get_with(&app, "/api/auth/mock/link", Some("palimpseste_session=t")).await;
+        assert_eq!(link.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let login = get_with(&app, "/api/auth/mock/login", None).await;
+        assert_eq!(login.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        // An unreachable provider sends back to the sign-in page, told so.
+        let login = get_with(&app, "/api/auth/down/login", None).await;
+        assert_eq!(location(&login), SIGN_IN_FAILED);
+        let callback = get_with(&app, "/api/auth/mock/callback?code=c&state=s", None).await;
+        assert_eq!(location(&callback), SIGN_IN_FAILED);
+    }
 }
