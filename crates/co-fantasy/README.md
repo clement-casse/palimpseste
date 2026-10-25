@@ -24,7 +24,7 @@ complete nain guerrier. Read it first.
 | `level.rs` | `Level` (with its dé évolutif), `LevelUp` (ranks acquired and forgotten, orphan point), `OrphanExchange`, the checks on each level-up | COF.PRG.POINTS, COST, LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES, REORIENT, ORPHAN, COF.DER.D4 |
 | `derived.rs` | PV, DR, PC, PM, Init, DEF, RD, attacks, each adding its table of capacité effects | COF.DER.*, COF.PRG.PV |
 | `ability.rs` | `AbilityOption`, the options capacités offer, the per-value tables of capacité effects and characteristic raises (D-13, D-22) | COF.CNT.VOIE, COF.CNT.EFFECT-SHAPES |
-| `test_bonus.rs` | `TestBonus` and `BonusDie`: the capacités' permanent test bonuses and dé bonus, as tables of capacité effects | COF.DER.COMPETENCE, D-50 |
+| `test_bonus.rs` | `TestBonus` and `BonusDie`: the capacités' permanent test bonuses and dé bonus with the tests they cover (`scope`), as tables of capacité effects | COF.DER.COMPETENCE, D-50 |
 | `armour.rs` | `Armour`, `Shield`, the profil's armour limits | COF.EQP.ARMOUR, COF.DER.ARMOUR-LIMIT |
 | `weapon.rs` | `Weapon`, `WeaponUse`, dice per use and as the capacités change them, the attack with a weapon, DM, critical range, the checks on the weapons carried | COF.EQP.MELEE, COF.EQP.RANGED, COF.DER.DM, COF.DER.CRIT-RANGE |
 | `equipment.rs` | `Item` (a weapon, or free text named by the kernel's `ItemName`), the profil's starting equipment (`Gear`, `StartingLine`, `StartingItem`) | COF.CRE.EQUIPMENT |

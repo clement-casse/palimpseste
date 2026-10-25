@@ -75,14 +75,15 @@ weapon (`cof.damage.epee-longue.one-handed`), so `Value::id` is not
 (D-50).** A capacité's permanent bonus to the character's own tests is a
 `TestBonus`, one per amount the capacité gives, numbered within it, with
 the characteristics its catalogue entry names (`characteristics()`, empty
-when it names none). The fields of the tests are not recorded: naming
-them would paraphrase the books. Each bonus is a `Value::TestBonus`
+when it names none) and the tests it covers as a scope, a few French
+words of our own (`scope()`: `discrétion, déguisement`), never the
+catalogue's text. Each bonus is a `Value::TestBonus`
 (`coc.test-bonus.<voie>.<rank>.<n>`, `cof.test-bonus...`) with the
 capacité as source, adjusted like any value, its notices in the voies
 step, and `None` while the capacité is not held or its option not chosen;
 `Character::test_bonuses` lists those held, and `Character::bonus_dice`
 the capacités giving a dé bonus to tests (`BonusDie`), with the
-characteristics named. Not test bonuses: those used once per session,
+characteristics named and a scope. Not test bonuses: those used once per session,
 scene or combat, given to others or to attacks (a favoured weapon, a
 martial art), difficulties changed for others, a characteristic tested in
 place of another. In COC2 a bonus is flat or per rank reached, and a "+2
