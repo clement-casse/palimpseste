@@ -8,7 +8,7 @@ use co_kernel::{
 use crate::{
     AttackMode, Character, Family, Value, Voie,
     ability::{self, AbilityOption},
-    rules::{ATTACK, DEF, DERIVED_MECHANIC, DR, INIT, PC, PM},
+    rules::{ATTACK, DEF, DERIVED_MECHANIC, DR, INIT, LEVEL_PV, PC, PM},
 };
 
 /// Whether the option `characteristic` is chosen for the capacité at `rank`
@@ -44,33 +44,30 @@ pub(crate) fn capped(character: &Character, values: &Characteristics, c: Charact
 }
 
 /// PV = 2 x family PV + CON at level 1 (COF.DER.PV-L1), then family PV +
-/// CON per level-up (COF.PRG.PV), with the capacités' effects. The current
-/// CON counts for every level, so a change of CON changes the PV of the
-/// levels already gained. Grosse tête (golem r1) may put INT in place of CON
-/// at level 1.
+/// CON per level gained (COF.PRG.PV), with the capacités' effects. The
+/// levels gained make one term, `Source::Rule(COF.PRG.PV)`, absent before
+/// any level-up. The current CON counts for every level, so a change of CON
+/// changes the PV of the levels already gained. Grosse tête (golem r1) may put INT in
+/// place of CON at level 1.
 pub(crate) fn vigour_points(
     character: &Character,
     family: Family,
     values: &Characteristics,
 ) -> DerivedValue {
-    let level = i32::from(character.level().get());
-    let value = DerivedValue::new().with(
-        Source::Value(family.id()),
-        (level + 1) * family.vigour_per_level(),
-    );
-    let con = values[Characteristic::Con].get();
-    let value = if uses(character, Voie::Golem, 1, Characteristic::Int) {
-        value
-            .with(
-                Source::Characteristic(Characteristic::Int),
-                values[Characteristic::Int].get(),
-            )
-            .with(
-                Source::Characteristic(Characteristic::Con),
-                (level - 1) * con,
-            )
+    let first = if uses(character, Voie::Golem, 1, Characteristic::Int) {
+        Characteristic::Int
     } else {
-        value.with(Source::Characteristic(Characteristic::Con), level * con)
+        Characteristic::Con
+    };
+    let value = DerivedValue::new()
+        .with(Source::Value(family.id()), 2 * family.vigour_per_level())
+        .with_characteristic(values, first);
+    let gained = i32::from(character.level().get()) - 1;
+    let value = if gained > 0 {
+        let per_level = family.vigour_per_level() + values[Characteristic::Con].get();
+        value.with(Source::Rule(LEVEL_PV), gained * per_level)
+    } else {
+        value
     };
     let value = ability::apply(value, character, values, ability::VIGOUR);
     with_orphans(value, character, Value::VigourPoints)
@@ -362,5 +359,30 @@ mod tests {
         // At level 3, CON counts for the two levels gained: 4 x 3 + 2 + 2 x 1.
         let level_three = (0..2).fold(clever, |c, _| c.with_level_up(crate::LevelUp::new()));
         assert_eq!(total(&level_three, Value::VigourPoints), Some(16));
+    }
+
+    #[test]
+    fn levels_gained_make_one_term_of_the_pv() {
+        let sorcier = values(Character::new().with_profil(Profil::Sorcier));
+        let sources = |character: &Character| {
+            character
+                .value(Value::VigourPoints)
+                .map(|value| value.contributions().to_vec())
+                .unwrap_or_default()
+        };
+        assert!(
+            sources(&sorcier)
+                .iter()
+                .all(|c| *c.source() != Source::Rule(LEVEL_PV))
+        );
+        // Level 3: 2 x 3 (mages) + CON 1, then 2 x (3 + CON 1).
+        let level_three = (0..2).fold(sorcier, |c, _| c.with_level_up(crate::LevelUp::new()));
+        let contributions = sources(&level_three);
+        let amounts: Vec<_> = contributions
+            .iter()
+            .map(co_kernel::Contribution::amount)
+            .collect();
+        assert_eq!(amounts, [6, 1, 8]);
+        assert_eq!(contributions[2].source(), &Source::Rule(LEVEL_PV));
     }
 }

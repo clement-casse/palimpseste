@@ -9,8 +9,8 @@ use crate::{
     Armour, Family, Peuple, Profil, SERIES_VALUE, Series, Shield, Value, Voie, Weapon,
     level::LEVEL_PREFIX,
     rules::{
-        ARMOUR, ATTACK, PEUPLE_BONUS, PEUPLE_MALUS, PEUPLE_VALUE, PEUPLE_VOIE, PROFIL_VALUE,
-        PROFIL_VOIES, PURSE, SERIES, SHIELD,
+        ARMOUR, ATTACK, LEVEL_PV, PEUPLE_BONUS, PEUPLE_MALUS, PEUPLE_VALUE, PEUPLE_VOIE,
+        PROFIL_VALUE, PROFIL_VOIES, PURSE, SERIES, SHIELD,
     },
 };
 
@@ -53,10 +53,17 @@ fn level_name(id: &str) -> Option<String> {
 }
 
 /// The French name of the term `rule`'s formula sets itself, when it names
-/// one: the level of the attack values. `None` for a plain constant.
+/// one: the level of the attack values, the levels gained of the PV. `None`
+/// for a plain constant.
 #[must_use]
 pub fn term_label(rule: &RuleId) -> Option<&'static str> {
-    (*rule == ATTACK).then_some("Niveau")
+    if *rule == ATTACK {
+        Some("Niveau")
+    } else if *rule == LEVEL_PV {
+        Some("Niveaux gagnés")
+    } else {
+        None
+    }
 }
 
 /// The display name of the content `id` names.
@@ -156,6 +163,7 @@ mod tests {
         assert_eq!(label("cof.level.3").as_deref(), Some("Niveau 3"));
         assert_eq!(label("cof.level.x"), None);
         assert_eq!(term_label(&ATTACK), Some("Niveau"));
+        assert_eq!(term_label(&LEVEL_PV), Some("Niveaux gagnés"));
         assert_eq!(term_label(&DEF), None);
     }
 

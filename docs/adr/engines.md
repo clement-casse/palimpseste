@@ -32,7 +32,7 @@ and `Value::name()` names each one; COC2's `AttackMode` has a `name()`, and
 an `id()` ending the identifier of its attack value. `label(id)` names every identifier the engine emits as a
 violation subject or a breakdown source (content, choices, values,
 capacités), and `term_label(rule)` the term a formula sets itself when it
-names one (the level, the age bracket). *Why:* the front end offers the
+names one (the level, the levels gained, the age bracket). *Why:* the front end offers the
 options the rules allow, and names what the engine reports, without
 restating any identifier.
 
@@ -312,8 +312,11 @@ never breaks the creation bounds.
 **ENG-COF-LEVEL: The level counts the level-ups.** `Character::level()`
 is 1 plus the number of level-ups, never stored. Attack values take
 min(level, 10) as `Source::Rule(COF.DER.ATTACK)`, which `term_label` names
-"Niveau"; PV take (level + 1) family PV and level x CON, so a change of CON
-changes the PV of every level already gained (COF.PRG.PV). A rank chosen
+"Niveau"; PV take 2 family PV and CON at level 1, then (level - 1) x
+(family PV + CON) as one term, `Source::Rule(COF.PRG.PV)`, which
+`term_label` names "Niveaux gagnés": the breakdown shows what the levels
+add in total, and a change of CON changes the PV of every level already
+gained (COF.PRG.PV). A rank chosen
 at creation above 1 is a deviation of COF.PRG.LEVEL-REQ with the voie as
 subject, except the mage family's one rank 2 in a voie of its profil or
 the voie du mage (COF.CRE.MAGE-EXTRA), never in another profil's voie,
