@@ -48,6 +48,8 @@ pub(crate) const CONTENT_VOIE: RuleId = RuleId::from_static("COF.CNT.VOIE");
 pub(crate) const ORPHAN: RuleId = RuleId::from_static("COF.PRG.ORPHAN");
 /// COF.PRG.REORIENT: the changement d'orientation.
 pub(crate) const REORIENT: RuleId = RuleId::from_static("COF.PRG.REORIENT");
+/// COF.PRG.PV: each level gained adds family PV + CON.
+pub(crate) const LEVEL_PV: RuleId = RuleId::from_static("COF.PRG.PV");
 /// COF.DER.ATTACK: attack values add the level, at most 10.
 pub(crate) const ATTACK: RuleId = RuleId::from_static("COF.DER.ATTACK");
 /// COF.DER.DR: DR = 2 + CON.

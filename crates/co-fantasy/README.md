@@ -48,7 +48,8 @@ design decisions are in [docs/adr/engines.md](../../docs/adr/engines.md)
   `Value::name()` names them; `Voie::ability_name(rank)` names each
   capacité. `label(id)` names every identifier the engine
   emits as a violation subject or a breakdown source, and
-  `term_label(rule)` the terms a formula sets (the level), so that the
+  `term_label(rule)` the terms a formula sets (the level, the levels
+  gained), so that the
   front end restates none of them (ADR ENG-CATALOGUE).
 - **Violations.** `Character::violations` calls each module's
   `check(&Character, &mut Vec<Violation>)` (profil, peuple,
