@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use co_kernel::{Contribution, DerivedValue, ParameterValue, RuleId, Source, ViolationReport};
 use palimpseste_document::{
     Characteristic, ContemporainDocument, ContemporainEquipment, Document, Equipment, Error,
-    FantasyDocument, FantasyEquipment, ItemEntry, Subject, WaiverEntry,
+    FantasyDocument, FantasyEquipment, ItemEntry, SpecialityEntry, Subject, WaiverEntry,
 };
 use serde::Serialize;
 use tsify::Tsify;
@@ -296,20 +296,48 @@ pub struct HeldAbility {
     /// The level-up (COF2) or spending (COC2) that acquired it, `None` for
     /// creation.
     pub progression: Option<u32>,
+    /// The speciality written for it, when it asks for one (ADR
+    /// ENG-SPECIALITIES).
+    pub speciality: Option<String>,
     /// Its permanent bonuses to tests (ADR ENG-TEST-BONUSES).
     pub test_bonuses: Vec<TestBonusLine>,
-    /// The characteristics of its dé bonus to tests, empty when the
-    /// catalogue names none; `None` without a dé bonus.
-    pub bonus_die: Option<Vec<Characteristic>>,
+    /// Its dé bonus to tests, `None` without one.
+    pub bonus_die: Option<BonusDieLine>,
 }
 
 /// A capacité's permanent bonus to some tests.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
 pub struct TestBonusLine {
     /// The bonus as a value, the target of its adjustments.
     pub value: ValueLine,
     /// The characteristics of the tests, when the catalogue names them.
     pub characteristics: Vec<Characteristic>,
+    /// The tests, in a few French words (`discrétion, déguisement`).
+    pub scope: String,
+    /// Whether it applies to the speciality written for its capacité.
+    pub on_speciality: bool,
+}
+
+/// A capacité's dé bonus to some tests.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct BonusDieLine {
+    /// The characteristics of the tests, empty when the catalogue names
+    /// none.
+    pub characteristics: Vec<Characteristic>,
+    /// The tests, in a few French words.
+    pub scope: String,
+    /// Whether it applies to the speciality written for its capacité.
+    pub on_speciality: bool,
+}
+
+/// The speciality `specialities` give the capacité `ability`.
+fn speciality_of(specialities: &[SpecialityEntry], ability: &str) -> Option<String> {
+    specialities
+        .iter()
+        .find(|entry| entry.ability == ability)
+        .map(|entry| entry.speciality.clone())
 }
 
 /// `characteristics` as the document names them.
@@ -711,7 +739,7 @@ fn fantasy(
         evolutive_die: format!("d{}", character.level().evolutive_die().faces()),
         levels: fantasy_levels(&character),
         ability_options: fantasy_options(&character),
-        abilities_held: fantasy_held(&character, &bonus_dice, &line),
+        abilities_held: fantasy_held(&character, &document.specialities, &bonus_dice, &line),
     });
     let in_play = played.as_ref().map(co_fantasy::InPlay::report);
     Ok(common.sheet(
@@ -801,7 +829,7 @@ fn contemporain(
         disadvantages: character.disadvantages(),
         spendings: contemporain_spendings(&character, spendings),
         rank_five: contemporain_rank_five(&character),
-        abilities_held: contemporain_held(&character, &line),
+        abilities_held: contemporain_held(&character, &document.specialities, &line),
     });
     Ok(common.sheet(|c| character.characteristic(c), values, details, None))
 }
@@ -811,10 +839,12 @@ fn count(number: usize) -> u32 {
     u32::try_from(number).unwrap_or(u32::MAX)
 }
 
-/// Every COF2 capacité held, with the level-up that acquired it, its test
-/// bonuses and its dé bonus among `dice`.
+/// Every COF2 capacité held, with the level-up that acquired it, its
+/// speciality among `specialities`, its test bonuses and its dé bonus among
+/// `dice`.
 fn fantasy_held(
     character: &co_fantasy::Character,
+    specialities: &[SpecialityEntry],
     dice: &[co_fantasy::BonusDie],
     line: &dyn Fn(co_fantasy::Value) -> ValueLine,
 ) -> Vec<HeldAbility> {
@@ -824,6 +854,7 @@ fn fantasy_held(
         .into_iter()
         .map(|(voie, rank)| HeldAbility {
             ability: voie.ability(rank).as_str().to_owned(),
+            speciality: speciality_of(specialities, voie.ability(rank).as_str()),
             progression: character
                 .acquired_at(voie, rank)
                 .map(|level| u32::from(level.get())),
@@ -833,20 +864,27 @@ fn fantasy_held(
                 .map(|bonus| TestBonusLine {
                     value: line(co_fantasy::Value::TestBonus(*bonus)),
                     characteristics: named(bonus.characteristics()),
+                    scope: bonus.scope().to_owned(),
+                    on_speciality: bonus.on_speciality(),
                 })
                 .collect(),
             bonus_die: dice
                 .iter()
                 .find(|die| (die.voie(), die.rank()) == (voie, rank))
-                .map(|die| named(die.characteristics())),
+                .map(|die| BonusDieLine {
+                    characteristics: named(die.characteristics()),
+                    scope: die.scope().to_owned(),
+                    on_speciality: die.on_speciality(),
+                }),
         })
         .collect()
 }
 
-/// Every COC2 capacité held, with the spending that bought it, its test
-/// bonuses and its dé bonus.
+/// Every COC2 capacité held, with the spending that bought it, its
+/// speciality among `specialities`, its test bonuses and its dé bonus.
 fn contemporain_held(
     character: &co_contemporain::Character,
+    specialities: &[SpecialityEntry],
     line: &dyn Fn(co_contemporain::Value) -> ValueLine,
 ) -> Vec<HeldAbility> {
     let bonuses = character.test_bonuses();
@@ -856,6 +894,7 @@ fn contemporain_held(
         .into_iter()
         .map(|(voie, rank)| HeldAbility {
             ability: voie.ability(rank).as_str().to_owned(),
+            speciality: speciality_of(specialities, voie.ability(rank).as_str()),
             progression: character.bought_in(voie, rank).map(count),
             test_bonuses: bonuses
                 .iter()
@@ -863,12 +902,18 @@ fn contemporain_held(
                 .map(|bonus| TestBonusLine {
                     value: line(co_contemporain::Value::TestBonus(*bonus)),
                     characteristics: named(bonus.characteristics()),
+                    scope: bonus.scope().to_owned(),
+                    on_speciality: bonus.on_speciality(),
                 })
                 .collect(),
             bonus_die: dice
                 .iter()
                 .find(|die| (die.voie(), die.rank()) == (voie, rank))
-                .map(|die| named(die.characteristics())),
+                .map(|die| BonusDieLine {
+                    characteristics: named(die.characteristics()),
+                    scope: die.scope().to_owned(),
+                    on_speciality: die.on_speciality(),
+                }),
         })
         .collect()
 }

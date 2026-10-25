@@ -69,6 +69,7 @@ pub struct FantasyCatalog {
 
 /// A capacité, named by its identifier (ADR ENG-VALUE-IDS).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
 pub struct AbilityEntry {
     /// Identifier, `<voie>.<rank>`.
     pub id: String,
@@ -82,6 +83,23 @@ pub struct AbilityEntry {
     /// Display label naming the voie too, such as `Défier la mort (Voie de
     /// la rage, rang 2)`.
     pub label: String,
+    /// The actions it may take to use, the first usual; empty when passive
+    /// and in COC2, whose capacités carry none (ADR ENG-COF-ACTIONS).
+    pub actions: Vec<ActionEntry>,
+    /// The PM it costs to cast, `None` unless it is a COF2 spell.
+    pub spell_cost: Option<i32>,
+    /// What it asks the player to choose, in French (`discipline`), `None`
+    /// when it asks for nothing (ADR ENG-SPECIALITIES).
+    pub speciality: Option<String>,
+}
+
+/// An action a COF2 capacité takes to use.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+pub struct ActionEntry {
+    /// The book's letter, such as `L`.
+    pub abbreviation: String,
+    /// The French display name, such as `Action limitée`.
+    pub name: String,
 }
 
 /// A COF2 profil.
@@ -443,21 +461,7 @@ fn fantasy() -> FantasyCatalog {
             .iter()
             .map(|step| Named::new(step.id(), step.name()))
             .collect(),
-        abilities: Voie::ALL
-            .into_iter()
-            .flat_map(|voie| {
-                (1..=5).map(move |rank| {
-                    let ability = co_kernel::Rank::new(rank);
-                    ability_entry(
-                        voie.ability(ability).as_str(),
-                        voie.id().as_str(),
-                        rank,
-                        voie.ability_name(ability).unwrap_or_default(),
-                        co_fantasy::label,
-                    )
-                })
-            })
-            .collect(),
+        abilities: fantasy_abilities(),
         ability_options: co_fantasy::AbilityOption::ALL
             .into_iter()
             .map(|option| Named::new(option.id(), option.name()))
@@ -469,8 +473,40 @@ fn fantasy() -> FantasyCatalog {
     }
 }
 
+/// Every COF2 capacité, with its actions, spell cost and speciality.
+fn fantasy_abilities() -> Vec<AbilityEntry> {
+    use co_fantasy::Voie;
+    Voie::ALL
+        .into_iter()
+        .flat_map(|voie| {
+            (1..=5).map(move |rank| {
+                let ability = co_kernel::Rank::new(rank);
+                AbilityEntry {
+                    actions: voie
+                        .actions(ability)
+                        .iter()
+                        .map(|action| ActionEntry {
+                            abbreviation: action.abbreviation().to_owned(),
+                            name: action.name().to_owned(),
+                        })
+                        .collect(),
+                    spell_cost: voie.spell_cost(ability),
+                    speciality: voie.speciality(ability).map(str::to_owned),
+                    ..ability_entry(
+                        voie.ability(ability).as_str(),
+                        voie.id().as_str(),
+                        rank,
+                        voie.ability_name(ability).unwrap_or_default(),
+                        co_fantasy::label,
+                    )
+                }
+            })
+        })
+        .collect()
+}
+
 /// The catalog entry of the capacité `id`, named `name` and labelled by the
-/// engine's `label`.
+/// engine's `label`, with no action, spell cost or speciality.
 fn ability_entry(
     id: &str,
     voie: &str,
@@ -484,6 +520,9 @@ fn ability_entry(
         rank,
         name: name.to_owned(),
         label: label(id).unwrap_or_else(|| id.to_owned()),
+        actions: Vec::new(),
+        spell_cost: None,
+        speciality: None,
     }
 }
 
@@ -567,13 +606,16 @@ fn contemporain() -> ContemporainCatalog {
             .flat_map(|voie| {
                 (1..=5).map(move |rank| {
                     let ability = co_kernel::Rank::new(rank);
-                    ability_entry(
-                        voie.ability(ability).as_str(),
-                        voie.id().as_str(),
-                        rank,
-                        voie.ability_name(ability).unwrap_or_default(),
-                        co_contemporain::label,
-                    )
+                    AbilityEntry {
+                        speciality: voie.speciality(ability).map(str::to_owned),
+                        ..ability_entry(
+                            voie.ability(ability).as_str(),
+                            voie.id().as_str(),
+                            rank,
+                            voie.ability_name(ability).unwrap_or_default(),
+                            co_contemporain::label,
+                        )
+                    }
                 })
             })
             .collect(),

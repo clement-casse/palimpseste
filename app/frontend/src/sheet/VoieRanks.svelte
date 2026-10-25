@@ -70,7 +70,7 @@
                   />
                 {/each}
                 {#if h.bonusDie}
-                  · dé bonus{#if h.bonusDie.length > 0}{` (${h.bonusDie.join(", ")})`}{/if}
+                  · dé bonus{#if h.bonusDie.characteristics.length > 0}{` (${h.bonusDie.characteristics.join(", ")})`}{/if}
                 {/if}
               </li>
             {/each}
