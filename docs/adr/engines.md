@@ -124,7 +124,11 @@ for a weapon's DM, dice (a COF2 dé évolutif resolved at the level).
 not values: no total includes them and they take no adjustment; the
 Game Master adjusts the total itself. COF2 reads its own table in
 `situation.rs` (DEF, Init, every attack, contact or every DM, RD), the
-amounts in the shapes of ADR ENG-COF-CAPACITES (D-52, D-53, D-54). *Why
+amounts in the shapes of ADR ENG-COF-CAPACITES (D-52, D-53, D-54). COC2's
+table gives DEF against a kind of attack or in a moving vehicle, RD
+parrying unarmed, and notes without an amount: a manoeuvre or automatic
+fire at −2 instead of −5 on its attack, FOR or INT tested in place of
+another characteristic, listed on that characteristic. *Why
 not toggles:* a situation changes from one attack to the next; the sheet
 shows the modifier, the player applies it.
 

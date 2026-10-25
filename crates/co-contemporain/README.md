@@ -22,6 +22,7 @@ builds a complete character. Read it first.
 | `traits.rs` | `Trait`, `Sequel` (and its identifier once acquired in play), `TraitPoints`, `SocialClass` | COC.CRE.TRAITS, COC.CNT.TRAITS, COC.CRE.SOCIAL-CLASS |
 | `characteristics.rs` | the characteristic points allocated, `ALLOCATED_POINTS`, starting and current values, the rank-5 raises | COC.CRE.CARAC-*, COC.PRG.CARAC |
 | `secondary.rs` | Init, DEF, ATC/ATD, CG, health scale | COC.DER.* |
+| `situation.rs` | `Situation`, `Situational`: the capacités' modifiers and notes that hold only in a situation, listed beside the values | ENG-SITUATIONAL |
 | `test_bonus.rs` | `TestBonus` and `BonusDie`: the capacités' permanent test bonuses and dé bonus with the tests they cover (`scope`), and their upgrades | COC.CNT.VOIES, D-50 |
 | `weapon.rs` | `Weapon` (one variant per table row, `MainsNues` included), damage dice and DM, bonus critique, critical range | COC.EQP.MELEE, COC.EQP.RANGED, COC.DER.DM-BONUS, COC.DER.CRIT-* |
 | `protection.rs` | `Protection`: RD and malus, never DEF | COC.EQP.PROTECTIONS |
