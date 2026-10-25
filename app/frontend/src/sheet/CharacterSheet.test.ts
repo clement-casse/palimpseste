@@ -130,14 +130,6 @@ describe("the COF sheet", () => {
     sheet.unmount();
     await vi.waitFor(() => expect(lock.release).toHaveBeenCalledOnce());
   });
-
-  it("switches the theme of the device", async () => {
-    open(lhagva());
-    await fireEvent.change(screen.getByRole("combobox", { name: "Thème" }), {
-      target: { value: "oled" },
-    });
-    expect(document.documentElement.dataset.theme).toBe("oled");
-  });
 });
 
 describe("the COC sheet", () => {
@@ -280,8 +272,8 @@ describe("the equipment in play", () => {
     await choose("Armure", "cof.armour.cuir-renforce");
     const worn = { ...equipmentOf(lhagva()), armour: "cof.armour.cuir-renforce" };
     expect(tile("Défense").textContent?.trim()).toBe(String(engineValue(lhagva(), worn, "cof.defence")));
-    await fireEvent.click(tile("Défense"));
-    expect(within(screen.getByRole("dialog")).getByText(/^Cuir renforcé/)).toBeTruthy();
+    await fireEvent.mouseEnter(tile("Défense"));
+    expect(await screen.findByText(/^Cuir renforcé/, {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "À savoir" })).toBeNull();
     expect(screen.queryByRole("note") === null).toBe(finished);
 

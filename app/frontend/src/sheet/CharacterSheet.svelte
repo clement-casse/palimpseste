@@ -13,7 +13,6 @@
   import { ENGINES, unsettled, unsettledAll } from "../engines";
   import { nextLabel } from "../progression/progression";
   import { characterPath, characterProgressionPath, follow, friendPath } from "../router.svelte";
-  import ThemePicker from "../ThemePicker.svelte";
   import { keepAwake, wakeLock } from "../wakelock.svelte";
   import { type Equipment, type Sheet, catalog, evaluateInPlay } from "../wasm/palimpseste_wasm";
   import ContemporainSheet from "./ContemporainSheet.svelte";
@@ -136,7 +135,6 @@
           Écran toujours allumé
         </Button>
       {/if}
-      <ThemePicker />
     </span>
   </header>
 

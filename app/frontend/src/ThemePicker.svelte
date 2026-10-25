@@ -1,24 +1,35 @@
 <script lang="ts">
-  // The colour theme of this device (ADR FE-THEMES).
-  import { Label, Select } from "flowbite-svelte";
+  // The colour theme of this device (ADR FE-THEMES), in the top bar.
+  import { Button, ButtonGroup } from "flowbite-svelte";
+  import {
+    DesktopPcOutline,
+    MoonOutline,
+    MoonPlusOutline,
+    SunOutline,
+  } from "flowbite-svelte-icons";
 
-  import { valueOf } from "./character/edits";
   import { THEMES, setTheme, theme } from "./theme.svelte";
 
-  const items = THEMES.map((t) => ({ value: t.id, name: t.name }));
+  const icons = {
+    light: SunOutline,
+    system: DesktopPcOutline,
+    dark: MoonOutline,
+    oled: MoonPlusOutline,
+  };
 </script>
 
-<Label class="inline-flex items-center gap-2">
-  Thème
-  <Select
-    placeholder=""
-    size="sm"
-    class="w-auto"
-    {items}
-    value={theme.choice}
-    onchange={(e) => {
-      const next = THEMES.find((t) => t.id === valueOf(e));
-      if (next) setTheme(next.id);
-    }}
-  />
-</Label>
+<ButtonGroup role="group" aria-label="Thème">
+  {#each THEMES as t (t.id)}
+    {@const Icon = icons[t.id]}
+    <Button
+      size="xs"
+      color={theme.choice === t.id ? "primary" : "alternative"}
+      aria-label={t.name}
+      title={t.name}
+      aria-pressed={theme.choice === t.id}
+      onclick={() => setTheme(t.id)}
+    >
+      <Icon class="h-4 w-4" />
+    </Button>
+  {/each}
+</ButtonGroup>

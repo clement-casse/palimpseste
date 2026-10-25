@@ -30,6 +30,25 @@ describe("the disclaimer", () => {
   });
 });
 
+describe("the theme toggle", () => {
+  it("sits in the top bar, signed out too, and switches the theme in order", async () => {
+    stubBackend(({ url }) => {
+      if (url === "/api/auth/providers") return Response.json([]);
+      return new Response(null, { status: 401 });
+    });
+    render(App);
+    const group = await screen.findByRole("group", { name: "Thème" });
+    expect(Array.from(group.querySelectorAll("button"), (b) => b.getAttribute("aria-label"))).toEqual(
+      ["Clair", "Système", "Sombre", "OLED (noir)"],
+    );
+    await fireEvent.click(screen.getByRole("button", { name: "OLED (noir)" }));
+    expect(document.documentElement.dataset.theme).toBe("oled");
+    expect(screen.getByRole("button", { name: "OLED (noir)" }).getAttribute("aria-pressed")).toBe("true");
+    await fireEvent.click(screen.getByRole("button", { name: "Système" }));
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+  });
+});
+
 describe("signing out", () => {
   it("ends the session and shows the sign-in page", async () => {
     const sent = stubBackend(({ method, url }) => {

@@ -29,6 +29,7 @@
   import SheetPage from "./sheet/SheetPage.svelte";
   import SignIn from "./SignIn.svelte";
   import StatusBanner from "./StatusBanner.svelte";
+  import ThemePicker from "./ThemePicker.svelte";
 
   let failure = $state<unknown>(null);
 
@@ -73,11 +74,14 @@
   <NavBrand href="/" onclick={follow}>
     <span class="text-xl font-semibold text-primary-800 dark:text-primary-300">Palimpseste</span>
   </NavBrand>
-  {#if session.user}
-    <div class="flex items-center gap-2 md:order-2">
+  <div class="flex items-center gap-2 md:order-2">
+    <ThemePicker />
+    {#if session.user}
       <Button size="sm" color="alternative" onclick={leave}>Se déconnecter</Button>
       <NavHamburger />
-    </div>
+    {/if}
+  </div>
+  {#if session.user}
     <NavUl activeUrl={route.path}>
       <NavLi href="/" onclick={follow}>Personnages</NavLi>
       <NavLi href={FRIENDS} onclick={follow}>Amis</NavLi>

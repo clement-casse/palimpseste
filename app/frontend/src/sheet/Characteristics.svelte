@@ -16,7 +16,6 @@
       value={signed(line.total)}
       notes={marksAt(notes, { kind: "characteristic", id: line.characteristic })}
       contributions={line.contributions}
-      popover="sheet-characteristic-{line.characteristic}"
     />
   {/each}
 </ul>

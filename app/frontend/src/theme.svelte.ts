@@ -6,8 +6,8 @@
 export type ThemeChoice = "system" | "light" | "dark" | "oled";
 
 export const THEMES: { id: ThemeChoice; name: string }[] = [
-  { id: "system", name: "Système" },
   { id: "light", name: "Clair" },
+  { id: "system", name: "Système" },
   { id: "dark", name: "Sombre" },
   { id: "oled", name: "OLED (noir)" },
 ];
