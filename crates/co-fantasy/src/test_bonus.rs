@@ -441,6 +441,30 @@ mod tests {
     }
 
     #[test]
+    fn the_row_builders_make_the_rows_they_name() {
+        for c in Characteristic::ALL {
+            assert_eq!(alone(c), [c]);
+        }
+        let place = |effect: Effect| (effect.voie(), effect.rank());
+        let (index, named, effect) = competence(Voie::Assassin, 1);
+        assert_eq!((index, named), (1, [].as_slice()));
+        assert_eq!(place(effect), (Voie::Assassin, 1));
+        let (index, named, effect) = peuple(Voie::ElfeHaut, 1, &[Int, Cha]);
+        assert_eq!((index, named), (1, [Int, Cha].as_slice()));
+        assert_eq!(place(effect), (Voie::ElfeHaut, 1));
+        let (index, named, effect) = tattoo(3, For);
+        assert_eq!((index, named), (3, [For].as_slice()));
+        assert_eq!(place(effect), (Voie::Pagne, 3));
+        let (named, effect) = heroic(Voie::Brute, 4, For);
+        assert_eq!((named, place(effect)), ([For].as_slice(), (Voie::Brute, 4)));
+        let (named, effect) = elite(Cha);
+        assert_eq!(
+            (named, place(effect)),
+            ([Cha].as_slice(), (Voie::Noblesse, 5))
+        );
+    }
+
+    #[test]
     fn the_catalogue_follows_voie_and_rank_order() {
         let all: Vec<_> = TestBonus::all().collect();
         let mut sorted = all.clone();
