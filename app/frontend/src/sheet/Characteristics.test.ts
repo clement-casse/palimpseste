@@ -21,6 +21,7 @@ const constitution: CharacteristicLine = {
       amount: 1,
     },
   ],
+  situational: [],
 };
 
 test("hovering a characteristic on the sheet shows every source, capacités included", async () => {

@@ -801,6 +801,53 @@ mod tests {
     }
 
     #[test]
+    fn values_list_their_situational_modifiers() {
+        let mut document = FantasyDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "cof.traqueur".into(),
+            ranks: vec![1, 2, 3],
+        }];
+        document.items = vec![ItemEntry::Weapon {
+            id: "cof.weapon.epee-longue".into(),
+            quantity: 1,
+        }];
+        let sheet = fantasy(document);
+        let damage = value(&sheet, "cof.damage.epee-longue.one-handed");
+        let [hunter] = damage.situational.as_slice() else {
+            panic!("one situational modifier expected");
+        };
+        assert_eq!(
+            (
+                hunter.situation.as_str(),
+                hunter.ability.as_str(),
+                hunter.amount,
+                hunter.dice.as_deref()
+            ),
+            ("contre un animal", "cof.traqueur.3", None, Some("1d4"))
+        );
+        assert_eq!(value(&sheet, "cof.defence").situational, []);
+
+        let mut document = ContemporainDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "coc.crime".into(),
+            ranks: vec![1, 2],
+        }];
+        let sheet = contemporain(document);
+        let strength = sheet
+            .characteristics
+            .iter()
+            .find(|line| line.characteristic == Characteristic::For)
+            .unwrap();
+        let [note] = strength.situational.as_slice() else {
+            panic!("one note expected");
+        };
+        assert_eq!(
+            (note.situation.as_str(), note.amount),
+            ("à la place du CHA pour contraindre", None)
+        );
+    }
+
+    #[test]
     fn rank_five_capacites_say_what_they_raise() {
         let mut document = ContemporainDocument::empty();
         document.voies = vec![VoieEntry {

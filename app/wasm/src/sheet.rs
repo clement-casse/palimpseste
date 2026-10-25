@@ -75,6 +75,9 @@ pub struct CharacteristicLine {
     pub total: i32,
     /// The terms that produced it.
     pub contributions: Vec<ContributionLine>,
+    /// The capacités' modifiers and notes that hold only in a situation,
+    /// never in the total (ADR ENG-SITUATIONAL).
+    pub situational: Vec<SituationalLine>,
 }
 
 /// A computed value and its breakdown.
@@ -89,6 +92,22 @@ pub struct ValueLine {
     /// The terms that produced it.
     pub contributions: Vec<ContributionLine>,
     /// The dice rolled with it, for weapon damage and dés de récupération.
+    pub dice: Option<String>,
+    /// The capacités' modifiers that hold only in a situation, never in the
+    /// total (ADR ENG-SITUATIONAL).
+    pub situational: Vec<SituationalLine>,
+}
+
+/// A capacité's modifier holding only in a situation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+pub struct SituationalLine {
+    /// The situation, in French (`contre plus grand que lui`).
+    pub situation: String,
+    /// The identifier of the capacité giving it.
+    pub ability: String,
+    /// The amount added in the situation, `None` for dice or a note.
+    pub amount: Option<i32>,
+    /// The dice added to the DM in the situation, such as `1d6`.
     pub dice: Option<String>,
 }
 
@@ -464,6 +483,7 @@ impl Common<'_> {
     fn sheet(
         &self,
         characteristics: impl Fn(co_kernel::Characteristic) -> DerivedValue,
+        situational: impl Fn(co_kernel::Characteristic) -> Vec<SituationalLine>,
         values: Vec<ValueLine>,
         details: Details,
         in_play: Option<&ViolationReport>,
@@ -519,6 +539,7 @@ impl Common<'_> {
                         characteristic: c.into(),
                         total: value.total(),
                         contributions: self.contributions(&value),
+                        situational: situational(c),
                     }
                 })
                 .collect(),
@@ -635,8 +656,35 @@ impl Common<'_> {
                 .map(|value| self.contributions(value))
                 .unwrap_or_default(),
             dice: None,
+            situational: Vec::new(),
         }
     }
+}
+
+/// The COF2 situational modifiers `modifiers` as the bindings send them.
+fn fantasy_situational(modifiers: &[co_fantasy::Situational]) -> Vec<SituationalLine> {
+    modifiers
+        .iter()
+        .map(|modifier| SituationalLine {
+            situation: modifier.situation().name().to_owned(),
+            ability: modifier.ability().as_str().to_owned(),
+            amount: modifier.amount(),
+            dice: modifier.dice().map(ToString::to_string),
+        })
+        .collect()
+}
+
+/// The COC2 situational modifiers `modifiers` as the bindings send them.
+fn contemporain_situational(modifiers: &[co_contemporain::Situational]) -> Vec<SituationalLine> {
+    modifiers
+        .iter()
+        .map(|modifier| SituationalLine {
+            situation: modifier.situation().name().to_owned(),
+            ability: modifier.ability().as_str().to_owned(),
+            amount: modifier.amount(),
+            dice: None,
+        })
+        .collect()
 }
 
 /// The weapons the document carries, in document order without repeats.
@@ -691,8 +739,15 @@ fn fantasy(
         label: &co_fantasy::label,
         term_label: &co_fantasy::term_label,
     };
-    let line = |value: Value| {
-        common.line(
+    let situational = |target: co_fantasy::Target| {
+        fantasy_situational(&match &played {
+            Some(played) => played.situational(target),
+            None => character.situational(target),
+        })
+    };
+    let line = |value: Value| ValueLine {
+        situational: situational(co_fantasy::Target::Value(value)),
+        ..common.line(
             value.id().as_str().to_owned(),
             value.name(),
             value_of(value).as_ref(),
@@ -744,6 +799,7 @@ fn fantasy(
     let in_play = played.as_ref().map(co_fantasy::InPlay::report);
     Ok(common.sheet(
         |c| character.characteristic(c),
+        |c| situational(co_fantasy::Target::Characteristic(c)),
         values,
         details,
         in_play.as_ref(),
@@ -794,8 +850,15 @@ fn contemporain(
         label: &co_contemporain::label,
         term_label: &co_contemporain::term_label,
     };
-    let line = |value: Value| {
-        common.line(
+    let situational = |target: co_contemporain::Target| {
+        contemporain_situational(&match &played {
+            Some(played) => played.situational(target),
+            None => character.situational(target),
+        })
+    };
+    let line = |value: Value| ValueLine {
+        situational: situational(co_contemporain::Target::Value(value)),
+        ..common.line(
             value.id().as_str().to_owned(),
             value.name(),
             value_of(value).as_ref(),
@@ -831,7 +894,13 @@ fn contemporain(
         rank_five: contemporain_rank_five(&character),
         abilities_held: contemporain_held(&character, &document.specialities, &line),
     });
-    Ok(common.sheet(|c| character.characteristic(c), values, details, None))
+    Ok(common.sheet(
+        |c| character.characteristic(c),
+        |c| situational(co_contemporain::Target::Characteristic(c)),
+        values,
+        details,
+        None,
+    ))
 }
 
 /// A count or number from the engines, as the bindings send it.
