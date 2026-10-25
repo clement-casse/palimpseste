@@ -41,3 +41,9 @@ HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
 HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
   this.open = false;
 };
+
+// Nor the Popover API, which Flowbite's popovers show and hide through: a
+// popover shown is in the page as it is.
+HTMLElement.prototype.showPopover ??= () => {};
+HTMLElement.prototype.hidePopover ??= () => {};
+HTMLElement.prototype.togglePopover ??= () => true;
