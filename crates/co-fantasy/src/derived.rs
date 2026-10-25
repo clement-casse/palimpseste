@@ -36,7 +36,7 @@ fn with_orphans(value: DerivedValue, character: &Character, target: Value) -> De
 }
 
 /// `c` as usable in the armour worn: capped by its AGI max (D-06).
-fn capped(character: &Character, values: &Characteristics, c: Characteristic) -> i32 {
+pub(crate) fn capped(character: &Character, values: &Characteristics, c: Characteristic) -> i32 {
     let value = values[c].get();
     character
         .armour()

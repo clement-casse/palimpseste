@@ -5,9 +5,8 @@
 //! gives, the equipment it needs and the option it depends on (ADR
 //! ENG-COF-CAPACITES). Effects that depend on circumstances (outdoors,
 //! against large creatures, while a companion is in sight) are play-time
-//! and absent; so are the effects on one weapon's attack, and those of
-//! capacités whose content the co-rules skill does not give (the weapon
-//! categories of Armes de prédilection).
+//! and absent; so are those of capacités whose content the co-rules skill
+//! does not give (the weapon categories of Armes de prédilection).
 
 use co_kernel::{
     Characteristic, Characteristics, DerivedValue, Rank, Severity, Source, Subject, Violation,
@@ -663,6 +662,13 @@ pub(crate) const DAMAGE: &[WeaponEffect] = &[
         Weapons::Crossbows,
         Effect::new(Voie::Gnome, 4, Carac(Characteristic::Agi)),
     ),
+];
+
+/// Effects on the attack with a weapon (COF.DER.ATTACK), besides the AGI
+/// that Précision and Attaque en finesse put in place of FOR.
+pub(crate) const WEAPON_ATTACK: &[WeaponEffect] = &[
+    // Haches et marteaux.
+    WeaponEffect::new(Weapons::AxesAndHammers, Effect::flat(Voie::Nain, 2, 1)),
 ];
 
 /// The weapons a capacité makes the character master, whatever the profil.

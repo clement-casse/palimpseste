@@ -162,10 +162,15 @@ not reported: an item may be given up. COF2 checks nothing without a
 profil.
 
 **ENG-WEAPON-VALUES: Weapon values are values.** `Value::Damage` (the DM
-added to the dice), `Value::CriticalRange` and, in COC2,
-`Value::CriticalBonus` have a breakdown and accept adjustments. The dice
-come from the table: `Weapon::dice(use)` in COF2,
-`Character::damage_dice(weapon)` in COC2.
+added to the dice), `Value::CriticalRange`, in COC2 `Value::CriticalBonus`,
+and in COF2 `Value::WeaponAttack` have a breakdown and accept adjustments.
+COF2's attack with a weapon in a use starts from the attack value of the
+use, its adjustments included, puts AGI (capped by the armour) in place of
+a lower FOR when Précision or Attaque en finesse lets a light weapon hit
+with it (the vivelame only when mastered, D-46), and adds the capacités'
+effects on that weapon's attack (Haches et marteaux). The dice come from
+the table: `Weapon::dice(use)` in COF2, `Character::damage_dice(weapon)`
+in COC2.
 
 **ENG-MONEY: Money is per engine, and a value.** Each engine owns its
 `Money`, counted in its smallest coin and built from named coins only
@@ -371,8 +376,8 @@ mailles.
 **ENG-COF-CAPACITES: Capacité effects are per-value tables (D-22,
 D-13).** Every capacité whose catalogue entry states an effect on a value
 contributes, at any rank, as `Source::Ability`. Each value reads its own
-table in `ability.rs` (PV, DR, PC, PM, Init, DEF, RD, the DM and critical
-range of the weapons, mastery, armour limits, characteristic raises) or
+table in `ability.rs` (PV, DR, PC, PM, Init, DEF, RD, the attack, DM and
+critical range of the weapons, mastery, armour limits, characteristic raises) or
 `test_bonus.rs` (test bonuses, dé bonus), each row a capacité with an
 `Amount` (flat, by the rank reached, per rank, rank plus n, a
 characteristic, a characteristic up to the rank, per voie of a profil
@@ -387,9 +392,7 @@ voie du mage, the peuple's rank-1 effect is kept, with the peuple voie's
 rank-1 ability as source; a demi-elfe's upbringing is not recorded, so its
 kept effect is left to an adjustment. Not computed: effects that depend on
 circumstances (outdoors, against large creatures, a companion in sight,
-two weapons in hand), effects on one weapon's attack (Haches et marteaux's
-attack, Précision, Attaque en finesse), capacités whose content the
-co-rules skill lacks (the weapon categories of Armes de prédilection,
+two weapons in hand), capacités whose content the co-rules skill lacks (the weapon categories of Armes de prédilection,
 Science du critique, Spécialisation, D-35; a bone armour for Armure d'os),
 unclear ones (Pacte démoniaque's VOL to DR, D-39), unarmed attacks, and
 capacités calling other capacités. *Why tables:* over a hundred effects
@@ -464,5 +467,5 @@ and displays with the fewest coins (COF.EQP.CURRENCY). The purse is the
   with the application's catalog and tests.
 - Hybrids after level 1 and their PV per level, prestige voies, and the
   capacités calling other capacités (COF.PRG.CALL), all out of scope.
-- Per-weapon attack values, for the capacités changing one weapon's attack;
-  the weapon categories of Armes de prédilection, from the co-rules skill.
+- The weapon categories of Armes de prédilection, from the co-rules skill
+  (D-35).

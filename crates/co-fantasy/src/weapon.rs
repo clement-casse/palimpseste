@@ -2,12 +2,12 @@
 //! (COF.DER.DM, COF.DER.CRIT-RANGE), and the checks on the weapons carried.
 
 use co_kernel::{
-    Characteristic, Characteristics, DerivedValue, Dice, Rank, Severity, Source, Subject, ValueId,
-    Violation,
+    Characteristic, Characteristics, Contribution, DerivedValue, Dice, Rank, Severity, Source,
+    Subject, ValueId, Violation,
 };
 
 use crate::{
-    AttackMode, Character, Voie, ability,
+    AttackMode, Character, Value, Voie, ability, derived,
     rules::{CRIT_RANGE, PEUPLES, RANGED, WEAPON_MECHANIC},
 };
 
@@ -465,9 +465,70 @@ pub(crate) fn damage_id(weapon: Weapon, weapon_use: WeaponUse) -> ValueId {
     ))
 }
 
+/// The identifier of the attack with `weapon` in `weapon_use`.
+pub(crate) fn attack_id(weapon: Weapon, weapon_use: WeaponUse) -> ValueId {
+    ValueId::new(format!(
+        "cof.attack.{}.{}",
+        weapon.slug(),
+        weapon_use.slug()
+    ))
+}
+
 /// The identifier of the critical range of `weapon`.
 pub(crate) fn critical_range_id(weapon: Weapon) -> ValueId {
     ValueId::new(format!("cof.critical-range.{}", weapon.slug()))
+}
+
+/// The attack with `weapon` in `weapon_use` (COF.DER.ATTACK): the attack
+/// value of the use, its adjustments included; AGI, capped by the armour, in
+/// place of a lower FOR when Précision or Attaque en finesse lets it hit
+/// (D-46); then the capacités' effects on the weapon's attack. `None` when
+/// the weapon cannot be used that way.
+pub(crate) fn attack(
+    character: &Character,
+    values: &Characteristics,
+    weapon: Weapon,
+    weapon_use: WeaponUse,
+) -> Option<DerivedValue> {
+    weapon.dice(weapon_use)?;
+    let base = character.value(Value::Attack(weapon_use.attack_mode()))?;
+    let agility = derived::capped(character, values, Characteristic::Agi);
+    let finesse =
+        finesse(character, weapon, weapon_use) && agility > values[Characteristic::For].get();
+    let strength = Source::Characteristic(Characteristic::For);
+    let mut value = DerivedValue::new();
+    value.extend(base.contributions().iter().map(|contribution| {
+        if finesse && contribution.source() == &strength {
+            Contribution::new(Source::Characteristic(Characteristic::Agi), agility)
+        } else {
+            contribution.clone()
+        }
+    }));
+    Some(ability::apply_to_weapon(
+        value,
+        character,
+        values,
+        ability::WEAPON_ATTACK,
+        weapon,
+        Some(weapon_use),
+    ))
+}
+
+/// Whether Précision (escrime r1) or Attaque en finesse (spadassin r1) lets
+/// AGI hit with `weapon` in `weapon_use`: a light weapon while no shield is
+/// carried (D-35), in one hand, or the vivelame in two when the character
+/// masters it (D-46).
+fn finesse(character: &Character, weapon: Weapon, weapon_use: WeaponUse) -> bool {
+    let first = Rank::new(1);
+    let held = [Voie::Escrime, Voie::Spadassin]
+        .into_iter()
+        .any(|voie| ability::holds(character, voie, first));
+    let grip = match weapon_use {
+        WeaponUse::OneHanded => true,
+        WeaponUse::TwoHanded => weapon == Weapon::Vivelame && character.masters(weapon),
+        WeaponUse::Ranged => false,
+    };
+    held && grip && weapon.is_light() && character.shield().is_none()
 }
 
 /// The DM added to the dice (COF.DER.DM): FOR at contact, except for the
@@ -557,10 +618,145 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
 
 #[cfg(test)]
 mod tests {
-    use co_kernel::Category;
+    use co_kernel::{Adjustment, Author, Category};
 
     use super::*;
-    use crate::{Peuple, Value};
+    use crate::{Armour, Peuple, Profil, Shield, Target};
+
+    /// A character with FOR 1 and AGI 3.
+    fn nimble() -> Character {
+        Character::new()
+            .with_series_value(Characteristic::For, 1)
+            .with_series_value(Characteristic::Agi, 3)
+    }
+
+    fn attack(character: &Character, weapon: Weapon, weapon_use: WeaponUse) -> Option<i32> {
+        character
+            .value(Value::WeaponAttack(weapon, weapon_use))
+            .map(|v| v.total())
+    }
+
+    fn uses_agility(character: &Character, weapon: Weapon, weapon_use: WeaponUse) -> bool {
+        character
+            .value(Value::WeaponAttack(weapon, weapon_use))
+            .is_some_and(|value| {
+                value
+                    .contributions()
+                    .iter()
+                    .any(|c| c.source() == &Source::Characteristic(Characteristic::Agi))
+            })
+    }
+
+    #[test]
+    fn a_weapon_attacks_with_the_attack_of_its_use() {
+        let character = nimble();
+        // The level, then FOR at contact and AGI at range.
+        assert_eq!(
+            attack(&character, Weapon::EpeeLongue, WeaponUse::OneHanded),
+            Some(2)
+        );
+        assert_eq!(
+            attack(&character, Weapon::Dague, WeaponUse::Ranged),
+            Some(4)
+        );
+        assert_eq!(
+            attack(&character, Weapon::BatonFerre, WeaponUse::OneHanded),
+            None
+        );
+        let value = Value::WeaponAttack(Weapon::Rapiere, WeaponUse::OneHanded);
+        assert_eq!(value.id().as_str(), "cof.attack.rapiere.one-handed");
+        assert_eq!(Value::from_id("cof.attack.rapiere.one-handed"), Some(value));
+        assert_eq!(value.name(), "Attaque Rapière (à une main)");
+    }
+
+    #[test]
+    fn precision_puts_a_higher_agi_in_place_of_for_with_light_weapons() {
+        let fencer = nimble().with_rank(Voie::Escrime, 1);
+        assert_eq!(
+            attack(&fencer, Weapon::Rapiere, WeaponUse::OneHanded),
+            Some(4)
+        );
+        assert!(uses_agility(&fencer, Weapon::Rapiere, WeaponUse::OneHanded));
+        // Not with a heavier weapon, nor a shield, nor a lower AGI.
+        assert!(!uses_agility(
+            &fencer,
+            Weapon::EpeeLongue,
+            WeaponUse::OneHanded
+        ));
+        let shielded = fencer.clone().with_shield(Shield::PetitBouclier);
+        assert_eq!(
+            attack(&shielded, Weapon::Rapiere, WeaponUse::OneHanded),
+            Some(2)
+        );
+        let strong = fencer.clone().with_series_value(Characteristic::For, 3);
+        assert!(!uses_agility(
+            &strong,
+            Weapon::Rapiere,
+            WeaponUse::OneHanded
+        ));
+        // The armour caps AGI as it does at range (D-06).
+        let plated = fencer.clone().with_armour(Armour::ArmureDePlaques);
+        assert_eq!(
+            attack(&plated, Weapon::Rapiere, WeaponUse::OneHanded),
+            Some(3)
+        );
+        let fully = fencer.with_armour(Armour::PlaqueComplete);
+        assert_eq!(
+            attack(&fully, Weapon::Rapiere, WeaponUse::OneHanded),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn the_vivelame_needs_its_mastery() {
+        let warrior = nimble()
+            .with_profil(Profil::Guerrier)
+            .with_rank(Voie::Spadassin, 1);
+        assert!(uses_agility(
+            &warrior,
+            Weapon::Vivelame,
+            WeaponUse::TwoHanded
+        ));
+        let thief = warrior.with_profil(Profil::Voleur);
+        assert!(!uses_agility(
+            &thief,
+            Weapon::Vivelame,
+            WeaponUse::TwoHanded
+        ));
+        assert!(uses_agility(&thief, Weapon::Dague, WeaponUse::OneHanded));
+    }
+
+    #[test]
+    fn haches_et_marteaux_raise_the_attack_with_axes() {
+        let dwarf = nimble().with_rank(Voie::Nain, 1).with_rank(Voie::Nain, 2);
+        assert_eq!(attack(&dwarf, Weapon::Hache, WeaponUse::OneHanded), Some(3));
+        assert_eq!(
+            attack(&dwarf, Weapon::EpeeLongue, WeaponUse::OneHanded),
+            Some(2)
+        );
+        let breakdown = dwarf
+            .value(Value::WeaponAttack(Weapon::Hache, WeaponUse::OneHanded))
+            .unwrap();
+        assert!(breakdown.contributions().iter().any(|c| {
+            c.source() == &Source::Ability(Voie::Nain.ability(Rank::new(2))) && c.amount() == 1
+        }));
+    }
+
+    #[test]
+    fn the_attack_of_a_use_carries_its_adjustments() {
+        let character = nimble().with_adjustment(
+            Target::Value(Value::Attack(AttackMode::Contact)),
+            Adjustment::new(2, Author::new("gm"), "a duellist"),
+        );
+        assert_eq!(
+            attack(&character, Weapon::EpeeLongue, WeaponUse::OneHanded),
+            Some(4)
+        );
+        assert_eq!(
+            attack(&character, Weapon::ArcCourt, WeaponUse::Ranged),
+            Some(4)
+        );
+    }
 
     fn weapon_violations(character: &Character) -> Vec<(String, Subject)> {
         let mut violations = Vec::new();

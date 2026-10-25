@@ -45,6 +45,8 @@ pub enum Value {
     DamageReduction,
     /// Attack value (COF.DER.ATTACK).
     Attack(AttackMode),
+    /// Attack with a weapon in a use (COF.DER.ATTACK, D-46).
+    WeaponAttack(Weapon, WeaponUse),
     /// DM added to the weapon's dice in a use (COF.DER.DM).
     Damage(Weapon, WeaponUse),
     /// Lowest natural roll of a critical success with a weapon
@@ -87,7 +89,12 @@ impl Value {
         let weapons = Weapon::ALL.into_iter().flat_map(|weapon| {
             WeaponUse::ALL
                 .into_iter()
-                .map(move |weapon_use| Self::Damage(weapon, weapon_use))
+                .flat_map(move |weapon_use| {
+                    [
+                        Self::WeaponAttack(weapon, weapon_use),
+                        Self::Damage(weapon, weapon_use),
+                    ]
+                })
                 .chain([Self::CriticalRange(weapon)])
         });
         Self::FIXED
@@ -111,6 +118,13 @@ impl Value {
             Self::Attack(AttackMode::Ranged) => "Attaque à distance",
             Self::Attack(AttackMode::Magic) => "Attaque magique",
             Self::Money => "Argent (pc)",
+            Self::WeaponAttack(weapon, weapon_use) => {
+                return format!(
+                    "Attaque {} ({})",
+                    weapon.name(),
+                    weapon_use.name().to_lowercase()
+                );
+            }
             Self::Damage(weapon, weapon_use) => {
                 return format!(
                     "DM {} ({})",
@@ -128,6 +142,7 @@ impl Value {
     #[must_use]
     pub fn id(self) -> ValueId {
         ValueId::from_static(match self {
+            Self::WeaponAttack(weapon, weapon_use) => return weapon::attack_id(weapon, weapon_use),
             Self::Damage(weapon, weapon_use) => return weapon::damage_id(weapon, weapon_use),
             Self::CriticalRange(weapon) => return weapon::critical_range_id(weapon),
             Self::TestBonus(bonus) => return bonus.id(),
@@ -570,7 +585,7 @@ impl Character {
     ///
     /// PV, DR and PC are `None` while the profil is unknown, PM while no
     /// spell is known, the money while the purse is not rolled, a weapon's
-    /// DM when the weapon cannot be used that way, a test bonus while its
+    /// attack and DM when the weapon cannot be used that way, a test bonus while its
     /// capacité is not held or its option not chosen. Their adjustments then
     /// still surface as notices.
     #[must_use]
@@ -585,6 +600,9 @@ impl Character {
             Value::Defence => derived::defence(self, &values),
             Value::DamageReduction => derived::damage_reduction(self, &values)?,
             Value::Attack(mode) => derived::attack(self, &values, mode),
+            Value::WeaponAttack(weapon, weapon_use) => {
+                weapon::attack(self, &values, weapon, weapon_use)?
+            }
             Value::Damage(weapon, weapon_use) => weapon::damage(self, &values, weapon, weapon_use)?,
             Value::CriticalRange(weapon) => weapon::critical_range(self, &values, weapon),
             Value::Money => money::money(self)?,
