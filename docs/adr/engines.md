@@ -168,9 +168,12 @@ COF2's attack with a weapon in a use starts from the attack value of the
 use, its adjustments included, puts AGI (capped by the armour) in place of
 a lower FOR when Précision or Attaque en finesse lets a light weapon hit
 with it (the vivelame only when mastered, D-46), and adds the capacités'
-effects on that weapon's attack (Haches et marteaux). The dice come from
-the table: `Weapon::dice(use)` in COF2, `Character::damage_dice(weapon)`
-in COC2.
+effects on that weapon's attack (Haches et marteaux). The dice are
+`Character::damage_dice` (and `InPlay::damage_dice`): the table's, which
+COC2's unarmed rank 2 and Canonnier change, and COF2's Bâton de mage (the
+level's dé évolutif for the bâton and the bâton ferré, INT in place of
+FOR in their DM, D-47) and Canon double (twice the dice of a powder
+weapon, D-48); COF2's `Weapon::dice(use)` stays the table.
 
 **ENG-MONEY: Money is per engine, and a value.** Each engine owns its
 `Money`, counted in its smallest coin and built from named coins only
@@ -443,7 +446,7 @@ their family term.
 
 **ENG-COF-WEAPONS: Weapons by use.** Each of the 33 weapons has its uses
 (contact in one or two hands, ranged, thrown). The damage adds FOR at
-contact, except with the stylet. `Profil::masters` gives the profil's
+contact, except with the stylet and a mage's staff (INT, D-47). `Profil::masters` gives the profil's
 mastery and `Character::masters` adds the capacités', for display (D-28): an unmastered weapon is not a violation. The arc long
 needs FOR +1 (COF.EQP.RANGED) and Petite taille forbids large weapons
 (D-29), both `standard` deviations.

@@ -4,8 +4,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use co_kernel::{
-    Adjustment, Characteristic, Characteristics, DerivedValue, Quantity, Rank, Subject, ValueId,
-    Violation, ViolationReport, Waiver, adjustment_notice,
+    Adjustment, Characteristic, Characteristics, DerivedValue, Dice, Quantity, Rank, Subject,
+    ValueId, Violation, ViolationReport, Waiver, adjustment_notice,
 };
 
 use crate::{
@@ -540,6 +540,15 @@ impl Character {
     #[must_use]
     pub fn bonus_dice(&self) -> Vec<BonusDie> {
         test_bonus::bonus_dice(self)
+    }
+
+    /// Returns the dice rolled for the DM of `weapon` in `weapon_use`: the
+    /// table's ([`Weapon::dice`]), the dé évolutif with Bâton de mage, twice
+    /// as many powder dice with Canon double; `None` when the weapon cannot
+    /// be used that way.
+    #[must_use]
+    pub fn damage_dice(&self, weapon: Weapon, weapon_use: WeaponUse) -> Option<Dice> {
+        weapon::damage_dice(self, weapon, weapon_use)
     }
 
     /// Returns the die of the dés de récupération, if the profil is set.

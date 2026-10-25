@@ -4,9 +4,9 @@
 
 use std::collections::BTreeMap;
 
-use co_kernel::{DerivedValue, Quantity, ViolationReport};
+use co_kernel::{DerivedValue, Dice, Quantity, ViolationReport};
 
-use crate::{Armour, BonusDie, Character, Item, Shield, Value, armour, weapon};
+use crate::{Armour, BonusDie, Character, Item, Shield, Value, Weapon, WeaponUse, armour, weapon};
 
 /// What a character wears and carries: an armour, a shield and items.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -70,6 +70,13 @@ impl InPlay {
     #[must_use]
     pub fn value(&self, value: Value) -> Option<DerivedValue> {
         self.character.value(value)
+    }
+
+    /// Returns the dice rolled for the DM of `weapon` in `weapon_use`, as
+    /// [`Character::damage_dice`] does.
+    #[must_use]
+    pub fn damage_dice(&self, weapon: Weapon, weapon_use: WeaponUse) -> Option<Dice> {
+        self.character.damage_dice(weapon, weapon_use)
     }
 
     /// Returns the dé bonus to tests of the capacités held, with the
@@ -143,6 +150,22 @@ mod tests {
                 .iter()
                 .any(|c| c.source() == &Source::Value(Armour::CuirRenforce.id()))
         );
+    }
+
+    #[test]
+    fn dice_and_dice_bonuses_follow_the_equipment_in_play() {
+        // A priest in sacred clothes, with Bâton de mage.
+        let character = Character::new()
+            .with_rank(Voie::Spiritualite, 1)
+            .with_rank(Voie::Artefacts, 1);
+        let unarmoured = character.in_play(Equipment::new());
+        assert_eq!(unarmoured.bonus_dice().len(), 1);
+        assert_eq!(
+            unarmoured.damage_dice(Weapon::BatonFerre, WeaponUse::TwoHanded),
+            character.damage_dice(Weapon::BatonFerre, WeaponUse::TwoHanded)
+        );
+        let armoured = character.in_play(Equipment::new().with_armour(Armour::CuirSimple));
+        assert_eq!(armoured.bonus_dice(), []);
     }
 
     #[test]

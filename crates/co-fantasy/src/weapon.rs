@@ -531,9 +531,41 @@ fn finesse(character: &Character, weapon: Weapon, weapon_use: WeaponUse) -> bool
     held && grip && weapon.is_light() && character.shield().is_none()
 }
 
+/// Whether Bâton de mage (artefacts r1) turns `weapon` into a mage's staff:
+/// the bâton, or the bâton ferré that counts as one (D-47).
+fn mage_staff(character: &Character, weapon: Weapon) -> bool {
+    matches!(weapon, Weapon::Baton | Weapon::BatonFerre)
+        && ability::holds(character, Voie::Artefacts, Rank::new(1))
+}
+
+/// The dice rolled for the DM of `weapon` in `weapon_use`: the table's; the
+/// level's dé évolutif d4° for a mage's staff (Bâton de mage, D-47); twice
+/// as many with a powder weapon (Canon double, artilleur r4, D-48). `None`
+/// when the weapon cannot be used that way.
+pub(crate) fn damage_dice(
+    character: &Character,
+    weapon: Weapon,
+    weapon_use: WeaponUse,
+) -> Option<Dice> {
+    let dice = weapon.dice(weapon_use)?;
+    let dice = if mage_staff(character, weapon) {
+        [character.level().evolutive_die()].into_iter().collect()
+    } else {
+        dice
+    };
+    Some(
+        if weapon.is_powder() && ability::holds(character, Voie::Artilleur, Rank::new(4)) {
+            dice.dice().iter().chain(dice.dice()).copied().collect()
+        } else {
+            dice
+        },
+    )
+}
+
 /// The DM added to the dice (COF.DER.DM): FOR at contact, except for the
-/// stylet; nothing at range; then the capacités' effects. `None` when the
-/// weapon cannot be used that way.
+/// stylet, and INT for a mage's staff (Bâton de mage, D-47); nothing at
+/// range; then the capacités' effects. `None` when the weapon cannot be used
+/// that way.
 pub(crate) fn damage(
     character: &Character,
     values: &Characteristics,
@@ -542,7 +574,9 @@ pub(crate) fn damage(
 ) -> Option<DerivedValue> {
     weapon.dice(weapon_use)?;
     let value = DerivedValue::new();
-    let value = if weapon_use.attack_mode() == AttackMode::Contact && weapon != Weapon::Stylet {
+    let value = if mage_staff(character, weapon) {
+        value.with_characteristic(values, Characteristic::Int)
+    } else if weapon_use.attack_mode() == AttackMode::Contact && weapon != Weapon::Stylet {
         value.with_characteristic(values, Characteristic::For)
     } else {
         value
@@ -621,7 +655,7 @@ mod tests {
     use co_kernel::{Adjustment, Author, Category};
 
     use super::*;
-    use crate::{Armour, Peuple, Profil, Shield, Target};
+    use crate::{Armour, LevelUp, Peuple, Profil, Shield, Target};
 
     /// A character with FOR 1 and AGI 3.
     fn nimble() -> Character {
@@ -724,6 +758,70 @@ mod tests {
             WeaponUse::TwoHanded
         ));
         assert!(uses_agility(&thief, Weapon::Dague, WeaponUse::OneHanded));
+    }
+
+    #[test]
+    fn baton_de_mage_rolls_the_evolutive_die_and_adds_int() {
+        let forgesort = Character::new()
+            .with_series_value(Characteristic::For, 1)
+            .with_series_value(Characteristic::Int, 3)
+            .with_rank(Voie::Artefacts, 1);
+        for staff in [Weapon::Baton, Weapon::BatonFerre] {
+            assert_eq!(
+                forgesort.damage_dice(staff, WeaponUse::TwoHanded),
+                Some(Dice::new([4]))
+            );
+            let damage = forgesort
+                .value(Value::Damage(staff, WeaponUse::TwoHanded))
+                .unwrap();
+            assert_eq!(damage.total(), 3);
+            assert_eq!(
+                damage.contributions()[0].source(),
+                &Source::Characteristic(Characteristic::Int)
+            );
+        }
+        let seasoned = (0..5).fold(forgesort.clone(), |c, _| c.with_level_up(LevelUp::new()));
+        assert_eq!(
+            seasoned.damage_dice(Weapon::Baton, WeaponUse::TwoHanded),
+            Some(Dice::new([6]))
+        );
+        // Other weapons keep their dice and FOR.
+        assert_eq!(
+            forgesort.damage_dice(Weapon::Marteau, WeaponUse::OneHanded),
+            Weapon::Marteau.dice(WeaponUse::OneHanded)
+        );
+        assert_eq!(
+            forgesort
+                .value(Value::Damage(Weapon::Marteau, WeaponUse::OneHanded))
+                .map(|v| v.total()),
+            Some(1)
+        );
+        let student = Character::new();
+        assert_eq!(
+            student.damage_dice(Weapon::BatonFerre, WeaponUse::TwoHanded),
+            Some(Dice::new([6]))
+        );
+        assert_eq!(
+            student.damage_dice(Weapon::Baton, WeaponUse::OneHanded),
+            None
+        );
+    }
+
+    #[test]
+    fn canon_double_doubles_the_powder_dice() {
+        let gunner = (1..=4).fold(Character::new(), |c, rank| {
+            c.with_rank(Voie::Artilleur, rank)
+        });
+        let table = Weapon::Mousquet.dice(WeaponUse::Ranged).unwrap();
+        let doubled: Dice = table.dice().iter().chain(table.dice()).copied().collect();
+        assert_eq!(
+            gunner.damage_dice(Weapon::Mousquet, WeaponUse::Ranged),
+            Some(doubled)
+        );
+        assert_eq!(
+            gunner.damage_dice(Weapon::ArbaleteLourde, WeaponUse::Ranged),
+            Weapon::ArbaleteLourde.dice(WeaponUse::Ranged)
+        );
     }
 
     #[test]
