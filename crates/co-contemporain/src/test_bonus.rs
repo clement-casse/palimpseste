@@ -2,7 +2,8 @@
 //! dé bonus (COC.CNT.VOIES, D-50).
 //!
 //! A capacité gives one bonus per amount, with the characteristics its
-//! catalogue entry names; the fields of the tests are not recorded. Bonuses
+//! catalogue entry names and the tests it covers in a few words of our own
+//! (its scope). Bonuses
 //! used once per session or scene, given to others, to attacks, or testing
 //! one characteristic in place of another are not test bonuses.
 
@@ -44,6 +45,14 @@ impl TestBonus {
     #[must_use]
     pub fn characteristics(self) -> &'static [Characteristic] {
         self.row().map_or(&[], |row| row.characteristics)
+    }
+
+    /// The tests the bonus applies to, in French and in a few words
+    /// (`premiers soins, stabiliser un mourant`), besides the
+    /// characteristics named.
+    #[must_use]
+    pub fn scope(self) -> &'static str {
+        self.row().map_or("", |row| row.scope)
     }
 
     /// The identifier of the bonus as a value,
@@ -104,6 +113,7 @@ pub struct BonusDie {
     voie: Voie,
     rank: Rank,
     characteristics: &'static [Characteristic],
+    scope: &'static str,
 }
 
 impl BonusDie {
@@ -131,6 +141,12 @@ impl BonusDie {
     pub const fn characteristics(self) -> &'static [Characteristic] {
         self.characteristics
     }
+
+    /// The tests the dé bonus applies to, in French and in a few words.
+    #[must_use]
+    pub const fn scope(self) -> &'static str {
+        self.scope
+    }
 }
 
 /// How much a bonus gives.
@@ -149,6 +165,7 @@ struct Row {
     rank: u8,
     characteristics: &'static [Characteristic],
     amount: Amount,
+    scope: &'static str,
 }
 
 const fn row(
@@ -156,12 +173,14 @@ const fn row(
     rank: u8,
     characteristics: &'static [Characteristic],
     amount: Amount,
+    scope: &'static str,
 ) -> Row {
     Row {
         voie,
         rank,
         characteristics,
         amount,
+        scope,
     }
 }
 
@@ -175,88 +194,280 @@ const FIVE: Amount = Flat(5);
 /// two amounts in two rows.
 const BONUSES: &[Row] = &[
     // Amateur, Artilleur: against the shock of violence.
-    row(Voie::ArmesDeContact, 1, &[Vol], PerRank(1)),
-    row(Voie::ArmesADistance, 1, &[Vol], PerRank(1)),
-    row(Voie::ArmesLourdes, 1, &[Vol], PerRank(1)),
+    row(
+        Voie::ArmesDeContact,
+        1,
+        &[Vol],
+        PerRank(1),
+        "résister au choc d’un combat au contact",
+    ),
+    row(
+        Voie::ArmesADistance,
+        1,
+        &[Vol],
+        PerRank(1),
+        "résister au choc d’une fusillade",
+    ),
+    row(
+        Voie::ArmesLourdes,
+        1,
+        &[Vol],
+        PerRank(1),
+        "résister au choc des armes lourdes",
+    ),
     // Artiste/artisan, Copiste, Inspiré, Célébrité.
-    row(Voie::ArtsEtArtisanats, 1, &[Int, Cha, Agi], FIVE),
-    row(Voie::ArtsEtArtisanats, 2, &[], FIVE),
-    row(Voie::ArtsEtArtisanats, 3, &[], FIVE),
-    row(Voie::ArtsEtArtisanats, 4, &[], FIVE),
+    row(
+        Voie::ArtsEtArtisanats,
+        1,
+        &[Int, Cha, Agi],
+        FIVE,
+        "culture et pratique de la discipline",
+    ),
+    row(
+        Voie::ArtsEtArtisanats,
+        2,
+        &[],
+        FIVE,
+        "discipline, copie d’une œuvre",
+    ),
+    row(Voie::ArtsEtArtisanats, 3, &[], FIVE, "discipline"),
+    row(Voie::ArtsEtArtisanats, 4, &[], FIVE, "discipline"),
     // Sportif amateur, Sportif confirmé, Déterminé, Athlète.
-    row(Voie::Athletisme, 1, &[For, Agi, Con], PerRank(1)),
-    row(Voie::Athletisme, 2, &[], Flat(2)),
-    row(Voie::Athletisme, 3, &[], Flat(2)),
-    row(Voie::Athletisme, 4, &[], Flat(2)),
+    row(
+        Voie::Athletisme,
+        1,
+        &[For, Agi, Con],
+        PerRank(1),
+        "athlétisme, hors combat",
+    ),
+    row(Voie::Athletisme, 2, &[], Flat(2), "discipline sportive"),
+    row(Voie::Athletisme, 3, &[], Flat(2), "discipline sportive"),
+    row(Voie::Athletisme, 4, &[], Flat(2), "discipline sportive"),
     // Amateur.
-    row(Voie::CombatAMainsNues, 1, &[Vol], PerRank(1)),
+    row(
+        Voie::CombatAMainsNues,
+        1,
+        &[Vol],
+        PerRank(1),
+        "résister au choc d’une bagarre",
+    ),
     // Membre, Connecté, Cadre, Influenceur.
-    row(Voie::Corporations, 1, &[Cha], PerRank(1)),
-    row(Voie::Corporations, 2, &[Int], FIVE),
-    row(Voie::Corporations, 3, &[Cha], FIVE),
-    row(Voie::Corporations, 4, &[Cha], FIVE),
+    row(
+        Voie::Corporations,
+        1,
+        &[Cha],
+        PerRank(1),
+        "relations avec les membres de la corporation",
+    ),
+    row(
+        Voie::Corporations,
+        2,
+        &[Int],
+        FIVE,
+        "informations accessibles à l’organisation",
+    ),
+    row(
+        Voie::Corporations,
+        3,
+        &[Cha],
+        FIVE,
+        "obtenir aide ou moyens par l’autorité",
+    ),
+    row(
+        Voie::Corporations,
+        4,
+        &[Cha],
+        FIVE,
+        "pousser une direction à l’illégalité",
+    ),
     // Pickpocket, Cambrioleur, Imposteur.
-    row(Voie::Crime, 1, &[Agi, Cha], FIVE),
-    row(Voie::Crime, 3, &[], FIVE),
-    row(Voie::Crime, 4, &[], FIVE),
+    row(
+        Voie::Crime,
+        1,
+        &[Agi, Cha],
+        FIVE,
+        "vol, triche, diversion, bluff",
+    ),
+    row(
+        Voie::Crime,
+        3,
+        &[],
+        FIVE,
+        "serrures, coffres, systèmes de sécurité",
+    ),
+    row(Voie::Crime, 4, &[], FIVE, "se faire passer pour un autre"),
     // Convaincant, Éloquent, Rhétoricien, Meneur.
-    row(Voie::Discours, 1, &[], FIVE),
-    row(Voie::Discours, 2, &[], FIVE),
-    row(Voie::Discours, 3, &[], FIVE),
-    row(Voie::Discours, 4, &[], FIVE),
+    row(Voie::Discours, 1, &[], FIVE, "approche sociale"),
+    row(Voie::Discours, 2, &[], FIVE, "approche sociale"),
+    row(Voie::Discours, 3, &[], FIVE, "approche sociale"),
+    row(Voie::Discours, 4, &[], FIVE, "approche sociale"),
     // Furtif, Vigilant, Infiltré.
-    row(Voie::Furtivite, 1, &[Agi], FIVE),
-    row(Voie::Furtivite, 2, &[Per], FIVE),
-    row(Voie::Furtivite, 4, &[Per], FIVE),
+    row(
+        Voie::Furtivite,
+        1,
+        &[Agi],
+        FIVE,
+        "se déplacer en silence, agir discrètement",
+    ),
+    row(
+        Voie::Furtivite,
+        2,
+        &[Per],
+        FIVE,
+        "perception par les cinq sens",
+    ),
+    row(
+        Voie::Furtivite,
+        4,
+        &[Per],
+        FIVE,
+        "trouver une cachette, une faille, un accès",
+    ),
     // Fin limier.
-    row(Voie::Investigation, 1, &[Per, Int], PerRank(1)),
+    row(
+        Voie::Investigation,
+        1,
+        &[Per, Int],
+        PerRank(1),
+        "fouilles : indices et détails",
+    ),
     // Philologue, Linguiste, Cryptographe.
-    row(Voie::Langues, 2, &[Int], FIVE),
-    row(Voie::Langues, 3, &[Int], FIVE),
-    row(Voie::Langues, 4, &[Int], FIVE),
+    row(
+        Voie::Langues,
+        2,
+        &[Int],
+        FIVE,
+        "pays dont il parle la langue",
+    ),
+    row(
+        Voie::Langues,
+        3,
+        &[Int],
+        FIVE,
+        "langue inconnue d’une famille parlée",
+    ),
+    row(
+        Voie::Langues,
+        4,
+        &[Int],
+        FIVE,
+        "écritures et codes inconnus, mathématiques",
+    ),
     // Secouriste: first aid, and against the shock of medical scenes.
-    row(Voie::Medecine, 1, &[Int], FIVE),
-    row(Voie::Medecine, 1, &[Vol], PerRank(1)),
+    row(
+        Voie::Medecine,
+        1,
+        &[Int],
+        FIVE,
+        "premiers soins, stabiliser un mourant",
+    ),
+    row(
+        Voie::Medecine,
+        1,
+        &[Vol],
+        PerRank(1),
+        "résister au choc des scènes médicales",
+    ),
     // Médecin, Chirurgien, Homme-médecine, Professeur.
-    row(Voie::Medecine, 2, &[Int], FIVE),
-    row(Voie::Medecine, 3, &[], FIVE),
-    row(Voie::Medecine, 4, &[], FIVE),
-    row(Voie::Medecine, 5, &[], FIVE),
+    row(
+        Voie::Medecine,
+        2,
+        &[Int],
+        FIVE,
+        "spécialité médicale, culture médicale",
+    ),
+    row(Voie::Medecine, 3, &[], FIVE, "spécialité médicale"),
+    row(Voie::Medecine, 4, &[], FIVE, "médecine traditionnelle"),
+    row(
+        Voie::Medecine,
+        5,
+        &[],
+        FIVE,
+        "relations sociales sur ses spécialités",
+    ),
     // Observateur.
-    row(Voie::Psychologie, 1, &[Per], FIVE),
+    row(
+        Voie::Psychologie,
+        1,
+        &[Per],
+        FIVE,
+        "lire les émotions et les attitudes",
+    ),
     // Introspectif: against trauma, and to calm someone.
-    row(Voie::Psychologie, 3, &[Vol], Flat(2)),
-    row(Voie::Psychologie, 3, &[Vol], FIVE),
+    row(
+        Voie::Psychologie,
+        3,
+        &[Vol],
+        Flat(2),
+        "résister aux événements traumatisants",
+    ),
+    row(
+        Voie::Psychologie,
+        3,
+        &[Vol],
+        FIVE,
+        "calmer une personne choquée ou violente",
+    ),
     // Geek, Ingénieur, Connecté, Optimisateur.
-    row(Voie::Technologie, 1, &[Int], PerRank(1)),
-    row(Voie::Technologie, 2, &[], FIVE),
-    row(Voie::Technologie, 3, &[], FIVE),
-    row(Voie::Technologie, 4, &[], FIVE),
+    row(
+        Voie::Technologie,
+        1,
+        &[Int],
+        PerRank(1),
+        "comprendre, entretenir, réparer, saboter un système",
+    ),
+    row(Voie::Technologie, 2, &[], FIVE, "spécialité technique"),
+    row(Voie::Technologie, 3, &[], FIVE, "spécialité technique"),
+    row(Voie::Technologie, 4, &[], FIVE, "spécialité technique"),
     // Alumni: a discipline, and with peers.
-    row(Voie::Sciences, 1, &[Int], FIVE),
-    row(Voie::Sciences, 1, &[Cha], PerRank(1)),
+    row(Voie::Sciences, 1, &[Int], FIVE, "discipline scientifique"),
+    row(
+        Voie::Sciences,
+        1,
+        &[Cha],
+        PerRank(1),
+        "relations avec ses pairs",
+    ),
     // Professionnel, Esprit pratique, Expert reconnu, Personnalité publique.
-    row(Voie::Sciences, 2, &[], FIVE),
-    row(Voie::Sciences, 3, &[], FIVE),
-    row(Voie::Sciences, 4, &[], FIVE),
-    row(Voie::Sciences, 5, &[], FIVE),
+    row(Voie::Sciences, 2, &[], FIVE, "discipline scientifique"),
+    row(Voie::Sciences, 3, &[], FIVE, "discipline scientifique"),
+    row(Voie::Sciences, 4, &[], FIVE, "discipline scientifique"),
+    row(
+        Voie::Sciences,
+        5,
+        &[],
+        FIVE,
+        "relations sociales sur ses spécialités",
+    ),
     // Voyageur du monde, Explorateur.
-    row(Voie::Survie, 1, &[Int], PerRank(1)),
-    row(Voie::Survie, 2, &[], FIVE),
+    row(
+        Voie::Survie,
+        1,
+        &[Int],
+        PerRank(1),
+        "coutumes locales, voyages, passer pour un local",
+    ),
+    row(Voie::Survie, 2, &[], FIVE, "survie dans le milieu"),
     // Baroudeur: against fatigue, and a second milieu.
-    row(Voie::Survie, 3, &[Con], PerRank(1)),
-    row(Voie::Survie, 3, &[], FIVE),
+    row(
+        Voie::Survie,
+        3,
+        &[Con],
+        PerRank(1),
+        "résister à la fatigue, la faim, la maladie, le poison",
+    ),
+    row(Voie::Survie, 3, &[], FIVE, "survie dans le milieu"),
     // Guide.
-    row(Voie::Survie, 4, &[], FIVE),
+    row(Voie::Survie, 4, &[], FIVE, "survie dans le milieu"),
     // Chauffeur: a vehicle, and its maintenance.
-    row(Voie::Vehicules, 1, &[], Flat(2)),
-    row(Voie::Vehicules, 1, &[], PerRank(1)),
+    row(Voie::Vehicules, 1, &[], Flat(2), "conduite du véhicule"),
+    row(Voie::Vehicules, 1, &[], PerRank(1), "entretien courant"),
     // Conducteur expérimenté, Casse-cou, Pilote émérite, As des as: one
     // more vehicle each.
-    row(Voie::Vehicules, 2, &[], Flat(2)),
-    row(Voie::Vehicules, 3, &[], Flat(2)),
-    row(Voie::Vehicules, 4, &[], Flat(2)),
-    row(Voie::Vehicules, 5, &[], Flat(2)),
+    row(Voie::Vehicules, 2, &[], Flat(2), "conduite du véhicule"),
+    row(Voie::Vehicules, 3, &[], Flat(2), "conduite du véhicule"),
+    row(Voie::Vehicules, 4, &[], Flat(2), "conduite du véhicule"),
+    row(Voie::Vehicules, 5, &[], Flat(2), "conduite du véhicule"),
 ];
 
 /// What a "+2 becomes +5" adds to the bonus it upgrades.
@@ -277,26 +488,36 @@ const UPGRADES: [(Voie, u8, u8, u8); 4] = [
 
 /// The dé bonus of the capacités, in voie and rank order: the voie, the
 /// rank, and the characteristics named.
-const BONUS_DICE: &[(Voie, u8, &[Characteristic])] = &[
+const BONUS_DICE: &[(Voie, u8, &[Characteristic], &str)] = &[
     // Génie, Champion, Boss, Cerveau, Marionnettiste, Fantôme.
-    (Voie::ArtsEtArtisanats, 5, &[]),
-    (Voie::Athletisme, 5, &[]),
-    (Voie::Corporations, 5, &[]),
-    (Voie::Crime, 5, &[]),
-    (Voie::Discours, 5, &[]),
-    (Voie::Furtivite, 5, &[]),
+    (Voie::ArtsEtArtisanats, 5, &[], "discipline choisie"),
+    (Voie::Athletisme, 5, &[], "discipline sportive choisie"),
+    (Voie::Corporations, 5, &[], "un test des rangs 2 à 4"),
+    (Voie::Crime, 5, &[], "un test des rangs 1, 3 ou 4"),
+    (Voie::Discours, 5, &[], "approche choisie"),
+    (Voie::Furtivite, 5, &[], "un test des rangs 1 à 4"),
     // Spécialiste, Mémoire vivante.
-    (Voie::Investigation, 2, &[Int]),
-    (Voie::Investigation, 4, &[]),
+    (Voie::Investigation, 2, &[Int], "spécialité d’investigation"),
+    (
+        Voie::Investigation,
+        4,
+        &[],
+        "deuxième spécialité d’investigation",
+    ),
     // Hyperpolyglotte, Professeur, Clairvoyant, Génie, Personnalité
     // publique, Aventurier, As des as.
-    (Voie::Langues, 5, &[]),
-    (Voie::Medecine, 5, &[Int]),
-    (Voie::Psychologie, 5, &[Per]),
-    (Voie::Technologie, 5, &[]),
-    (Voie::Sciences, 5, &[]),
-    (Voie::Survie, 5, &[]),
-    (Voie::Vehicules, 5, &[]),
+    (Voie::Langues, 5, &[], "tests des rangs 2 à 4"),
+    (Voie::Medecine, 5, &[Int], "spécialité médicale choisie"),
+    (Voie::Psychologie, 5, &[Per], "psychologie"),
+    (Voie::Technologie, 5, &[], "spécialité technique choisie"),
+    (Voie::Sciences, 5, &[], "discipline scientifique choisie"),
+    (
+        Voie::Survie,
+        5,
+        &[],
+        "connaissance ou survie dans le milieu choisi",
+    ),
+    (Voie::Vehicules, 5, &[], "véhicule choisi"),
 ];
 
 /// The bonuses of the capacités the character holds now, in voie and rank
@@ -312,10 +533,11 @@ pub(crate) fn held(character: &Character) -> Vec<TestBonus> {
 pub(crate) fn bonus_dice(character: &Character) -> Vec<BonusDie> {
     BONUS_DICE
         .iter()
-        .map(|(voie, rank, characteristics)| BonusDie {
+        .map(|(voie, rank, characteristics, scope)| BonusDie {
             voie: *voie,
             rank: Rank::new(*rank),
             characteristics,
+            scope,
         })
         .filter(|die| character.has_rank(die.voie, die.rank))
         .collect()
@@ -384,10 +606,31 @@ mod tests {
 
     #[test]
     fn the_row_builder_makes_the_row_it_names() {
-        let built = row(Voie::Crime, 1, &[Agi, Cha], FIVE);
+        let built = row(Voie::Crime, 1, &[Agi, Cha], FIVE, "vol");
         assert_eq!((built.voie, built.rank), (Voie::Crime, 1));
         assert_eq!(built.characteristics, [Agi, Cha]);
         assert!(matches!(built.amount, Amount::Flat(5)));
+        assert_eq!(built.scope, "vol");
+    }
+
+    #[test]
+    fn every_bonus_names_its_tests() {
+        assert!(TestBonus::all().all(|bonus| !bonus.scope().is_empty()));
+        assert!(BONUS_DICE.iter().all(|(_, _, _, scope)| !scope.is_empty()));
+        assert_eq!(
+            bonus(Voie::Medecine, 1, 1).scope(),
+            "premiers soins, stabiliser un mourant"
+        );
+        assert_eq!(
+            bonus(Voie::Medecine, 1, 2).scope(),
+            "résister au choc des scènes médicales"
+        );
+        let character = ranks(Character::new(), Voie::Psychologie, 5);
+        let dice = character.bonus_dice();
+        assert_eq!(
+            dice.iter().map(|die| die.scope()).collect::<Vec<_>>(),
+            ["psychologie"]
+        );
     }
 
     #[test]
