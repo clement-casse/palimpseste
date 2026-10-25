@@ -64,7 +64,9 @@ named by everywhere: `Voie::ability(rank)` builds it,
 catalog and the interface use it, so names and effects attach to it
 without changing anything that names a capacité.
 `Voie::ability_name(rank)` gives a capacité's French name, from the
-co-rules catalogue (D-45); `label` names a capacité by its voie and rank.
+co-rules catalogue (D-45); `label` names a capacité by its name, then its
+voie and rank (`Fin bretteur (Voie des armes de contact, rang 4)`), since
+names repeat across voies.
 A weapon value builds its identifier from the
 weapon (`cof.damage.epee-longue.one-handed`), so `Value::id` is not
 `const`.
@@ -467,8 +469,6 @@ and displays with the fewest coins (COF.EQP.CURRENCY). The purse is the
   campaign concept lives.
 - The demi-elfe upbringing as a choice, with a decision entry in the
   co-rules skill.
-- `label` naming a capacité by its name rather than its voie and rank,
-  with the application's catalog and tests.
 - Hybrids after level 1 and their PV per level, prestige voies, and the
   capacités calling other capacités (COF.PRG.CALL), all out of scope.
 - The weapon categories of Armes de prédilection, from the co-rules skill

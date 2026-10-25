@@ -46,7 +46,7 @@ describe("the progression of a document", () => {
 
   it("names a capacité by its identifier", () => {
     const content = catalog("fantasy");
-    expect(abilityLabel(content, "cof.rage.2")).toBe("Voie de la rage, rang 2");
+    expect(abilityLabel(content, "cof.rage.2")).toBe("Défier la mort (Voie de la rage, rang 2)");
     expect(abilityLabel(content, "cof.unknown.1")).toBe("cof.unknown.1");
   });
 

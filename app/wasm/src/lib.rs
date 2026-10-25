@@ -468,8 +468,18 @@ mod tests {
             .find(|entry| entry.id == "cof.rage.2")
             .unwrap();
         assert_eq!(
-            (rage.voie.as_str(), rage.rank, rage.label.as_str()),
-            ("cof.rage", 2, "Voie de la rage, rang 2")
+            (
+                rage.voie.as_str(),
+                rage.rank,
+                rage.name.as_str(),
+                rage.label.as_str()
+            ),
+            (
+                "cof.rage",
+                2,
+                "Défier la mort",
+                "Défier la mort (Voie de la rage, rang 2)"
+            )
         );
         assert_eq!(content.abilities.len(), content.voies.len() * 5);
         assert!(
@@ -627,7 +637,7 @@ mod tests {
             (&option.subject, option.subject_label.as_deref()),
             (
                 &Subject::Ability("cof.combat-a-deux-armes.4".into()),
-                Some("Voie du combat à deux armes, rang 4")
+                Some("Combattant héroïque (Voie du combat à deux armes, rang 4)")
             )
         );
     }

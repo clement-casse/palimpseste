@@ -100,7 +100,7 @@ describe("the sheet", () => {
     document.levelUps = [{ abilities: ["cof.pourfendeur.2", "cof.rage.2"], forgotten: [] }];
     render(CharacterSheet, { character: character(document) });
     expect(screen.getByText(/Niveau 2 \(d4° : d4\)/)).toBeTruthy();
-    expect(screen.getByText("Voie de la rage, rang 2")).toBeTruthy();
+    expect(screen.getByText("2. Défier la mort")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Monter au niveau 3" })).toBeTruthy();
   });
 });

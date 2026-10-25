@@ -60,7 +60,7 @@
           <ul class="w-full text-sm text-gray-500 dark:text-gray-400">
             {#each heldIn(voie.id) as h (h.ability)}
               <li>
-                <Ability {catalog} id={h.ability} />{#if h.progression != null}
+                <Ability {catalog} id={h.ability} short />{#if h.progression != null}
                   · {levels ? `niveau ${h.progression}` : `dépense d’XP ${h.progression}`}{/if}
               </li>
             {/each}

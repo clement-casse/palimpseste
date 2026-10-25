@@ -67,8 +67,7 @@ pub struct FantasyCatalog {
     pub orphan_exchanges: Vec<Named>,
 }
 
-/// A capacité, named by its identifier: the key its name, description and
-/// effects will attach to; today its label names its voie and rank.
+/// A capacité, named by its identifier (ADR ENG-VALUE-IDS).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
 pub struct AbilityEntry {
     /// Identifier, `<voie>.<rank>`.
@@ -77,7 +76,11 @@ pub struct AbilityEntry {
     pub voie: String,
     /// The rank in the voie.
     pub rank: u8,
-    /// Display label, such as `Voie de la rage, rang 2`.
+    /// The capacité's name, such as `Défier la mort`, for lists under its
+    /// voie.
+    pub name: String,
+    /// Display label naming the voie too, such as `Défier la mort (Voie de
+    /// la rage, rang 2)`.
     pub label: String,
 }
 
@@ -444,10 +447,12 @@ fn fantasy() -> FantasyCatalog {
             .into_iter()
             .flat_map(|voie| {
                 (1..=5).map(move |rank| {
+                    let ability = co_kernel::Rank::new(rank);
                     ability_entry(
-                        voie.ability(co_kernel::Rank::new(rank)).as_str(),
+                        voie.ability(ability).as_str(),
                         voie.id().as_str(),
                         rank,
+                        voie.ability_name(ability).unwrap_or_default(),
                         co_fantasy::label,
                     )
                 })
@@ -464,18 +469,20 @@ fn fantasy() -> FantasyCatalog {
     }
 }
 
-/// The catalog entry of the capacité `id`, labelled by the engine's
-/// `label`.
+/// The catalog entry of the capacité `id`, named `name` and labelled by the
+/// engine's `label`.
 fn ability_entry(
     id: &str,
     voie: &str,
     rank: u8,
+    name: &str,
     label: fn(&str) -> Option<String>,
 ) -> AbilityEntry {
     AbilityEntry {
         id: id.to_owned(),
         voie: voie.to_owned(),
         rank,
+        name: name.to_owned(),
         label: label(id).unwrap_or_else(|| id.to_owned()),
     }
 }
@@ -559,10 +566,12 @@ fn contemporain() -> ContemporainCatalog {
             .into_iter()
             .flat_map(|voie| {
                 (1..=5).map(move |rank| {
+                    let ability = co_kernel::Rank::new(rank);
                     ability_entry(
-                        voie.ability(co_kernel::Rank::new(rank)).as_str(),
+                        voie.ability(ability).as_str(),
                         voie.id().as_str(),
                         rank,
+                        voie.ability_name(ability).unwrap_or_default(),
                         co_contemporain::label,
                     )
                 })
