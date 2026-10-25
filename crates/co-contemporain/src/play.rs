@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use co_kernel::{DerivedValue, Dice, Quantity};
 
-use crate::{Character, Item, Protection, Value, Weapon};
+use crate::{Character, Item, Protection, Situational, Target, Value, Weapon};
 
 /// What a character wears and carries: protections and items.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -63,6 +63,13 @@ impl InPlay {
     #[must_use]
     pub fn value(&self, value: Value) -> Option<DerivedValue> {
         self.character.value(value)
+    }
+
+    /// Returns the capacités' modifiers to `target` that hold only in a
+    /// situation (ADR ENG-SITUATIONAL).
+    #[must_use]
+    pub fn situational(&self, target: Target) -> Vec<Situational> {
+        self.character.situational(target)
     }
 
     /// Returns the dice rolled for the DM of `weapon`, as
