@@ -23,6 +23,7 @@
     {@const Icon = icons[t.id]}
     <Button
       size="xs"
+      class="px-2.5 py-1.5"
       color={theme.choice === t.id ? "primary" : "alternative"}
       aria-label={t.name}
       title={t.name}

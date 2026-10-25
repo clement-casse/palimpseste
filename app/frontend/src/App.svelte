@@ -72,14 +72,14 @@
 </script>
 
 {#if !immersive}
-  <Navbar class="border-b border-gray-200 print:hidden dark:border-gray-700">
+  <Navbar class="border-b border-gray-200 py-1 print:hidden dark:border-gray-700">
     <NavBrand href="/" onclick={follow}>
-      <span class="text-xl font-semibold text-primary-800 dark:text-primary-300">Palimpseste</span>
+      <span class="text-lg font-semibold text-primary-800 dark:text-primary-300">Palimpseste</span>
     </NavBrand>
     <div class="flex items-center gap-2 md:order-2">
       <ThemePicker />
       {#if session.user}
-        <Button id="sign-out" size="xs" color="alternative" aria-label="Se déconnecter" onclick={leave}>
+        <Button id="sign-out" size="xs" color="alternative" class="px-2.5 py-1.5" aria-label="Se déconnecter" onclick={leave}>
           <ArrowRightToBracketOutline class="h-4 w-4" />
         </Button>
         <Tooltip triggeredBy="#sign-out" placement="bottom" class="whitespace-nowrap">Se déconnecter</Tooltip>
@@ -87,7 +87,7 @@
       {/if}
     </div>
     {#if session.user}
-      <NavUl activeUrl={route.path}>
+      <NavUl activeUrl={route.path} classes={{ ul: "md:p-0" }}>
         <NavLi href="/" onclick={follow}>Personnages</NavLi>
         <NavLi href={FRIENDS} onclick={follow}>Amis</NavLi>
         <NavLi href={PROFILE} onclick={follow}>Profil</NavLi>
