@@ -322,10 +322,10 @@
   {/if}
 {:else if step === "voies"}
   {#snippet voieRow(id: string)}
-    <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
-      <span>{voieNames.get(id) ?? id}</span>
-      <span class="inline-flex flex-wrap items-center gap-2">
-        <RankPicker ranks={ranksOf(choices.voies, id)} onchange={(r) => setVoie(id, r)} />
+    <ListgroupItem class="flex-col items-start gap-2 text-gray-900 dark:text-white">
+      <span class="font-semibold">{voieNames.get(id) ?? id}</span>
+      <RankPicker {catalog} voie={id} ranks={ranksOf(choices.voies, id)} onchange={(r) => setVoie(id, r)} />
+      <span class="inline-flex flex-wrap items-center gap-2 empty:hidden">
         <LaterRanks {catalog} held={details.abilitiesHeld} voie={id} {characterId} levels />
       </span>
     </ListgroupItem>

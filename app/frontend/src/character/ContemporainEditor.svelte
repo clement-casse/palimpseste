@@ -163,16 +163,18 @@
   </P>
   <Listgroup class="flex-col">
     {#each [...catalog.voies].sort((a, b) => Number(domaineVoies.has(b.id)) - Number(domaineVoies.has(a.id))) as voie (voie.id)}
-      <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
-        <span class="flex items-center gap-2">
+      <ListgroupItem class="flex-col items-start gap-2 text-gray-900 dark:text-white">
+        <span class="flex items-center gap-2 font-semibold">
           {voie.name}
           {#if domaineVoies.has(voie.id)}<Badge>domaine</Badge>{/if}
         </span>
-        <span class="inline-flex flex-wrap items-center gap-2">
-          <RankPicker
-            ranks={ranksOf(choices.voies, voie.id)}
-            onchange={(ranks) => setRanks(choices, voie.id, ranks)}
-          />
+        <RankPicker
+          {catalog}
+          voie={voie.id}
+          ranks={ranksOf(choices.voies, voie.id)}
+          onchange={(ranks) => setRanks(choices, voie.id, ranks)}
+        />
+        <span class="inline-flex flex-wrap items-center gap-2 empty:hidden">
           <LaterRanks {catalog} held={details.abilitiesHeld} voie={voie.id} {characterId} />
         </span>
       </ListgroupItem>

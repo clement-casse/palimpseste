@@ -96,6 +96,21 @@ describe("the COF equipment step", () => {
 });
 
 describe("the COF voies step", () => {
+  it("names the capacité of each rank, and acquires it when ticked", async () => {
+    const sent = stubBackend(storing());
+    open("voies");
+    const first = screen.getByRole("checkbox", { name: "1. Réflexes éclair" });
+    expect((first as HTMLInputElement).checked).toBe(true);
+    const voie = first.closest("li");
+    if (!voie) throw new Error("no voie row");
+    expect(within(voie).getByText("Voie du pourfendeur")).toBeTruthy();
+    await fireEvent.click(within(voie).getByRole("checkbox", { name: /^2\. \S/ }));
+    await vi.advanceTimersByTimeAsync(600);
+    expect(saves(sent)[0].body).toMatchObject({
+      voies: expect.arrayContaining([expect.objectContaining({ ranks: [1, 2] })]),
+    });
+  });
+
   it("writes the speciality a capacité asks for, and gives it up when cleared", async () => {
     const sent = stubBackend(storing());
     open("voies");
