@@ -88,7 +88,9 @@ scene or combat, given to others or to attacks (a favoured weapon, a
 martial art), difficulties changed for others, a characteristic tested in
 place of another. In COC2 a bonus is flat or per rank reached, and a "+2
 becomes +5" adds 3 to the bonus it upgrades, the upgrading capacité as
-source. In COF2 a "rang + 2" is 2 + the rank reached, at most +7, a voie
+source. In COF2 a "rang + 2" is 2 + the rank reached, at most +7, a "+ rank" to
+resist spells or a condition (Force d'âme, Résistance légendaire,
+Résilient) the rank reached, an opposed test included, a voie
 de peuple's bonus +3, kept through the voie du mage like the peuple's
 other rank-1 effects (COF.DER.COMPETENCE); Tatouages gives +3 to the
 tests of the characteristic chosen, Formation d'élite a dé bonus to them

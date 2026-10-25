@@ -201,6 +201,11 @@ const fn competence(voie: Voie, rank: u8, scope: &'static str) -> Bonus {
     (1, &[], scope, Effect::new(voie, rank, Amount::Competence))
 }
 
+/// "+ rank" to resist something, an opposed test included (D-50).
+const fn resisting(voie: Voie, rank: u8, scope: &'static str) -> Bonus {
+    (1, &[], scope, Effect::new(voie, rank, Amount::RankPlus(0)))
+}
+
 /// A voie de peuple's +3 (COF.DER.COMPETENCE).
 const fn peuple(
     voie: Voie,
@@ -346,6 +351,8 @@ const BONUSES: &[Bonus] = &[
         1,
         "résister à l’effort, à la chaleur, au froid",
     ),
+    // Résilient.
+    resisting(Voie::Resistance, 2, "résister à étourdi et affaibli"),
     competence(Voie::Soldat, 1, "résister à l’alcool et aux privations"),
     // Injonction, Mirage (besides the spells), Fortifiant, Morsure de la
     // forge (besides the spell), Grosse tête.
@@ -377,10 +384,14 @@ const BONUSES: &[Bonus] = &[
     // Petit pote, Petite taille, Diversité, Habitant des tunnels.
     peuple(Voie::DemiOrc, 1, &[], "intimidation"),
     peuple(Voie::ElfeHaut, 1, &[Int, Cha], "érudition, arts"),
+    // Force d'âme.
+    resisting(Voie::ElfeHaut, 2, "résister aux sorts"),
     peuple(Voie::ElfeSylvain, 1, &[], "survie en forêt"),
     peuple(Voie::Gnome, 1, &[Int], "sciences"),
     peuple(Voie::Gnome, 2, &[], "relations sociales, sauf intimidation"),
     peuple(Voie::Halfelin, 1, &[], "discrétion, vol"),
+    // Résistance légendaire.
+    resisting(Voie::Halfelin, 2, "résister aux sorts"),
     peuple(Voie::Humain, 1, &[], "domaines de l’origine"),
     peuple(
         Voie::Nain,
@@ -594,6 +605,19 @@ mod tests {
             dice.iter().map(|die| die.scope()).collect::<Vec<_>>(),
             ["investigation, contrefaçon"]
         );
+    }
+
+    #[test]
+    fn resisting_gives_the_rank_reached() {
+        let halfling = ranks(Character::new(), Voie::Halfelin, 2);
+        let resisting = bonus(Voie::Halfelin, 2, 1);
+        assert!(halfling.test_bonuses().contains(&resisting));
+        assert_eq!(total(&halfling, resisting), Some(2));
+        assert_eq!(resisting.scope(), "résister aux sorts");
+        let halfling = ranks(Character::new(), Voie::Halfelin, 5);
+        assert_eq!(total(&halfling, resisting), Some(5));
+        let tough = ranks(Character::new(), Voie::Resistance, 2);
+        assert_eq!(total(&tough, bonus(Voie::Resistance, 2, 1)), Some(2));
     }
 
     #[test]
