@@ -3,6 +3,7 @@
   // 1 to 5 are written out, since nothing hides what the document holds.
   import { Indicator, Listgroup, ListgroupItem, P } from "flowbite-svelte";
 
+  import { signed } from "../character/edits";
   import Ability from "../progression/Ability.svelte";
   import { type Abilities } from "../progression/progression";
   import type { HeldAbility, VoieEntry } from "../wasm/palimpseste_wasm";
@@ -62,6 +63,15 @@
               <li>
                 <Ability {catalog} id={h.ability} short />{#if h.progression != null}
                   · {levels ? `niveau ${h.progression}` : `dépense d’XP ${h.progression}`}{/if}
+                {#each h.testBonuses as bonus (bonus.value.id)}
+                  · tests {bonus.value.total == null ? "—" : signed(bonus.value.total)}{#if bonus.characteristics.length > 0}
+                    {` (${bonus.characteristics.join(", ")})`}{/if}<Marks
+                    notes={marksAt(notes, { kind: "value", id: bonus.value.id })}
+                  />
+                {/each}
+                {#if h.bonusDie}
+                  · dé bonus{#if h.bonusDie.length > 0}{` (${h.bonusDie.join(", ")})`}{/if}
+                {/if}
               </li>
             {/each}
           </ul>

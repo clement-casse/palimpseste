@@ -155,8 +155,10 @@ violation's parameters; a rule without a message shows its identifier.
 
 **FE-SHEET: The sheet, for play.** `/characters/{id}/sheet` shows a
 character on one page, its creation and progression read only (the COF2
-level and its d4°, the voies held now with each capacité and the level or
-spending it came from, the COC2 XP left and sequels acquired): a resource bar kept in
+level and its d4°, the voies held now with each capacité by name, the level or
+spending it came from, its test bonuses with their characteristics and its
+dé bonus (ADR ENG-TEST-BONUSES), the COC2 XP left and sequels acquired;
+each COF2 weapon with its attack and the dice the engine gives): a resource bar kept in
 reach (COF2 PV, PM for a character who knows a spell, PC and DR; COC2 the
 échelle de santé, its states from the catalogue, ADR ENG-HEALTH-STATES),
 then characteristics, combat and weapons, voies, traits and equipment as
