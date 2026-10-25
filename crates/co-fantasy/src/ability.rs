@@ -704,6 +704,8 @@ pub(crate) fn armour_limit(character: &Character) -> Option<Armour> {
 /// The armour limit a capacité raises the profil's to, when its effect
 /// applies (COF.DER.ARMOUR-LIMIT).
 pub(crate) const ARMOUR_LIMITS: &[(Effect, Armour)] = &[
+    // Tour de force (D-49).
+    (Effect::flat(Voie::Brute, 2, 1), Armour::ChemiseDeMailles),
     // Briseur d'os.
     (Effect::flat(Voie::Brute, 5, 1), Armour::CotteDeMailles),
     // Armure lourde, chosen instead of DEF.
@@ -1100,6 +1102,10 @@ mod tests {
                 .any(|v| v.rule().as_str() == "COF.DER.ARMOUR-LIMIT")
         };
         assert!(limit(&barbare));
+        // Tour de force: the chemise de mailles; Briseur d'os: the cotte.
+        let strong = ranks(barbare.clone(), Voie::Brute, 2);
+        assert!(limit(&strong));
+        assert!(!limit(&strong.with_armour(Armour::ChemiseDeMailles)));
         assert!(!limit(&ranks(barbare, Voie::Brute, 5)));
         // Armure lourde: the armure de plaques instead of +1 DEF.
         let guerrier = ranks(

@@ -147,7 +147,8 @@ impl Shield {
 
 /// The heaviest armour the character's capacités allow: the profil's limit,
 /// raised to the plaque complète by the chevalier's Noblesse rank 2, and by
-/// the capacités raising it (Briseur d'os, Armure lourde, Vêtements sacrés).
+/// the capacités raising it (Tour de force, Briseur d'os, Armure lourde,
+/// Vêtements sacrés).
 fn armour_limit(character: &Character, profil: Profil) -> Option<Armour> {
     let profil_limit =
         if profil == Profil::Chevalier && character.has_rank(Voie::Noblesse, Rank::new(2)) {
