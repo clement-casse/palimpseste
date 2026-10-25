@@ -7,8 +7,8 @@ use co_kernel::{
 use palimpseste_document::{
     AbilityOptionEntry, AdjustmentEntry, Characteristic, ContemporainDocument,
     ContemporainEquipment, Document, Engine, Equipment, Error, FantasyDocument, FantasyEquipment,
-    ItemEntry, LevelUpEntry, RaisedCharacteristicEntry, Subject, Target, TraitChangeEntry,
-    WaiverEntry, XpSpendingEntry,
+    ItemEntry, LevelUpEntry, RaisedCharacteristicEntry, SpecialityEntry, Subject, Target,
+    TraitChangeEntry, WaiverEntry, XpSpendingEntry,
 };
 
 /// Fixture helpers; a test module, so they may unwrap.
@@ -64,6 +64,7 @@ fn lhagva_converts_to_the_engine_character() {
         .with_rank(Voie::Pourfendeur, 1)
         .with_rank(Voie::Rage, 1)
         .with_rank(Voie::Humain, 1)
+        .with_speciality(Voie::Humain, 1, "invented")
         .with_armour(Armour::CuirSimple)
         .with_shield(Shield::GrandBouclier)
         .with_item(Weapon::EpeeLongue, 1)
@@ -376,6 +377,41 @@ fn unknown_progression_identifiers_are_unreadable() {
         traits: Vec::new(),
     }];
     assert_eq!(kind(document.to_character().map(|_| ())), "ability");
+    document.xp_spendings = Vec::new();
+    document.specialities = vec![SpecialityEntry {
+        ability: "coc.unknown.1".into(),
+        speciality: "persuasion".into(),
+    }];
+    assert_eq!(kind(document.to_character().map(|_| ())), "ability");
+}
+
+#[test]
+fn specialities_convert_and_must_be_written() {
+    let mut document = ContemporainDocument::empty();
+    document.specialities = vec![SpecialityEntry {
+        ability: "coc.discours.1".into(),
+        speciality: "persuasion".into(),
+    }];
+    let expected = co_contemporain::Character::new().with_speciality(
+        co_contemporain::Voie::Discours,
+        1,
+        "persuasion",
+    );
+    assert_eq!(document.to_character(), Ok(expected));
+    document.specialities[0].speciality = "  ".into();
+    assert_eq!(document.to_character(), Err(Error::Empty("speciality")));
+
+    let mut document = FantasyDocument::empty();
+    document.specialities = vec![SpecialityEntry {
+        ability: "cof.humain.1".into(),
+        speciality: "montagnard".into(),
+    }];
+    let expected =
+        co_fantasy::Character::new().with_speciality(co_fantasy::Voie::Humain, 1, "montagnard");
+    assert_eq!(document.to_character(), Ok(expected));
+    let json = serde_json::to_value(Document::Fantasy(document)).unwrap();
+    assert_eq!(json["specialities"][0]["ability"], "cof.humain.1");
+    assert_eq!(json["specialities"][0]["speciality"], "montagnard");
 }
 
 #[test]

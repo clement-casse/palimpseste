@@ -37,8 +37,9 @@ use tsify::Tsify;
 
 /// The document version this crate reads and writes. Version 2 added the
 /// progression (COF2 level-ups and capacité options, COC2 experience, the
-/// characteristics raised at rank 5, the sequels acquired in play); version
-/// 1 is no longer read (ADR APP-DOCUMENT).
+/// characteristics raised at rank 5, the sequels acquired in play), and
+/// later the specialities without a bump; version 1 is no longer read (ADR
+/// APP-DOCUMENT).
 pub const VERSION: u32 = 2;
 
 /// Why a document, or an equipment in play, cannot be read. A rule broken is
@@ -57,7 +58,7 @@ pub enum Error {
         id: String,
     },
     /// A field that must be filled is blank: an author, a reason, a rule,
-    /// a subject, an item name.
+    /// a subject, an item name, a speciality.
     #[error("empty {0}")]
     Empty(&'static str),
     /// An equipment in play given with a document of another engine.
@@ -239,6 +240,17 @@ pub struct VoieEntry {
     pub id: String,
     /// The ranks acquired, gaps and out-of-bound ranks included.
     pub ranks: Vec<u8>,
+}
+
+/// The speciality written for a capacité asking for one (ADR
+/// ENG-SPECIALITIES).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(Tsify))]
+pub struct SpecialityEntry {
+    /// The capacité's identifier (`coc.discours.1`).
+    pub ability: String,
+    /// The speciality, as the player wrote it.
+    pub speciality: String,
 }
 
 /// An item carried.

@@ -10,6 +10,13 @@
     { "id": "coc.survie", "ranks": [1, 2] },
     { "id": "coc.vehicules", "ranks": [1, 2] }
   ],
+  "specialities": [
+    { "ability": "coc.corporations.1", "speciality": "invented" },
+    { "ability": "coc.sciences.1", "speciality": "invented" },
+    { "ability": "coc.survie.2", "speciality": "invented" },
+    { "ability": "coc.vehicules.1", "speciality": "invented" },
+    { "ability": "coc.vehicules.2", "speciality": "invented" }
+  ],
   "traits": [
     { "id": "coc.trait.endurant", "points": 1 },
     { "id": "coc.trait.force-de-la-nature", "points": 2 },

@@ -53,7 +53,10 @@ and the waivers, mirroring the engine builders. Version 2 added the
 progression: COF2 `levelUps` (the capacités acquired and forgotten, the
 orphan exchange) and `abilityOptions`; COC2 `experience`, `xpSpendings`
 (capacités bought, trait changes), `raisedCharacteristics` and
-`acquiredSequels`. A capacité is named by its identifier (`cof.rage.2`,
+`acquiredSequels`. `specialities` (a capacité's identifier and the
+speciality written for it, ADR ENG-SPECIALITIES) came later within
+version 2, without a bump: an older build drops them (decided
+2026-10-25, with no stored document to protect). A capacité is named by its identifier (`cof.rage.2`,
 ADR ENG-VALUE-IDS), the key its name, description and effects will later
 attach to. Only the current version is read: a format change bumps the
 version and the backend migrates or deletes the stored documents (ADR
