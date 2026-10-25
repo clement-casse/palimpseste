@@ -39,7 +39,9 @@
     valueOf,
   } from "./edits";
   import LaterRanks from "../progression/LaterRanks.svelte";
+  import { askingSpeciality } from "../progression/progression";
   import RankFivePicker from "../progression/RankFivePicker.svelte";
+  import SpecialityField from "../progression/SpecialityField.svelte";
   import Items from "./Items.svelte";
   import RankPicker from "./RankPicker.svelte";
 
@@ -179,6 +181,12 @@
   {#each details.rankFive.filter((line) => line.progression == null && line.choice.length > 0) as line (line.voie)}
     <RankFivePicker bind:choices {catalog} {line} />
   {/each}
+  {@const asking = askingSpeciality(catalog, details.abilitiesHeld, null)}
+  {#if asking.length > 0}
+    {#each asking as ability (ability)}
+      <SpecialityField bind:choices {catalog} {ability} />
+    {/each}
+  {/if}
 {:else if step === "traits"}
   <P weight="semibold">
     Avantages {signed(details.advantages)} · Désavantages {signed(details.disadvantages)} · Solde

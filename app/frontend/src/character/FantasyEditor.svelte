@@ -41,6 +41,8 @@
     valueOf,
   } from "./edits";
   import AbilityOptionPicker from "../progression/AbilityOptionPicker.svelte";
+  import { askingSpeciality } from "../progression/progression";
+  import SpecialityField from "../progression/SpecialityField.svelte";
   import LaterRanks from "../progression/LaterRanks.svelte";
   import Items from "./Items.svelte";
   import RankPicker from "./RankPicker.svelte";
@@ -356,6 +358,13 @@
     <Heading tag="h3" class="text-lg">Options des capacités</Heading>
     {#each creationOptions as line (line.ability)}
       <AbilityOptionPicker bind:choices {catalog} {line} />
+    {/each}
+  {/if}
+  {@const asking = askingSpeciality(catalog, details.abilitiesHeld, null)}
+  {#if asking.length > 0}
+    <Heading tag="h3" class="text-lg">Spécialités des capacités</Heading>
+    {#each asking as ability (ability)}
+      <SpecialityField bind:choices {catalog} {ability} />
     {/each}
   {/if}
   <Accordion flush>

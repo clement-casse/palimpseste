@@ -11,12 +11,22 @@ import {
   nextLabel,
   nextNumber,
   progressionCount,
+  scopeLabel,
   truncated,
   withNext,
   without,
 } from "./progression";
 
 afterEach(() => localStorage.clear());
+
+describe("the scope of a bonus", () => {
+  it("names the speciality first when the bonus applies to it", () => {
+    const bonus = { scope: "discipline", onSpeciality: true };
+    expect(scopeLabel(bonus, "Peinture")).toBe("Peinture — discipline");
+    expect(scopeLabel(bonus, undefined)).toBe("discipline");
+    expect(scopeLabel({ scope: "esquiver", onSpeciality: false }, "Peinture")).toBe("esquiver");
+  });
+});
 
 describe("the progression of a document", () => {
   it("numbers COF levels from 2 and COC spendings from 1", () => {

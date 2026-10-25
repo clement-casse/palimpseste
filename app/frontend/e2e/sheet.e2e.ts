@@ -35,7 +35,7 @@ test("the sheet names each capacité with what it gives", async ({ page }) => {
   await page.goto(`/characters/${id}/sheet`);
   await expect(page.getByText("1. Réflexes éclair")).toBeVisible();
   // Réflexes éclair: rank + 2 to AGI dodge tests.
-  await expect(page.getByText(/tests \+3\s*\(AGI\)/).first()).toBeVisible();
+  await expect(page.getByText(/\+3\s*esquiver\s*\(AGI\)/).first()).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Attaque" })).toBeVisible();
 });
 
