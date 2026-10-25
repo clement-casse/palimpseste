@@ -1,10 +1,14 @@
 <script lang="ts">
   import { Li, List } from "flowbite-svelte";
 
-  import type { ContributionLine } from "../wasm/palimpseste_wasm";
+  import { situationalText } from "../sheet/values";
+  import type { ContributionLine, SituationalLine } from "../wasm/palimpseste_wasm";
   import { signed } from "./edits";
 
-  let { contributions }: { contributions: ContributionLine[] } = $props();
+  let {
+    contributions,
+    situational = [],
+  }: { contributions: ContributionLine[]; situational?: SituationalLine[] } = $props();
 </script>
 
 {#if contributions.length > 0}
@@ -19,6 +23,14 @@
         <span>{contribution.label}</span>
         <span>{signed(contribution.amount)}</span>
       </Li>
+    {/each}
+  </List>
+{/if}
+{#if situational.length > 0}
+  <p class="mt-2 text-sm font-semibold text-gray-700 dark:text-gray-300">En situation</p>
+  <List tag="ul" class="space-y-1 text-sm text-gray-500 dark:text-gray-400">
+    {#each situational as line, i (i)}
+      <Li>{situationalText(line)}</Li>
     {/each}
   </List>
 {/if}

@@ -30,7 +30,7 @@
           <strong class="text-gray-900 dark:text-white">{shown(line)}</strong>
         </span>
       {/snippet}
-      <Breakdown contributions={line.contributions} />
+      <Breakdown contributions={line.contributions} situational={line.situational} />
       <Button size="xs" color="alternative" onclick={() => onadjust({ kind: "value", id: line.id }, line.label)}>
         Ajuster…
       </Button>

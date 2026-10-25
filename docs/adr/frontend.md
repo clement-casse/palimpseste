@@ -164,7 +164,11 @@ spending it came from, its COF2 actions as the book's letters and its PM
 when it is a spell (ADR ENG-COF-ACTIONS), its test bonuses and dé bonus
 with the tests they cover and their characteristics (ADR
 ENG-TEST-BONUSES), named first by the speciality written when they apply
-to it (ADR ENG-SPECIALITIES), the COC2 XP left and sequels acquired;
+to it (ADR ENG-SPECIALITIES); the modifiers that hold only in a
+situation (ADR ENG-SITUATIONAL) are never in a total: listed under the
+combat values and the characteristics ("Selon la situation", with their
+capacité), in each value's breakdown ("En situation"), and in a weapon's
+row, the COC2 XP left and sequels acquired;
 each COF2 weapon with its attack and the dice the engine gives): a resource bar kept in
 reach (COF2 PV, PM for a character who knows a spell, PC and DR; COC2 the
 échelle de santé, its states from the catalogue, ADR ENG-HEALTH-STATES),

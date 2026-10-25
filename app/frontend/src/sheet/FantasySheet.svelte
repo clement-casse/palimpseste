@@ -32,8 +32,9 @@
   import { type Note, marksAt, steps } from "./notes";
   import type { PlayState } from "./play.svelte";
   import Restore from "./Restore.svelte";
+  import SituationalList from "./SituationalList.svelte";
   import Tile from "./Tile.svelte";
-  import { damage, range, shown, weaponSlugs } from "./values";
+  import { damage, range, shown, situationalText, weaponSlugs } from "./values";
   import { currentVoies } from "../progression/progression";
   import VoieRanks from "./VoieRanks.svelte";
 
@@ -148,7 +149,7 @@
 <div class="mt-4 grid items-start gap-4 md:grid-cols-2 lg:grid-cols-12">
   <div class="grid gap-4 lg:col-span-3">
     <Block title="Caractéristiques" notes={marksAt(notes, ...steps("characteristics"))}>
-      <Characteristics characteristics={sheet.characteristics} {notes} />
+      <Characteristics characteristics={sheet.characteristics} {notes} {catalog} />
     </Block>
   </div>
 
@@ -164,9 +165,15 @@
             value={shown(value, tile.signed)}
             notes={valueMarks(tile.id)}
             contributions={value?.contributions}
+            situational={value?.situational}
           />
         {/each}
       </ul>
+      <!-- Weapons show theirs in their row. -->
+      <SituationalList
+        {catalog}
+        entries={sheet.values.filter((v) => !/^cof\.(attack|damage)\.[^.]+\.[^.]+$/.test(v.id))}
+      />
       {#if weapons.length > 0}
         <Table class="mt-3">
           <TableHead>
@@ -183,8 +190,8 @@
                   {/if}
                   <TableBodyCell class="px-2 py-2">{weapon.uses[i]?.name ?? ""}</TableBodyCell>
                   {@const attackId = dm.id.replace("cof.damage.", "cof.attack.")}
-                  <TableBodyCell class="px-2 py-2">{shown(line(attackId), true)}<Marks notes={valueMarks(attackId)} /></TableBodyCell>
-                  <TableBodyCell class="px-2 py-2">{damage(dm)}<Marks notes={valueMarks(dm.id)} /></TableBodyCell>
+                  <TableBodyCell class="px-2 py-2">{shown(line(attackId), true)}<Marks notes={valueMarks(attackId)} />{#each line(attackId)?.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}</TableBodyCell>
+                  <TableBodyCell class="px-2 py-2">{damage(dm)}<Marks notes={valueMarks(dm.id)} />{#each dm.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}</TableBodyCell>
                   {#if i === 0}
                     <TableBodyCell rowspan={damages.length} class="px-2 py-2">
                       {range(critical)}{#if critical}<Marks notes={valueMarks(critical.id)} />{/if}

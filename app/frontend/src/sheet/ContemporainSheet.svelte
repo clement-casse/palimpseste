@@ -32,8 +32,9 @@
   import { type Note, marksAt, steps } from "./notes";
   import type { PlayState } from "./play.svelte";
   import Restore from "./Restore.svelte";
+  import SituationalList from "./SituationalList.svelte";
   import Tile from "./Tile.svelte";
-  import { damage, range, shown, weaponSlugs } from "./values";
+  import { damage, range, shown, situationalText, weaponSlugs } from "./values";
   import { currentVoies } from "../progression/progression";
   import { characterPath, follow } from "../router.svelte";
   import VoieRanks from "./VoieRanks.svelte";
@@ -168,7 +169,7 @@
 <div class="mt-4 grid items-start gap-4 md:grid-cols-2 lg:grid-cols-12">
   <div class="grid gap-4 lg:col-span-3">
     <Block title="Caractéristiques" notes={marksAt(notes, ...steps("characteristics"))}>
-      <Characteristics characteristics={sheet.characteristics} {notes} />
+      <Characteristics characteristics={sheet.characteristics} {notes} {catalog} />
     </Block>
   </div>
 
@@ -184,6 +185,7 @@
             value={shown(value, tile.signed)}
             notes={valueMarks(tile.id)}
             contributions={value?.contributions}
+            situational={value?.situational}
           />
         {/each}
         {#if line("coc.agi-test-modifier")?.total}
@@ -203,10 +205,13 @@
               value={shown(attack, true)}
               notes={valueMarks(attack.id)}
               contributions={attack.contributions}
+              situational={attack.situational}
             />
           {/if}
         {/each}
       </ul>
+      <!-- Weapons show theirs in their row. -->
+      <SituationalList {catalog} entries={sheet.values.filter((v) => !v.id.startsWith("coc.damage."))} />
       <Table class="mt-3">
         <TableHead>
           <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Att.</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
@@ -217,7 +222,7 @@
               <TableHeadCell scope="row" class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">{w.weapon.name}{#if w.quantity > 1}{` ×${w.quantity}`}{/if}</TableHeadCell>
               <TableBodyCell title={w.attack?.label} class="px-2 py-2">{shown(w.attack, true)}</TableBodyCell>
               <TableBodyCell class="px-2 py-2">
-                {damage(w.damage)}{#if w.damage}<Marks notes={valueMarks(w.damage.id)} />{/if}
+                {damage(w.damage)}{#if w.damage}<Marks notes={valueMarks(w.damage.id)} />{/if}{#each w.damage?.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}
               </TableBodyCell>
               <TableBodyCell class="px-2 py-2">
                 {range(w.range)}{#if w.bonus?.total !== undefined}{` · ${signed(w.bonus.total)}`}{/if}

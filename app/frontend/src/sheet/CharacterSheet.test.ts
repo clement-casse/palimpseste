@@ -66,6 +66,26 @@ describe("the COF sheet", () => {
     expect(screen.getByText("Sort · 1 PM")).toBeTruthy();
   });
 
+  it("lists the modifiers that hold only in a situation, out of the totals", () => {
+    const document = lhagva();
+    if (document.engine !== "fantasy") throw new Error("fantasy expected");
+    const defence = (d: Document) => evaluate(d).values.find((v) => v.id === "cof.defence")?.total;
+    const before = defence(document);
+    document.voies = [
+      ...(document.voies ?? []),
+      { id: "cof.nature", ranks: [1, 2] },
+      { id: "cof.traqueur", ranks: [1, 2, 3] },
+    ];
+    expect(defence(document)).toBe(before);
+    open(document);
+    const listed = screen.getByRole("list", { name: "Selon la situation" });
+    expect(
+      within(listed).getByText("Défense (DEF) +1 en terrain difficile (Terrains difficiles)"),
+    ).toBeTruthy();
+    // Chasseur émérite, in each weapon's DM at level 1.
+    expect(screen.getAllByText("+1d4 contre un animal").length).toBeGreaterThan(0);
+  });
+
   it("counts PV down and up on the device, and restores them all", async () => {
     const pv = maximum(lhagva(), "cof.vigour-points");
     const sheet = open(lhagva());
@@ -146,6 +166,14 @@ describe("the COC sheet", () => {
     expect(screen.getByRole("rowheader", { name: "Mains nues" })).toBeTruthy();
     expect(screen.getByText("Force de la nature (+2)")).toBeTruthy();
     expect(screen.getByText("motorbike")).toBeTruthy();
+  });
+
+  it("notes a characteristic tested in place of another", () => {
+    const document = amelia();
+    if (document.engine !== "contemporain") throw new Error("contemporain expected");
+    document.voies = [...(document.voies ?? []), { id: "coc.crime", ranks: [1, 2] }];
+    open(document, "Amelia");
+    expect(screen.getByText("FOR à la place du CHA pour contraindre (Gangster)")).toBeTruthy();
   });
 
   it("names a bonus by the speciality written for its capacité", () => {

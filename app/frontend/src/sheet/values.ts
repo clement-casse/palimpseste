@@ -1,7 +1,18 @@
 // How the sheets write the engine's computed values.
 
 import { signed } from "../character/edits";
-import type { ValueLine } from "../wasm/palimpseste_wasm";
+import type { SituationalLine, ValueLine } from "../wasm/palimpseste_wasm";
+
+/**
+ * A modifier holding only in a situation (ADR ENG-SITUATIONAL), such as
+ * `+2 contre plus grand que lui`, `+1d6 contre un animal`, or the situation
+ * alone for a note.
+ */
+export function situationalText(line: SituationalLine): string {
+  if (line.amount != null) return `${signed(line.amount)} ${line.situation}`;
+  if (line.dice) return `+${line.dice} ${line.situation}`;
+  return line.situation;
+}
 
 /** The value, signed when it is a modifier; a dash while it cannot be computed. */
 export function shown(line: ValueLine | undefined, sign = false): string {
