@@ -59,6 +59,14 @@ impl TestBonus {
         rows(self).next().map_or("", |(_, _, scope, _)| scope)
     }
 
+    /// Whether the bonus applies to the speciality chosen for its capacité
+    /// ([`Voie::speciality`]): a capacité asking for one gives a single
+    /// bonus, to it.
+    #[must_use]
+    pub const fn on_speciality(self) -> bool {
+        self.voie.speciality(self.rank).is_some()
+    }
+
     /// The identifier of the bonus as a value,
     /// `cof.test-bonus.<voie>.<rank>.<n>`.
     pub(crate) fn id(self) -> ValueId {
@@ -176,6 +184,13 @@ impl BonusDie {
     #[must_use]
     pub const fn scope(self) -> &'static str {
         self.scope
+    }
+
+    /// Whether the dé bonus applies to the speciality chosen for its
+    /// capacité ([`Voie::speciality`]).
+    #[must_use]
+    pub const fn on_speciality(self) -> bool {
+        self.voie.speciality(self.rank).is_some()
     }
 }
 
@@ -550,6 +565,19 @@ mod tests {
             (named, scope, place(effect)),
             ([Cha].as_slice(), EVERY_TEST, (Voie::Noblesse, 5))
         );
+    }
+
+    #[test]
+    fn diversite_gives_its_bonus_to_the_origin() {
+        assert!(bonus(Voie::Humain, 1, 1).on_speciality());
+        assert!(!bonus(Voie::Assassin, 1, 1).on_speciality());
+        assert!(
+            TestBonus::all()
+                .filter(|bonus| bonus.voie().speciality(bonus.rank()).is_some())
+                .all(|bonus| bonus.index == 1)
+        );
+        let rogue = ranks(Character::new(), Voie::Roublard, 4);
+        assert!(rogue.bonus_dice().iter().all(|die| !die.on_speciality()));
     }
 
     #[test]

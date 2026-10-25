@@ -4,8 +4,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use co_kernel::{
-    Adjustment, Characteristic, Characteristics, DerivedValue, Dice, Quantity, Rank, Subject,
-    ValueId, Violation, ViolationReport, Waiver, adjustment_notice,
+    Adjustment, Characteristic, Characteristics, DerivedValue, Dice, Quantity, Rank, Speciality,
+    Subject, ValueId, Violation, ViolationReport, Waiver, adjustment_notice,
 };
 
 use crate::{
@@ -197,6 +197,7 @@ pub struct Character {
     voies: BTreeMap<Voie, BTreeSet<Rank>>,
     levels: Vec<LevelUp>,
     ability_options: BTreeMap<(Voie, Rank), AbilityOption>,
+    specialities: BTreeMap<(Voie, Rank), Speciality>,
     equipment: Equipment,
     purse: Option<Money>,
     adjustments: Vec<(Target, Adjustment)>,
@@ -349,6 +350,27 @@ impl Character {
     #[must_use]
     pub fn without_ability_option(mut self, voie: Voie, rank: impl Into<Rank>) -> Self {
         self.ability_options.remove(&(voie, rank.into()));
+        self
+    }
+
+    /// Writes the speciality chosen for the capacité at `rank` in `voie`,
+    /// for a capacité asking for one ([`Voie::speciality`]).
+    #[must_use]
+    pub fn with_speciality(
+        mut self,
+        voie: Voie,
+        rank: impl Into<Rank>,
+        speciality: impl Into<Speciality>,
+    ) -> Self {
+        self.specialities
+            .insert((voie, rank.into()), speciality.into());
+        self
+    }
+
+    /// Gives up the speciality chosen for the capacité at `rank` in `voie`.
+    #[must_use]
+    pub fn without_speciality(mut self, voie: Voie, rank: impl Into<Rank>) -> Self {
+        self.specialities.remove(&(voie, rank.into()));
         self
     }
 

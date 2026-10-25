@@ -98,6 +98,18 @@ the one bonus per source are not checked: they need the fields. *Why
 values:* breakdowns and adjustments come with them, as for every computed
 value.
 
+**ENG-SPECIALITIES: A capacité's speciality is a free text choice.** Some
+capacités ask the player to choose what they apply to: a discipline, an
+approach, a corporation, a milieu, a vehicle (COC2, 42 capacités), the
+origin of Diversité (COF2). `Voie::speciality(rank)` names what a
+capacité asks for, in French; `Character::with_speciality(voie, rank,
+text)` writes a `Speciality` (ADR KER-SPECIALITY), `without_speciality`
+gives it up. A speciality written for a capacité not held, or asking for
+none, is kept and checked by nothing. `TestBonus::on_speciality` and
+`BonusDie::on_speciality` say which bonuses apply to it, so the sheet
+names them by the player's words. *Why free text:* the lists are open
+(any discipline, any vehicle), and no rule reads them.
+
 **ENG-FINDINGS: One finding per waiver.** Waivers match rule and subject
 and ignore severity (ADR KER-MATCHING), so two findings a waiver could
 confuse get distinct rules or subjects. COC.CRE.CARAC is split into

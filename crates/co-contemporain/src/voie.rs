@@ -151,6 +151,29 @@ impl Voie {
         }
     }
 
+    /// What the capacité at `rank` asks the player to choose, in French
+    /// (`discipline`, `approche`, `véhicule`), as a speciality written with
+    /// [`Character::with_speciality`]; `None` when it asks for none
+    /// (COC.CNT.VOIES).
+    #[must_use]
+    pub const fn speciality(self, rank: Rank) -> Option<&'static str> {
+        Some(match (self, rank.get()) {
+            (Self::ArtsEtArtisanats, 1..=5) => "discipline",
+            (Self::Athletisme, 2..=5) => "discipline sportive",
+            (Self::CombatAMainsNues, 2) => "art martial",
+            (Self::Corporations, 1 | 3 | 5) => "corporation",
+            (Self::Discours, 1..=5) => "approche",
+            (Self::Investigation, 2 | 4) => "spécialité",
+            (Self::Medecine, 2 | 3 | 5) => "spécialité médicale",
+            (Self::Medecine, 4) => "médecine traditionnelle",
+            (Self::Technologie, 2..=5) => "spécialité technique",
+            (Self::Sciences, 1..=5) => "discipline scientifique",
+            (Self::Survie, 2..=5) => "milieu",
+            (Self::Vehicules, 1..=5) => "véhicule",
+            _ => return None,
+        })
+    }
+
     /// Returns the kernel identifier of the voie.
     #[must_use]
     pub fn id(self) -> VoieId {
@@ -476,6 +499,26 @@ mod tests {
         let mut violations = Vec::new();
         check(character, &mut violations);
         violations
+    }
+
+    #[test]
+    fn capacites_name_the_speciality_they_ask_for() {
+        let rank = Rank::new;
+        assert_eq!(
+            Voie::ArtsEtArtisanats.speciality(rank(1)),
+            Some("discipline")
+        );
+        assert_eq!(
+            Voie::Medecine.speciality(rank(4)),
+            Some("médecine traditionnelle")
+        );
+        assert_eq!(Voie::Medecine.speciality(rank(1)), None);
+        assert_eq!(Voie::Crime.speciality(rank(1)), None);
+        let asking = Voie::ALL
+            .iter()
+            .flat_map(|voie| (1..=5).filter(|r| voie.speciality(rank(*r)).is_some()))
+            .count();
+        assert_eq!(asking, 42);
     }
 
     fn ranks(character: Character, voie: Voie, highest: u8) -> Character {

@@ -5,7 +5,7 @@ use co_contemporain::{
     ALLOCATED_POINTS, AgeBracket, AttackMode, Character, Domaine, SocialClass, Trait, Value, Voie,
     Weapon,
 };
-use co_kernel::{Characteristic, Characteristics, Dice, Source};
+use co_kernel::{Characteristic, Characteristics, Dice, Rank, Source};
 
 fn amelia_steele() -> Character {
     let ranks = [
@@ -37,8 +37,17 @@ fn amelia_steele() -> Character {
     let character = Character::new()
         .with_age(32)
         .with_domaine(Domaine::Aventure);
+    // Her sheet names no speciality: each capacité asking for one gets an
+    // invented one.
     let character = ranks.into_iter().fold(character, |c, (voie, highest)| {
-        (1..=highest).fold(c, |c, rank| c.with_rank(voie, rank))
+        (1..=highest).fold(c, |c, rank| {
+            let c = c.with_rank(voie, rank);
+            if voie.speciality(Rank::new(rank)).is_some() {
+                c.with_speciality(voie, rank, "invented")
+            } else {
+                c
+            }
+        })
     });
     let character = traits
         .into_iter()

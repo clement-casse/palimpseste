@@ -35,7 +35,7 @@ The COC2 engine, core rules only (no variant, no universe): **character creation
 
 In scope:
 
-- **Creation choices**: age (and the age bracket derived from it), domaine, ranks acquired per voie, traits distinctifs with their points, characteristic points allocated, items carried (weapons, free text items), protections worn.
+- **Creation choices**: age (and the age bracket derived from it), domaine, ranks acquired per voie, the speciality a capacité asks for (ADR ENG-SPECIALITIES), traits distinctifs with their points, characteristic points allocated, items carried (weapons, free text items), protections worn.
 - **Content read by the creation rules**: the 18 domaines with their voie slots, the 18 voies, the traits catalogue and sequels, the age-bracket limits, the weapon and protection tables, as enums and `match` tables.
 - **Creation budgets and limits**: characteristic points, capacity points, maximum voies and rank, trait balance, characteristic bounds, domaine voies, social class, starting equipment of the weapon voies.
 - **Experience** (ADR ENG-COC-EXPERIENCE): the XP earned (`Experience`) and each `XpSpending` in order, the ranks and trait changes it buys and the XP left (`Value::Experience`); rank n costs n XP, one rank of a voie per spending, six voies, the social class raised and Toxicomane cured with XP (COC.PRG.COST, ONE-RANK, LIMITS, XP-USE); the creation budgets and limits read the creation choices only.
@@ -62,7 +62,7 @@ The COF2 engine, core rules only (no variant): **character creation at level 1, 
 
 In scope:
 
-- **Creation choices**: profil (and the family derived from it), peuple, value series and the value assigned to each characteristic, peuple bonus and malus, ranks acquired per voie, armour and shield, items carried (weapons, free text items), the purse rolled.
+- **Creation choices**: profil (and the family derived from it), peuple, value series and the value assigned to each characteristic, peuple bonus and malus, ranks acquired per voie, the origin of Diversité (ADR ENG-SPECIALITIES), armour and shield, items carried (weapons, free text items), the purse rolled.
 - **Content read by the creation rules**: the 4 families, the 14 profils with their voies, key and magic characteristics, armour limits, weapon mastery and starting equipment, the 8 peuples with their modifiers and voie de peuple, the 3 value series, the 78 voies reachable at level 1, the armour and shield table, the weapon tables, the currency, as enums and `match` tables.
 - **Creation limits**: series assignment and its advice, peuple modifiers, characteristic bounds, two profil voies and the voie de peuple, voie du mage, mage extra capacité, level required per rank, armour limits, starting equipment and purse, arc long strength, halfelin weapon size.
 - **Levels** (ADR ENG-COF-PROGRESSION): `LevelUp`, the capacités acquired and forgotten at one level-up and the exchange of its orphan point (`OrphanExchange`), stored in order on `Character`; the `Level` they reach and its dé évolutif d4° (COF.DER.D4); the capacity points of each level and their cost (COF.PRG.POINTS, COF.PRG.COST), the level required per rank when acquired, lower ranks first, the voies a level-up opens and the voie count (COF.PRG.LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES), the changement d'orientation (COF.PRG.REORIENT) and the orphan point (COF.PRG.ORPHAN).

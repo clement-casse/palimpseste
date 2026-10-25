@@ -31,6 +31,8 @@ fn lhagva() -> Character {
         .with_rank(Voie::Pourfendeur, 1)
         .with_rank(Voie::Rage, 1)
         .with_rank(Voie::Humain, 1)
+        // Her sheet names no origin for Diversité: an invented one.
+        .with_speciality(Voie::Humain, 1, "invented")
         // Starting equipment: the "one-handed d8 weapon and shield" option,
         // her cimeterre treated as an épée longue.
         .with_armour(Armour::CuirSimple)
