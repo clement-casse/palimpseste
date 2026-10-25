@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
 use crate::{
-    AdjustmentEntry, Characteristic, Error, ItemEntry, PerCharacteristic, Target, VERSION,
-    VoieEntry, WaiverEntry, check_version, content, filled,
+    AdjustmentEntry, Characteristic, Error, ItemEntry, PerCharacteristic, SpecialityEntry, Target,
+    VERSION, VoieEntry, WaiverEntry, check_version, content, filled,
 };
 
 /// The choices of a COC2 character, mirroring `co_contemporain::Character`.
@@ -40,6 +40,9 @@ pub struct ContemporainDocument {
     /// The characteristic chosen for each rank 5 offering a choice.
     #[serde(default)]
     pub raised_characteristics: Vec<RaisedCharacteristicEntry>,
+    /// The speciality written for each capacité asking for one.
+    #[serde(default)]
+    pub specialities: Vec<SpecialityEntry>,
     /// The identifiers of the sequels acquired in play
     /// (`coc.acquired-sequel.diminue-corps`).
     #[serde(default)]
@@ -119,6 +122,7 @@ impl ContemporainDocument {
             experience: 0,
             xp_spendings: Vec::new(),
             raised_characteristics: Vec::new(),
+            specialities: Vec::new(),
             acquired_sequels: Vec::new(),
             traits: Vec::new(),
             carac_points: PerCharacteristic::default(),
@@ -166,6 +170,11 @@ impl ContemporainDocument {
         for entry in &self.raised_characteristics {
             let voie = content("voie", &entry.voie, Voie::from_id)?;
             character = character.with_raised_characteristic(voie, entry.characteristic.into());
+        }
+        for entry in &self.specialities {
+            let (voie, rank) = content("ability", &entry.ability, Voie::from_ability_id)?;
+            character =
+                character.with_speciality(voie, rank, filled("speciality", &entry.speciality)?);
         }
         for id in &self.acquired_sequels {
             character =

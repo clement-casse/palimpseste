@@ -11,6 +11,7 @@
     { "id": "cof.rage", "ranks": [1] },
     { "id": "cof.humain", "ranks": [1] }
   ],
+  "specialities": [{ "ability": "cof.humain.1", "speciality": "invented" }],
   "armour": "cof.armour.cuir-simple",
   "shield": "cof.shield.grand-bouclier",
   "items": [

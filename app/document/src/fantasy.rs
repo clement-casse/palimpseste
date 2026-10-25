@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
 use crate::{
-    AdjustmentEntry, Characteristic, Error, ItemEntry, PerCharacteristic, Target, VERSION,
-    VoieEntry, WaiverEntry, check_version, content, filled,
+    AdjustmentEntry, Characteristic, Error, ItemEntry, PerCharacteristic, SpecialityEntry, Target,
+    VERSION, VoieEntry, WaiverEntry, check_version, content, filled,
 };
 
 /// The choices of a COF2 character, mirroring `co_fantasy::Character`.
@@ -49,6 +49,9 @@ pub struct FantasyDocument {
     /// The option chosen for each capacité offering one.
     #[serde(default)]
     pub ability_options: Vec<AbilityOptionEntry>,
+    /// The speciality written for each capacité asking for one.
+    #[serde(default)]
+    pub specialities: Vec<SpecialityEntry>,
     /// The armour worn.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub armour: Option<String>,
@@ -84,6 +87,7 @@ impl FantasyDocument {
             voies: Vec::new(),
             level_ups: Vec::new(),
             ability_options: Vec::new(),
+            specialities: Vec::new(),
             armour: None,
             shield: None,
             items: Vec::new(),
@@ -134,6 +138,11 @@ impl FantasyDocument {
             let (voie, rank) = ability(&entry.ability)?;
             let option = content("ability option", &entry.option, AbilityOption::from_id)?;
             character = character.with_ability_option(voie, rank, option);
+        }
+        for entry in &self.specialities {
+            let (voie, rank) = content("ability", &entry.ability, Voie::from_ability_id)?;
+            character =
+                character.with_speciality(voie, rank, filled("speciality", &entry.speciality)?);
         }
         character = character.with_equipment(equipment(
             self.armour.as_deref(),
