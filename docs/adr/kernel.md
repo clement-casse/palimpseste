@@ -27,6 +27,11 @@ of a voie per rank wait for the capacité names (engines.md, Open).
 no rule reads, and `Quantity(u32)` counts an item carried. Which items are
 content stays in the engines (ADR ENG-ITEMS).
 
+**KER-SPECIALITY: Free text specialities.** `Speciality` is what a player
+writes for a capacité asking them to choose a discipline, an approach, a
+vehicle or an origin; no rule reads it. Which capacités ask for one, and
+what they ask, stays in the engines (ADR ENG-SPECIALITIES).
+
 **KER-SOURCES: A closed set of contribution sources.** A `DerivedValue` is
 a list of contributions, each with a `Source`: `Characteristic`,
 `Ability`, `Rule(RuleId)` (a constant the formula sets itself),
