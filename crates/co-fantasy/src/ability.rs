@@ -289,7 +289,7 @@ impl Effect {
 
     /// The amount the effect gives the character, `None` when it does not
     /// apply.
-    fn amount(&self, character: &Character, values: &Characteristics) -> Option<i32> {
+    pub(crate) fn amount(&self, character: &Character, values: &Characteristics) -> Option<i32> {
         if !holds(character, self.voie, Rank::new(self.rank)) {
             return None;
         }

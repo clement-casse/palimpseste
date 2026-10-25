@@ -6,7 +6,10 @@ use std::collections::BTreeMap;
 
 use co_kernel::{DerivedValue, Dice, Quantity, ViolationReport};
 
-use crate::{Armour, BonusDie, Character, Item, Shield, Value, Weapon, WeaponUse, armour, weapon};
+use crate::{
+    Armour, BonusDie, Character, Item, Shield, Situational, Target, Value, Weapon, WeaponUse,
+    armour, weapon,
+};
 
 /// What a character wears and carries: an armour, a shield and items.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -84,6 +87,13 @@ impl InPlay {
     #[must_use]
     pub fn bonus_dice(&self) -> Vec<BonusDie> {
         self.character.bonus_dice()
+    }
+
+    /// Returns the capacités' modifiers to `target` that hold only in a
+    /// situation, with the equipment in play (ADR ENG-SITUATIONAL).
+    #[must_use]
+    pub fn situational(&self, target: Target) -> Vec<Situational> {
+        self.character.situational(target)
     }
 
     /// Returns the findings of the rules that hold in play, matched against

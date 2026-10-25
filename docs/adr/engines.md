@@ -113,6 +113,21 @@ capacité not held, or asking for none, is kept and checked by nothing. `TestBon
 names them by the player's words. *Why free text:* the lists are open
 (any discipline, any vehicle), and no rule reads them.
 
+**ENG-SITUATIONAL: Situational modifiers are listed, never added.** A
+capacité's modifier that holds only in a situation (against a larger
+creature, outdoors, mounted, with two weapons) is a `Situational`: its
+`Situation`, a closed enum named in our own French words (`name()`:
+`contre plus grand que lui`), the capacité giving it, and an amount or,
+for a weapon's DM, dice (a COF2 dé évolutif resolved at the level).
+`Character::situational(target)` lists those of the capacités held for a
+`Target`, and `InPlay::situational` with the equipment in play. They are
+not values: no total includes them and they take no adjustment; the
+Game Master adjusts the total itself. COF2 reads its own table in
+`situation.rs` (DEF, Init, every attack, contact or every DM, RD), the
+amounts in the shapes of ADR ENG-COF-CAPACITES (D-52, D-53, D-54). *Why
+not toggles:* a situation changes from one attack to the next; the sheet
+shows the modifier, the player applies it.
+
 **ENG-FINDINGS: One finding per waiver.** Waivers match rule and subject
 and ignore severity (ADR KER-MATCHING), so two findings a waiver could
 confuse get distinct rules or subjects. COC.CRE.CARAC is split into
@@ -416,9 +431,10 @@ below 16, a `Source::Rule(COF.DER.CRIT-RANGE)` making up the difference.
 `Value::DamageReduction` is `None` while no capacité gives RD. Through the
 voie du mage, the peuple's rank-1 effect is kept, with the peuple voie's
 rank-1 ability as source; a demi-elfe's upbringing is not recorded, so its
-kept effect is left to an adjustment. Not computed: effects that depend on
+kept effect is left to an adjustment. Effects that depend on
 circumstances (outdoors, against large creatures, a companion in sight,
-two weapons in hand), capacités whose content the co-rules skill lacks (the weapon categories of Armes de prédilection,
+two weapons in hand) are listed apart, never added (ADR
+ENG-SITUATIONAL). Not computed: capacités whose content the co-rules skill lacks (the weapon categories of Armes de prédilection,
 Science du critique, Spécialisation, D-35; a bone armour for Armure d'os),
 unclear ones (Pacte démoniaque's VOL to DR, D-39), unarmed attacks, and
 capacités calling other capacités. *Why tables:* over a hundred effects

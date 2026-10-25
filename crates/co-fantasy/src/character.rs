@@ -10,9 +10,9 @@ use co_kernel::{
 
 use crate::{
     AbilityOption, Armour, BonusDie, Equipment, Family, InPlay, Item, Level, LevelOffer, LevelUp,
-    Money, OrphanExchange, Peuple, Placement, Profil, RecoveryDie, Series, Shield, TestBonus, Voie,
-    Weapon, WeaponUse, ability, armour, characteristics, derived, equipment, level, money, peuple,
-    profil, step, test_bonus, voie, weapon,
+    Money, OrphanExchange, Peuple, Placement, Profil, RecoveryDie, Series, Shield, Situational,
+    TestBonus, Voie, Weapon, WeaponUse, ability, armour, characteristics, derived, equipment,
+    level, money, peuple, profil, situation, step, test_bonus, voie, weapon,
 };
 
 /// The kind of attack an attack value applies to.
@@ -555,6 +555,14 @@ impl Character {
     #[must_use]
     pub fn test_bonuses(&self) -> Vec<TestBonus> {
         test_bonus::held(self)
+    }
+
+    /// Returns the capacités' modifiers to `target` that hold only in a
+    /// situation, with the equipment chosen at creation, in voie order (ADR
+    /// ENG-SITUATIONAL): listed beside the value, never added to it.
+    #[must_use]
+    pub fn situational(&self, target: Target) -> Vec<Situational> {
+        situation::of(self, target)
     }
 
     /// Returns the dé bonus to tests of the capacités held now, with the

@@ -17,6 +17,7 @@ complete nain guerrier. Read it first.
 |---|---|---|
 | `character.rs` | `Character` (the choices and their `with_*` / `without_*` builders), `Value` (`FIXED`, `name()`), `Target`, `AttackMode`; `violations()`, `report()`, and options that depend on the choices (`peuple_slot_options`) | |
 | `rules.rs` | every `RuleId`, `Mechanic` and engine `ValueId` constant | |
+| `situation.rs` | `Situation`, `Situational`: the capacités' modifiers that hold only in a situation, listed beside the values | ENG-SITUATIONAL, D-52, D-53, D-54 |
 | `profil.rs` | `Family` (4), `Profil` (14), `RecoveryDie`, weapon mastery | COF.CNT.FAMILIES, COF.CNT.PROFILS |
 | `peuple.rs` | `Peuple` (8), its modifiers and voie de peuple | COF.CRE.PEUPLE, COF.CNT.PEUPLES |
 | `characteristics.rs` | `Series` (3), the series assignment, peuple modifiers, bounds, `SERIES_VALUE` | COF.CRE.CARAC-* |
