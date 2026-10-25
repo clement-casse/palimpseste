@@ -3,6 +3,7 @@
 
   import type { CharacteristicLine, Target } from "../wasm/palimpseste_wasm";
   import Breakdown from "./Breakdown.svelte";
+  import BreakdownPopover from "./BreakdownPopover.svelte";
   import { signed } from "./edits";
 
   let {
@@ -20,7 +21,9 @@
       {#snippet header()}
         <span class="flex flex-1 justify-between gap-2 pe-3">
           <span>{line.characteristic}</span>
-          <strong class="text-gray-900 dark:text-white">{signed(line.total)}</strong>
+          <strong id="editor-characteristic-{line.characteristic}" class="text-gray-900 dark:text-white"
+            >{signed(line.total)}</strong
+          >
         </span>
       {/snippet}
       <Breakdown contributions={line.contributions} />
@@ -32,5 +35,13 @@
         Ajuster…
       </Button>
     </AccordionItem>
+    {#if line.contributions.length > 0}
+      <!-- Outside the item, so it shows while the item is closed. -->
+      <BreakdownPopover
+        triggeredBy="#editor-characteristic-{line.characteristic}"
+        title="{line.characteristic} : {signed(line.total)}"
+        contributions={line.contributions}
+      />
+    {/if}
   {/each}
 </Accordion>

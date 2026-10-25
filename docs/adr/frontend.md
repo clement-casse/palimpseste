@@ -162,7 +162,10 @@ each COF2 weapon with its attack and the dice the engine gives): a resource bar 
 reach (COF2 PV, PM for a character who knows a spell, PC and DR; COC2 the
 échelle de santé, its states from the catalogue, ADR ENG-HEALTH-STATES),
 then characteristics, combat and weapons, voies, traits and equipment as
-cards in a grid; a value opens its breakdown in a modal. Each waiver and
+cards in a grid; a value opens its breakdown in a modal, and a
+characteristic, hovered or focused, in a popover (`BreakdownPopover`,
+which the editor's characteristics show on hover too), every source
+named, a capacité included. Each waiver and
 adjustment gets a
 numbered mark where it applies (the characteristic, the voie, the value,
 or the section of the violation's step) that opens its note, and every
@@ -222,7 +225,7 @@ on the previous build, and a reload must never interrupt an edit.
 browser build (`svelteTesting()`) inside jsdom; the engines load from the
 `.wasm` bytes (`src/test/setup.ts`), which also stands in for the
 browser APIs jsdom lacks and Svelte or Flowbite use (media queries, Web
-Animations, modal dialogs); `fetch` is stubbed per test
+Animations, modal dialogs, popovers); `fetch` is stubbed per test
 (`src/test/backend.ts`). Tests sit next to the code as `*.test.ts` and
 query what users see (roles, labels, text). `@types/node` is referenced by
 test files only, so the app cannot use Node APIs. `mise run
