@@ -409,6 +409,19 @@ mod tests {
     }
 
     #[test]
+    fn levels_gained_show_in_the_vigour_breakdown() {
+        let sheet = fantasy(levelled(&[]));
+        let vigour = value(&sheet, "cof.vigour-points");
+        // Level 2, CON 0: 2 x 5 (combattants) + CON, then 5 + CON.
+        let gained = vigour.contributions.last().unwrap();
+        assert_eq!(
+            (gained.label.as_str(), gained.amount),
+            ("Niveaux gagnés", 5)
+        );
+        assert_eq!(vigour.total, Some(15));
+    }
+
+    #[test]
     fn capacites_held_carry_their_test_bonuses_and_weapons_their_attack() {
         let mut document = levelled(&[]);
         document.voies.push(VoieEntry {
