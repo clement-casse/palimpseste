@@ -72,3 +72,9 @@ run = "pnpm run dev"
 description = "Build the PWA and serve it with the API on http://127.0.0.1:3000"
 depends = ["frontend:build"]
 run = "cargo run -p palimpseste-backend"
+
+[tasks."frontend:e2e"]
+description = "End-to-end tests in Chromium: the built PWA on the backend, signing in through a mock OIDC provider"
+depends = ["frontend:build"]
+dir = "app/frontend"
+run = "pnpm exec playwright install chromium && pnpm exec playwright test"

@@ -232,6 +232,19 @@ test files only, so the app cannot use Node APIs. `mise run
 frontend:check` and `mise run frontend:test` run apart from `mise run
 check`, as they need a WebAssembly build and Node.
 
+**FE-E2E: Playwright end to end, signing in through a mock provider.**
+`mise run frontend:e2e` builds the PWA and runs `e2e/*.e2e.ts` in
+Chromium against the real backend, started by Playwright on its own port
+and a database created for the run, with one OIDC provider: a mock
+(`oauth2-mock-server`, `e2e/oidc-provider.mjs`) that signs anyone in as
+one user. `e2e/auth.setup.ts` signs in and creates the account once,
+keeping the session for the tests, which create their characters through
+the API (the book's worked characters, from `app/document`'s fixtures).
+The backend takes its settings as flags, which win over a developer's
+`mise.local.toml`. *Why a mock provider, not a sign-in bypass:* the real
+flow (PKCE, `state`, `nonce`, the session cookie) is tested, and the
+server holds no way around authentication.
+
 ## Open
 
 - The narrative steps beyond the character name.
