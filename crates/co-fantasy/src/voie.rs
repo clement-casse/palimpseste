@@ -4,7 +4,7 @@
 use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId, voie_rank_violations};
 
 use crate::{
-    Character, Family, Profil, level,
+    Action, Character, Family, Profil, action, level,
     rules::{LEVEL_REQ, MAGE_EXTRA, PEUPLE_VOIE, PROFIL_VOIES, VOIE_DU_MAGE, VOIE_MECHANIC, VOIES},
 };
 
@@ -406,9 +406,24 @@ impl Voie {
         )
     }
 
+    /// The actions the capacité at `rank` may take to use, the first usual
+    /// (COF.CNT.VOIE): empty when it is passive, and outside ranks 1 to 5.
+    #[must_use]
+    pub fn actions(self, rank: Rank) -> &'static [Action] {
+        action::of(self, rank)
+    }
+
+    /// The PM the capacité at `rank` costs to cast, its rank, when it is a
+    /// spell (COF.CNT.VOIE); `None` otherwise.
+    #[must_use]
+    pub fn spell_cost(self, rank: Rank) -> Option<i32> {
+        self.is_spell(rank).then(|| i32::from(rank.get()))
+    }
+
     /// Whether the capacité at `rank` is a spell (the `*` of the co-rules
     /// catalogue, D-23).
-    pub(crate) fn is_spell(self, rank: Rank) -> bool {
+    #[must_use]
+    pub fn is_spell(self, rank: Rank) -> bool {
         matches!(
             (self, rank.get()),
             (

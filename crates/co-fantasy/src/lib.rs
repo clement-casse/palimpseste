@@ -51,6 +51,7 @@
 //! ```
 
 mod ability;
+mod action;
 mod armour;
 mod character;
 mod characteristics;
@@ -69,6 +70,7 @@ mod voie;
 mod weapon;
 
 pub use ability::AbilityOption;
+pub use action::Action;
 pub use armour::{Armour, Shield};
 pub use character::{AttackMode, Character, Target, Value};
 pub use characteristics::{SERIES_VALUE, Series};

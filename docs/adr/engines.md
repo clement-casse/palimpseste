@@ -447,6 +447,16 @@ spell markers of the co-rules catalogue for every voie and rank. PM is
 `None` without any spell; a negative total is a `standard` deviation of
 COF.DER.PM (D-11).
 
+**ENG-COF-ACTIONS: Each capacité's action and spell cost.**
+`Voie::actions(rank)` gives the actions a capacité takes to use, as the
+co-rules catalogue marks them (COF.CNT.VOIE): an `Action` (`Limited`,
+`Attack`, `Movement`, `Free`, with `name()` and the book's letter
+`abbreviation()`), two when the catalogue allows either, none when
+passive. `Voie::is_spell` is public, and `Voie::spell_cost(rank)` is the
+PM a spell costs, its rank. Armour surcharges and capacités adding PM to a
+spell (Tempête de mana) are not computed. *Why letters only:* the action
+type is structure; what the capacité does stays out of the repository.
+
 **ENG-COF-FAMILY: No family, no family values.** PV, DR, PC and
 `recovery_die` are `None` without a profil, rather than computed without
 their family term.
