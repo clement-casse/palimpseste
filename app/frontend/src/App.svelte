@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Button, NavBrand, NavHamburger, NavLi, NavUl, Navbar } from "flowbite-svelte";
+  import { Button, NavBrand, NavHamburger, NavLi, NavUl, Navbar, Tooltip } from "flowbite-svelte";
+  import { ArrowRightToBracketOutline } from "flowbite-svelte-icons";
 
   import { ApiError, getMe, signOut } from "./api";
   import ErrorMessage from "./ErrorMessage.svelte";
@@ -78,7 +79,10 @@
     <div class="flex items-center gap-2 md:order-2">
       <ThemePicker />
       {#if session.user}
-        <Button size="sm" color="alternative" onclick={leave}>Se déconnecter</Button>
+        <Button id="sign-out" size="xs" color="alternative" aria-label="Se déconnecter" onclick={leave}>
+          <ArrowRightToBracketOutline class="h-4 w-4" />
+        </Button>
+        <Tooltip triggeredBy="#sign-out" placement="bottom" class="whitespace-nowrap">Se déconnecter</Tooltip>
         <NavHamburger />
       {/if}
     </div>
