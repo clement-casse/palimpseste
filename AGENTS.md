@@ -19,6 +19,7 @@ In scope:
 - **Characteristics**: the seven characteristics `AGI`, `CON`, `FOR`, `PER`, `CHA`, `INT`, `VOL`, their abbreviations, values and modifiers.
 - **Voies**: ranks, voie and ability identifiers, and the checks on the ranks acquired in a voie (CO.VOIE.STRUCTURE, CO.VOIE.ORDER). Structure only, no rule about costs or budgets.
 - **Items**: the name of a free text item and a quantity carried (ADR KER-ITEMS).
+- **Specialities**: the free text a player writes for a capacité asking them to choose a discipline, an approach, a vehicle or an origin (ADR KER-SPECIALITY).
 - **Derived values with breakdown**: a computed value together with the list of contributions that produced it (source, amount).
 - **Manual adjustments**: attributed contributions added by a user to a derived value or a budget.
 - **Violations**: computed findings about a character, with a stable rule identifier, the emitting mechanic, a subject, parameters, and a category (`Incomplete`, `Deviation` with its severity, `Uncomputable`, `Notice`).
