@@ -5,7 +5,7 @@
   import { Button, Card } from "flowbite-svelte";
 
   import BreakdownPopover from "../character/BreakdownPopover.svelte";
-  import type { ContributionLine } from "../wasm/palimpseste_wasm";
+  import type { ContributionLine, SituationalLine } from "../wasm/palimpseste_wasm";
   import Marks from "./Marks.svelte";
   import type { Note } from "./notes";
 
@@ -15,12 +15,15 @@
     title,
     notes = [],
     contributions,
+    situational = [],
   }: {
     label: string;
     value: string;
     title?: string;
     notes?: Note[];
     contributions?: ContributionLine[];
+    /** Its modifiers holding only in a situation, in its popover. */
+    situational?: SituationalLine[];
   } = $props();
 
   const uid = $props.id();
@@ -38,7 +41,7 @@
         aria-label="{title ?? label} {value}, détail"
       >{value}</Button
       >
-      <BreakdownPopover triggeredBy="#{id}" title="{title ?? label} : {value}" {contributions} />
+      <BreakdownPopover triggeredBy="#{id}" title="{title ?? label} : {value}" {contributions} {situational} />
     {:else}
       <strong class="text-2xl font-bold text-gray-900 dark:text-white">{value}</strong>
     {/if}

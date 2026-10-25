@@ -26,7 +26,7 @@
           >
         </span>
       {/snippet}
-      <Breakdown contributions={line.contributions} />
+      <Breakdown contributions={line.contributions} situational={line.situational} />
       <Button
         size="xs"
         color="alternative"
