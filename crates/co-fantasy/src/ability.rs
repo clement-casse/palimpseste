@@ -1092,6 +1092,14 @@ mod tests {
     }
 
     #[test]
+    fn per_rank_five_counts_the_ranks_five_of_a_profil() {
+        assert!(matches!(
+            per_rank_five(Profil::Rodeur),
+            Amount::PerVoieAt(Profil::Rodeur, 5, 1)
+        ));
+    }
+
+    #[test]
     fn capacites_raise_the_armour_limit() {
         let barbare = zero()
             .with_profil(Profil::Barbare)

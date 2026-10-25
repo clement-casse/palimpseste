@@ -383,6 +383,14 @@ mod tests {
     }
 
     #[test]
+    fn the_row_builder_makes_the_row_it_names() {
+        let built = row(Voie::Crime, 1, &[Agi, Cha], FIVE);
+        assert_eq!((built.voie, built.rank), (Voie::Crime, 1));
+        assert_eq!(built.characteristics, [Agi, Cha]);
+        assert!(matches!(built.amount, Amount::Flat(5)));
+    }
+
+    #[test]
     fn the_catalogue_follows_voie_and_rank_order() {
         let all: Vec<_> = TestBonus::all().collect();
         let mut sorted = all.clone();
