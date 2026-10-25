@@ -372,7 +372,8 @@ counts do not stay incomplete.
 the armour caps AGI in DEF and in the ranged attack (D-06). Beyond the
 profil's limit is a `standard` deviation of COF.DER.ARMOUR-LIMIT (D-24);
 the chevalier's Noblesse rank 2 raises the limit to the plaque complète,
-Briseur d'os to the cotte de mailles, Armure lourde and Vêtements sacrés,
+Tour de force to the chemise de mailles (D-49), Briseur d'os to the cotte
+de mailles, Armure lourde and Vêtements sacrés,
 when their option is chosen, to the armure de plaques and the cotte de
 mailles.
 
