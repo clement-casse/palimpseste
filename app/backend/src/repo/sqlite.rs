@@ -1537,6 +1537,25 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_stored_document_that_no_longer_reads_is_a_technical_failure() {
+        let repo = SqliteRepo::in_memory();
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let brune = repo
+            .create_character(ana.id, &brune_name(), &Document::empty(Engine::Fantasy))
+            .await
+            .unwrap();
+        repo.call("spoiling a document", |connection| {
+            connection.execute("UPDATE characters SET document = '{\"engine\": 1}'", [])
+        })
+        .await
+        .unwrap();
+        assert!(matches!(
+            repo.character(ana.id, brune.id).await,
+            Err(Error::Underlying(_))
+        ));
+    }
+
+    #[tokio::test]
     async fn characters_are_renamed_and_deleted() {
         let repo = SqliteRepo::in_memory();
         let ana = sign_up(&repo, "a", "Ana").await;
