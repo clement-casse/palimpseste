@@ -138,3 +138,30 @@ export function currentVoies(catalog: Abilities, held: HeldAbility[]): VoieEntry
   }
   return [...voies].map(([id, ranks]) => ({ id, ranks }));
 }
+
+/**
+ * What a test bonus or dé bonus covers: the speciality written for its
+ * capacité, then its scope, when it applies to that speciality; else its
+ * scope alone (ADR ENG-TEST-BONUSES, ENG-SPECIALITIES).
+ */
+export function scopeLabel(
+  line: { scope: string; onSpeciality: boolean },
+  speciality: string | null | undefined,
+): string {
+  return line.onSpeciality && speciality ? `${speciality} — ${line.scope}` : line.scope;
+}
+
+/**
+ * The capacités held that ask for a speciality, gained at the level-up or
+ * spending `progression`, or at creation when `null`.
+ */
+export function askingSpeciality(
+  catalog: Abilities,
+  held: HeldAbility[],
+  progression: number | null,
+): string[] {
+  return held
+    .filter((h) => (h.progression ?? null) === progression)
+    .filter((h) => catalog.abilities.find((a) => a.id === h.ability)?.speciality != null)
+    .map((h) => h.ability);
+}

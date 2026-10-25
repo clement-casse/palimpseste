@@ -52,6 +52,19 @@ describe("the COF sheet", () => {
     expect(screen.queryByRole("group", { name: "Points de mana (PM)" })).toBeNull();
   });
 
+  it("names the tests of each bonus, the actions and the spells", () => {
+    const document = lhagva();
+    if (document.engine !== "fantasy") throw new Error("fantasy expected");
+    document.voies = [...(document.voies ?? []), { id: "cof.air", ranks: [1] }];
+    open(document);
+    // Réflexes éclair: rank + 2 to dodge; Diversité to its origin.
+    expect(screen.getByText(/\+3\s*esquiver\s*\(AGI\)/)).toBeTruthy();
+    expect(screen.getByText(/\+3\s*invented — domaines de l’origine/)).toBeTruthy();
+    // Cri de guerre and Murmures dans le vent are free actions, the latter a spell.
+    expect(screen.getAllByTitle("Action gratuite")).toHaveLength(2);
+    expect(screen.getByText("Sort · 1 PM")).toBeTruthy();
+  });
+
   it("counts PV down and up on the device, and restores them all", async () => {
     const pv = maximum(lhagva(), "cof.vigour-points");
     const sheet = open(lhagva());
@@ -140,6 +153,14 @@ describe("the COC sheet", () => {
     expect(screen.getByRole("rowheader", { name: "Mains nues" })).toBeTruthy();
     expect(screen.getByText("Force de la nature (+2)")).toBeTruthy();
     expect(screen.getByText("motorbike")).toBeTruthy();
+  });
+
+  it("names a bonus by the speciality written for its capacité", () => {
+    open(amelia(), "Amelia");
+    // Chauffeur's +2 becomes +5 with Conducteur expérimenté's.
+    expect(screen.getByText(/\+5\s*invented — conduite du véhicule/)).toBeTruthy();
+    expect(screen.getByText(/\+2\s*invented — conduite du véhicule/)).toBeTruthy();
+    expect(screen.getByText(/\+5\s*invented — discipline scientifique\s*\(INT\)/)).toBeTruthy();
   });
 
   it("fills the échelle de santé, kept on the device", async () => {

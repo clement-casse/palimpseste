@@ -95,6 +95,23 @@ describe("the COF equipment step", () => {
   });
 });
 
+describe("the COF voies step", () => {
+  it("writes the speciality a capacité asks for, and gives it up when cleared", async () => {
+    const sent = stubBackend(storing());
+    open("voies");
+    const origin = screen.getByRole("textbox", { name: /^Origine : Diversité/ });
+    expect((origin as HTMLInputElement).value).toBe("invented");
+    await fireEvent.change(origin, { target: { value: " Montagnard " } });
+    await vi.advanceTimersByTimeAsync(600);
+    expect(saves(sent)[0].body).toMatchObject({
+      specialities: [{ ability: "cof.humain.1", speciality: "Montagnard" }],
+    });
+    await fireEvent.change(origin, { target: { value: "" } });
+    await vi.advanceTimersByTimeAsync(600);
+    expect(saves(sent)[1].body).toMatchObject({ specialities: [] });
+  });
+});
+
 describe("saving", () => {
   it("saves the edits still waiting when the editor is left", async () => {
     const sent = stubBackend(storing());

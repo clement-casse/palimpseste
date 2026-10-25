@@ -1,11 +1,11 @@
 <script lang="ts">
   // The voies of a character with the ranks acquired in each. Ranks beyond
   // 1 to 5 are written out, since nothing hides what the document holds.
-  import { Indicator, Listgroup, ListgroupItem, P } from "flowbite-svelte";
+  import { Badge, Indicator, Listgroup, ListgroupItem, P } from "flowbite-svelte";
 
   import { signed } from "../character/edits";
   import Ability from "../progression/Ability.svelte";
-  import { type Abilities } from "../progression/progression";
+  import { type Abilities, scopeLabel } from "../progression/progression";
   import type { HeldAbility, VoieEntry } from "../wasm/palimpseste_wasm";
   import Marks from "./Marks.svelte";
   import { type Note, marksAt } from "./notes";
@@ -28,6 +28,11 @@
     /** Whether they were gained at COF2 levels, else COC2 spendings of XP. */
     levels?: boolean;
   } = $props();
+
+  /** The catalog entry of the capacité `id`. */
+  function entryOf(id: string) {
+    return catalog?.abilities.find((a) => a.id === id);
+  }
 
   /** The capacités held in voie `id`, with where each was gained. */
   function heldIn(id: string): HeldAbility[] {
@@ -60,17 +65,29 @@
         {#if catalog && heldIn(voie.id).length > 0}
           <ul class="w-full text-sm text-gray-500 dark:text-gray-400">
             {#each heldIn(voie.id) as h (h.ability)}
+              {@const entry = entryOf(h.ability)}
+              {@const spoken = [...h.testBonuses, ...(h.bonusDie ? [h.bonusDie] : [])].some((b) => b.onSpeciality)}
               <li>
-                <Ability {catalog} id={h.ability} short />{#if h.progression != null}
+                <Ability {catalog} id={h.ability} short />{#if h.speciality && !spoken}
+                  {` (${h.speciality})`}{/if}
+                {#each entry?.actions ?? [] as action, i (action.abbreviation)}
+                  {i > 0 ? "ou" : ""}
+                  <Badge color="gray" title={action.name}>{action.abbreviation}</Badge>
+                {/each}
+                {#if entry?.spellCost != null}
+                  <Badge color="indigo">Sort · {entry.spellCost} PM</Badge>
+                {/if}
+                {#if h.progression != null}
                   · {levels ? `niveau ${h.progression}` : `dépense d’XP ${h.progression}`}{/if}
                 {#each h.testBonuses as bonus (bonus.value.id)}
-                  · tests {bonus.value.total == null ? "—" : signed(bonus.value.total)}{#if bonus.characteristics.length > 0}
+                  · {bonus.value.total == null ? "—" : signed(bonus.value.total)}
+                  {scopeLabel(bonus, h.speciality)}{#if bonus.characteristics.length > 0}
                     {` (${bonus.characteristics.join(", ")})`}{/if}<Marks
                     notes={marksAt(notes, { kind: "value", id: bonus.value.id })}
                   />
                 {/each}
                 {#if h.bonusDie}
-                  · dé bonus{#if h.bonusDie.characteristics.length > 0}{` (${h.bonusDie.characteristics.join(", ")})`}{/if}
+                  · dé bonus : {scopeLabel(h.bonusDie, h.speciality)}{#if h.bonusDie.characteristics.length > 0}{` (${h.bonusDie.characteristics.join(", ")})`}{/if}
                 {/if}
               </li>
             {/each}

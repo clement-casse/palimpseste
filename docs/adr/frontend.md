@@ -119,7 +119,10 @@ Point orphelin; Rangs, Traits, Caractéristiques), then "Bilan", which
 lists what the entry brings and what it changes on the sheet (the
 document before it against the document with it), and this entry's
 violations. Each step offers what the engine offers within the rules
-first (`levels`, `spendings`), anything else under "Hors règles". "Valider
+first (`levels`, `spendings`), anything else under "Hors règles". A
+capacité asking for a speciality gets a text field where it was acquired
+(the voies step at creation, Options of a level, Rangs of a spending,
+`SpecialityField`); clearing it gives the speciality up. "Valider
 le niveau" saves the copy once (`PUT` with `If-Match` at the draft's
 version, a `412` keeping the draft), only when the entry has nothing left
 to settle; "Abandonner le brouillon" forgets it; the last entry saved may
@@ -156,8 +159,11 @@ violation's parameters; a rule without a message shows its identifier.
 **FE-SHEET: The sheet, for play.** `/characters/{id}/sheet` shows a
 character on one page, its creation and progression read only (the COF2
 level and its d4°, the voies held now with each capacité by name, the level or
-spending it came from, its test bonuses with their characteristics and its
-dé bonus (ADR ENG-TEST-BONUSES), the COC2 XP left and sequels acquired;
+spending it came from, its COF2 actions as the book's letters and its PM
+when it is a spell (ADR ENG-COF-ACTIONS), its test bonuses and dé bonus
+with the tests they cover and their characteristics (ADR
+ENG-TEST-BONUSES), named first by the speciality written when they apply
+to it (ADR ENG-SPECIALITIES), the COC2 XP left and sequels acquired;
 each COF2 weapon with its attack and the dice the engine gives): a resource bar kept in
 reach (COF2 PV, PM for a character who knows a spell, PC and DR; COC2 the
 échelle de santé, its states from the catalogue, ADR ENG-HEALTH-STATES),

@@ -22,6 +22,8 @@
   } from "../wasm/palimpseste_wasm";
   import Ability from "./Ability.svelte";
   import AbilityOptionPicker from "./AbilityOptionPicker.svelte";
+  import { askingSpeciality } from "./progression";
+  import SpecialityField from "./SpecialityField.svelte";
 
   let {
     choices = $bindable(),
@@ -117,9 +119,13 @@
   </Accordion>
 {:else if step === "options"}
   {@const lines = details.abilityOptions.filter((line) => line.progression === number)}
-  {#if lines.length > 0}
+  {@const asking = askingSpeciality(catalog, details.abilitiesHeld, number)}
+  {#if lines.length + asking.length > 0}
     {#each lines as line (line.ability)}
       <AbilityOptionPicker bind:choices {catalog} {line} />
+    {/each}
+    {#each asking as ability (ability)}
+      <SpecialityField bind:choices {catalog} {ability} />
     {/each}
   {:else}
     <Helper class="text-sm">Aucune capacité de ce niveau ne demande d’option.</Helper>

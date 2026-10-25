@@ -22,7 +22,9 @@
     XpSpendingEntry,
   } from "../wasm/palimpseste_wasm";
   import Ability from "./Ability.svelte";
+  import { askingSpeciality } from "./progression";
   import RankFivePicker from "./RankFivePicker.svelte";
+  import SpecialityField from "./SpecialityField.svelte";
 
   let {
     choices = $bindable(),
@@ -95,6 +97,12 @@
         </ListgroupItem>
       {/each}
     </Listgroup>
+  {/if}
+  {@const asking = askingSpeciality(catalog, details.abilitiesHeld, number)}
+  {#if asking.length > 0}
+    {#each asking as ability (ability)}
+      <SpecialityField bind:choices {catalog} {ability} />
+    {/each}
   {/if}
   {#if offer && offer.acquirable.length > 0}
     <Listgroup class="flex-col" aria-label="Rangs à acheter">
