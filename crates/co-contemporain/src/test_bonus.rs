@@ -55,6 +55,13 @@ impl TestBonus {
         self.row().map_or("", |row| row.scope)
     }
 
+    /// Whether the bonus applies to the speciality chosen for its capacité
+    /// ([`Voie::speciality`]).
+    #[must_use]
+    pub fn on_speciality(self) -> bool {
+        self.row().is_some_and(|row| row.on_speciality)
+    }
+
     /// The identifier of the bonus as a value,
     /// `coc.test-bonus.<voie>.<rank>.<n>`.
     pub(crate) fn id(self) -> ValueId {
@@ -114,6 +121,7 @@ pub struct BonusDie {
     rank: Rank,
     characteristics: &'static [Characteristic],
     scope: &'static str,
+    on_speciality: bool,
 }
 
 impl BonusDie {
@@ -147,6 +155,13 @@ impl BonusDie {
     pub const fn scope(self) -> &'static str {
         self.scope
     }
+
+    /// Whether the dé bonus applies to the speciality chosen for its
+    /// capacité ([`Voie::speciality`]).
+    #[must_use]
+    pub const fn on_speciality(self) -> bool {
+        self.on_speciality
+    }
 }
 
 /// How much a bonus gives.
@@ -166,6 +181,15 @@ struct Row {
     characteristics: &'static [Characteristic],
     amount: Amount,
     scope: &'static str,
+    on_speciality: bool,
+}
+
+impl Row {
+    /// The same bonus, to the tests of the speciality chosen.
+    const fn on_speciality(mut self) -> Self {
+        self.on_speciality = true;
+        self
+    }
 }
 
 const fn row(
@@ -181,6 +205,7 @@ const fn row(
         characteristics,
         amount,
         scope,
+        on_speciality: false,
     }
 }
 
@@ -222,16 +247,18 @@ const BONUSES: &[Row] = &[
         &[Int, Cha, Agi],
         FIVE,
         "culture et pratique de la discipline",
-    ),
+    )
+    .on_speciality(),
     row(
         Voie::ArtsEtArtisanats,
         2,
         &[],
         FIVE,
         "discipline, copie d’une œuvre",
-    ),
-    row(Voie::ArtsEtArtisanats, 3, &[], FIVE, "discipline"),
-    row(Voie::ArtsEtArtisanats, 4, &[], FIVE, "discipline"),
+    )
+    .on_speciality(),
+    row(Voie::ArtsEtArtisanats, 3, &[], FIVE, "discipline").on_speciality(),
+    row(Voie::ArtsEtArtisanats, 4, &[], FIVE, "discipline").on_speciality(),
     // Sportif amateur, Sportif confirmé, Déterminé, Athlète.
     row(
         Voie::Athletisme,
@@ -240,9 +267,9 @@ const BONUSES: &[Row] = &[
         PerRank(1),
         "athlétisme, hors combat",
     ),
-    row(Voie::Athletisme, 2, &[], Flat(2), "discipline sportive"),
-    row(Voie::Athletisme, 3, &[], Flat(2), "discipline sportive"),
-    row(Voie::Athletisme, 4, &[], Flat(2), "discipline sportive"),
+    row(Voie::Athletisme, 2, &[], Flat(2), "discipline sportive").on_speciality(),
+    row(Voie::Athletisme, 3, &[], Flat(2), "discipline sportive").on_speciality(),
+    row(Voie::Athletisme, 4, &[], Flat(2), "discipline sportive").on_speciality(),
     // Amateur.
     row(
         Voie::CombatAMainsNues,
@@ -258,7 +285,8 @@ const BONUSES: &[Row] = &[
         &[Cha],
         PerRank(1),
         "relations avec les membres de la corporation",
-    ),
+    )
+    .on_speciality(),
     row(
         Voie::Corporations,
         2,
@@ -297,10 +325,10 @@ const BONUSES: &[Row] = &[
     ),
     row(Voie::Crime, 4, &[], FIVE, "se faire passer pour un autre"),
     // Convaincant, Éloquent, Rhétoricien, Meneur.
-    row(Voie::Discours, 1, &[], FIVE, "approche sociale"),
-    row(Voie::Discours, 2, &[], FIVE, "approche sociale"),
-    row(Voie::Discours, 3, &[], FIVE, "approche sociale"),
-    row(Voie::Discours, 4, &[], FIVE, "approche sociale"),
+    row(Voie::Discours, 1, &[], FIVE, "approche sociale").on_speciality(),
+    row(Voie::Discours, 2, &[], FIVE, "approche sociale").on_speciality(),
+    row(Voie::Discours, 3, &[], FIVE, "approche sociale").on_speciality(),
+    row(Voie::Discours, 4, &[], FIVE, "approche sociale").on_speciality(),
     // Furtif, Vigilant, Infiltré.
     row(
         Voie::Furtivite,
@@ -375,9 +403,10 @@ const BONUSES: &[Row] = &[
         &[Int],
         FIVE,
         "spécialité médicale, culture médicale",
-    ),
-    row(Voie::Medecine, 3, &[], FIVE, "spécialité médicale"),
-    row(Voie::Medecine, 4, &[], FIVE, "médecine traditionnelle"),
+    )
+    .on_speciality(),
+    row(Voie::Medecine, 3, &[], FIVE, "spécialité médicale").on_speciality(),
+    row(Voie::Medecine, 4, &[], FIVE, "médecine traditionnelle").on_speciality(),
     row(
         Voie::Medecine,
         5,
@@ -416,11 +445,11 @@ const BONUSES: &[Row] = &[
         PerRank(1),
         "comprendre, entretenir, réparer, saboter un système",
     ),
-    row(Voie::Technologie, 2, &[], FIVE, "spécialité technique"),
-    row(Voie::Technologie, 3, &[], FIVE, "spécialité technique"),
-    row(Voie::Technologie, 4, &[], FIVE, "spécialité technique"),
+    row(Voie::Technologie, 2, &[], FIVE, "spécialité technique").on_speciality(),
+    row(Voie::Technologie, 3, &[], FIVE, "spécialité technique").on_speciality(),
+    row(Voie::Technologie, 4, &[], FIVE, "spécialité technique").on_speciality(),
     // Alumni: a discipline, and with peers.
-    row(Voie::Sciences, 1, &[Int], FIVE, "discipline scientifique"),
+    row(Voie::Sciences, 1, &[Int], FIVE, "discipline scientifique").on_speciality(),
     row(
         Voie::Sciences,
         1,
@@ -429,9 +458,9 @@ const BONUSES: &[Row] = &[
         "relations avec ses pairs",
     ),
     // Professionnel, Esprit pratique, Expert reconnu, Personnalité publique.
-    row(Voie::Sciences, 2, &[], FIVE, "discipline scientifique"),
-    row(Voie::Sciences, 3, &[], FIVE, "discipline scientifique"),
-    row(Voie::Sciences, 4, &[], FIVE, "discipline scientifique"),
+    row(Voie::Sciences, 2, &[], FIVE, "discipline scientifique").on_speciality(),
+    row(Voie::Sciences, 3, &[], FIVE, "discipline scientifique").on_speciality(),
+    row(Voie::Sciences, 4, &[], FIVE, "discipline scientifique").on_speciality(),
     row(
         Voie::Sciences,
         5,
@@ -447,7 +476,7 @@ const BONUSES: &[Row] = &[
         PerRank(1),
         "coutumes locales, voyages, passer pour un local",
     ),
-    row(Voie::Survie, 2, &[], FIVE, "survie dans le milieu"),
+    row(Voie::Survie, 2, &[], FIVE, "survie dans le milieu").on_speciality(),
     // Baroudeur: against fatigue, and a second milieu.
     row(
         Voie::Survie,
@@ -456,18 +485,18 @@ const BONUSES: &[Row] = &[
         PerRank(1),
         "résister à la fatigue, la faim, la maladie, le poison",
     ),
-    row(Voie::Survie, 3, &[], FIVE, "survie dans le milieu"),
+    row(Voie::Survie, 3, &[], FIVE, "survie dans le milieu").on_speciality(),
     // Guide.
-    row(Voie::Survie, 4, &[], FIVE, "survie dans le milieu"),
+    row(Voie::Survie, 4, &[], FIVE, "survie dans le milieu").on_speciality(),
     // Chauffeur: a vehicle, and its maintenance.
-    row(Voie::Vehicules, 1, &[], Flat(2), "conduite du véhicule"),
+    row(Voie::Vehicules, 1, &[], Flat(2), "conduite du véhicule").on_speciality(),
     row(Voie::Vehicules, 1, &[], PerRank(1), "entretien courant"),
     // Conducteur expérimenté, Casse-cou, Pilote émérite, As des as: one
     // more vehicle each.
-    row(Voie::Vehicules, 2, &[], Flat(2), "conduite du véhicule"),
-    row(Voie::Vehicules, 3, &[], Flat(2), "conduite du véhicule"),
-    row(Voie::Vehicules, 4, &[], Flat(2), "conduite du véhicule"),
-    row(Voie::Vehicules, 5, &[], Flat(2), "conduite du véhicule"),
+    row(Voie::Vehicules, 2, &[], Flat(2), "conduite du véhicule").on_speciality(),
+    row(Voie::Vehicules, 3, &[], Flat(2), "conduite du véhicule").on_speciality(),
+    row(Voie::Vehicules, 4, &[], Flat(2), "conduite du véhicule").on_speciality(),
+    row(Voie::Vehicules, 5, &[], Flat(2), "conduite du véhicule").on_speciality(),
 ];
 
 /// What a "+2 becomes +5" adds to the bonus it upgrades.
@@ -488,36 +517,68 @@ const UPGRADES: [(Voie, u8, u8, u8); 4] = [
 
 /// The dé bonus of the capacités, in voie and rank order: the voie, the
 /// rank, and the characteristics named.
-const BONUS_DICE: &[(Voie, u8, &[Characteristic], &str)] = &[
+const BONUS_DICE: &[(Voie, u8, &[Characteristic], &str, bool)] = &[
     // Génie, Champion, Boss, Cerveau, Marionnettiste, Fantôme.
-    (Voie::ArtsEtArtisanats, 5, &[], "discipline choisie"),
-    (Voie::Athletisme, 5, &[], "discipline sportive choisie"),
-    (Voie::Corporations, 5, &[], "un test des rangs 2 à 4"),
-    (Voie::Crime, 5, &[], "un test des rangs 1, 3 ou 4"),
-    (Voie::Discours, 5, &[], "approche choisie"),
-    (Voie::Furtivite, 5, &[], "un test des rangs 1 à 4"),
+    (Voie::ArtsEtArtisanats, 5, &[], "discipline choisie", true),
+    (
+        Voie::Athletisme,
+        5,
+        &[],
+        "discipline sportive choisie",
+        true,
+    ),
+    (Voie::Corporations, 5, &[], "un test des rangs 2 à 4", false),
+    (Voie::Crime, 5, &[], "un test des rangs 1, 3 ou 4", false),
+    (Voie::Discours, 5, &[], "approche choisie", true),
+    (Voie::Furtivite, 5, &[], "un test des rangs 1 à 4", false),
     // Spécialiste, Mémoire vivante.
-    (Voie::Investigation, 2, &[Int], "spécialité d’investigation"),
+    (
+        Voie::Investigation,
+        2,
+        &[Int],
+        "spécialité d’investigation",
+        true,
+    ),
     (
         Voie::Investigation,
         4,
         &[],
         "deuxième spécialité d’investigation",
+        true,
     ),
     // Hyperpolyglotte, Professeur, Clairvoyant, Génie, Personnalité
     // publique, Aventurier, As des as.
-    (Voie::Langues, 5, &[], "tests des rangs 2 à 4"),
-    (Voie::Medecine, 5, &[Int], "spécialité médicale choisie"),
-    (Voie::Psychologie, 5, &[Per], "psychologie"),
-    (Voie::Technologie, 5, &[], "spécialité technique choisie"),
-    (Voie::Sciences, 5, &[], "discipline scientifique choisie"),
+    (Voie::Langues, 5, &[], "tests des rangs 2 à 4", false),
+    (
+        Voie::Medecine,
+        5,
+        &[Int],
+        "spécialité médicale choisie",
+        true,
+    ),
+    (Voie::Psychologie, 5, &[Per], "psychologie", false),
+    (
+        Voie::Technologie,
+        5,
+        &[],
+        "spécialité technique choisie",
+        true,
+    ),
+    (
+        Voie::Sciences,
+        5,
+        &[],
+        "discipline scientifique choisie",
+        true,
+    ),
     (
         Voie::Survie,
         5,
         &[],
         "connaissance ou survie dans le milieu choisi",
+        true,
     ),
-    (Voie::Vehicules, 5, &[], "véhicule choisi"),
+    (Voie::Vehicules, 5, &[], "véhicule choisi", false),
 ];
 
 /// The bonuses of the capacités the character holds now, in voie and rank
@@ -533,12 +594,15 @@ pub(crate) fn held(character: &Character) -> Vec<TestBonus> {
 pub(crate) fn bonus_dice(character: &Character) -> Vec<BonusDie> {
     BONUS_DICE
         .iter()
-        .map(|(voie, rank, characteristics, scope)| BonusDie {
-            voie: *voie,
-            rank: Rank::new(*rank),
-            characteristics,
-            scope,
-        })
+        .map(
+            |(voie, rank, characteristics, scope, on_speciality)| BonusDie {
+                voie: *voie,
+                rank: Rank::new(*rank),
+                characteristics,
+                scope,
+                on_speciality: *on_speciality,
+            },
+        )
         .filter(|die| character.has_rank(die.voie, die.rank))
         .collect()
 }
@@ -614,9 +678,36 @@ mod tests {
     }
 
     #[test]
+    fn bonuses_to_a_speciality_say_so() {
+        assert!(bonus(Voie::ArtsEtArtisanats, 1, 1).on_speciality());
+        assert!(bonus(Voie::Sciences, 1, 1).on_speciality());
+        assert!(!bonus(Voie::Sciences, 1, 2).on_speciality());
+        assert!(!bonus(Voie::Crime, 1, 1).on_speciality());
+        let artist = ranks(Character::new(), Voie::ArtsEtArtisanats, 5);
+        assert!(artist.bonus_dice().iter().all(|die| die.on_speciality()));
+        let boss = ranks(Character::new(), Voie::Corporations, 5);
+        assert!(boss.bonus_dice().iter().all(|die| !die.on_speciality()));
+        assert!(
+            TestBonus::all()
+                .filter(|bonus| bonus.on_speciality())
+                .all(|bonus| bonus.voie().speciality(bonus.rank()).is_some())
+        );
+        assert!(
+            BONUS_DICE
+                .iter()
+                .filter(|(.., on_speciality)| *on_speciality)
+                .all(|(voie, rank, ..)| voie.speciality(Rank::new(*rank)).is_some())
+        );
+    }
+
+    #[test]
     fn every_bonus_names_its_tests() {
         assert!(TestBonus::all().all(|bonus| !bonus.scope().is_empty()));
-        assert!(BONUS_DICE.iter().all(|(_, _, _, scope)| !scope.is_empty()));
+        assert!(
+            BONUS_DICE
+                .iter()
+                .all(|(_, _, _, scope, _)| !scope.is_empty())
+        );
         assert_eq!(
             bonus(Voie::Medecine, 1, 1).scope(),
             "premiers soins, stabiliser un mourant"

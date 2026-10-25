@@ -874,6 +874,12 @@ mod tests {
     }
 
     #[test]
+    fn diversite_asks_for_an_origin() {
+        assert_eq!(Voie::Humain.speciality(Rank::new(1)), Some("origine"));
+        assert_eq!(Voie::Humain.speciality(Rank::new(2)), None);
+    }
+
+    #[test]
     fn steps_follow_the_rank_reached() {
         // Agile: +1 DEF and Init, +2 at rank 3, +3 at rank 5.
         let defence = |rank| total(&ranks(zero(), Voie::Deplacement, rank), Value::Defence);

@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use co_kernel::{
     Adjustment, Characteristic, CharacteristicValue, Characteristics, DerivedValue, Dice, Quantity,
-    Rank, Subject, ValueId, Violation, ViolationReport, Waiver, adjustment_notice,
+    Rank, Speciality, Subject, ValueId, Violation, ViolationReport, Waiver, adjustment_notice,
 };
 
 use crate::{
@@ -228,6 +228,7 @@ pub struct Character {
     experience: Experience,
     spendings: Vec<XpSpending>,
     raised: BTreeMap<Voie, Characteristic>,
+    specialities: BTreeMap<(Voie, Rank), Speciality>,
     acquired_sequels: BTreeSet<Sequel>,
     equipment: Equipment,
     adjustments: Vec<(Target, Adjustment)>,
@@ -335,6 +336,27 @@ impl Character {
     #[must_use]
     pub fn without_raised_characteristic(mut self, voie: Voie) -> Self {
         self.raised.remove(&voie);
+        self
+    }
+
+    /// Writes the speciality chosen for the capacité at `rank` in `voie`,
+    /// for a capacité asking for one ([`Voie::speciality`]).
+    #[must_use]
+    pub fn with_speciality(
+        mut self,
+        voie: Voie,
+        rank: impl Into<Rank>,
+        speciality: impl Into<Speciality>,
+    ) -> Self {
+        self.specialities
+            .insert((voie, rank.into()), speciality.into());
+        self
+    }
+
+    /// Gives up the speciality chosen for the capacité at `rank` in `voie`.
+    #[must_use]
+    pub fn without_speciality(mut self, voie: Voie, rank: impl Into<Rank>) -> Self {
+        self.specialities.remove(&(voie, rank.into()));
         self
     }
 

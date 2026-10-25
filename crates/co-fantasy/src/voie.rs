@@ -413,6 +413,18 @@ impl Voie {
         action::of(self, rank)
     }
 
+    /// What the capacité at `rank` asks the player to choose, in French
+    /// (`origine`), as a speciality written with
+    /// [`Character::with_speciality`](crate::Character::with_speciality);
+    /// `None` when it asks for none (COF.CNT.VOIE).
+    #[must_use]
+    pub const fn speciality(self, rank: Rank) -> Option<&'static str> {
+        match (self, rank.get()) {
+            (Self::Humain, 1) => Some("origine"),
+            _ => None,
+        }
+    }
+
     /// The PM the capacité at `rank` costs to cast, its rank, when it is a
     /// spell (COF.CNT.VOIE); `None` otherwise.
     #[must_use]
