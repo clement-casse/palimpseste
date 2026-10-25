@@ -104,8 +104,11 @@ approach, a corporation, a milieu, a vehicle (COC2, 42 capacités), the
 origin of Diversité (COF2). `Voie::speciality(rank)` names what a
 capacité asks for, in French; `Character::with_speciality(voie, rank,
 text)` writes a `Speciality` (ADR KER-SPECIALITY), `without_speciality`
-gives it up. A speciality written for a capacité not held, or asking for
-none, is kept and checked by nothing. `TestBonus::on_speciality` and
+gives it up. A capacité held that asks for one without it is
+`Incomplete` (COC.CNT.VOIES; COF.CNT.VOIE, ADR ENG-COF-OPTIONS) with the
+capacité as subject and what it asks for as a `speciality` parameter,
+placed where the capacité was acquired. A speciality written for a
+capacité not held, or asking for none, is kept and checked by nothing. `TestBonus::on_speciality` and
 `BonusDie::on_speciality` say which bonuses apply to it, so the sheet
 names them by the player's words. *Why free text:* the lists are open
 (any discipline, any vehicle), and no rule reads them.
@@ -279,8 +282,9 @@ curing Toxicomane.
 from 1. The experience findings carry their spending as a `spending`
 parameter: COC.PRG.COST on a capacité, ONE-RANK and LIMITS go to its
 ranks, XP-USE to its traits; XP spent beyond the XP earned goes to the
-last spending's ranks. A rank 5's characteristic (COC.PRG.CARAC) goes
-where the rank was bought (`bought_in`), and a voie's structure to the
+last spending's ranks. A rank 5's characteristic (COC.PRG.CARAC) and a
+missing speciality (COC.CNT.VOIES) go where the capacité was bought
+(`bought_in`, in its characteristics and ranks steps), and a voie's structure to the
 last spending buying a rank of it, unless the creation ranks alone raise
 it. Everything else stays in its creation step.
 

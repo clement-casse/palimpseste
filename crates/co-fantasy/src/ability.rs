@@ -824,6 +824,23 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
             }
         }
     }
+    for voie in Voie::ALL {
+        for rank in (1..=5).map(Rank::new) {
+            if let Some(asked) = voie.speciality(rank)
+                && holds(character, voie, rank)
+                && character.speciality(voie, rank).is_none()
+            {
+                violations.push(
+                    Violation::incomplete(
+                        CONTENT_VOIE,
+                        ABILITY_MECHANIC,
+                        Subject::Ability(voie.ability(rank)),
+                    )
+                    .with_parameter("speciality", asked),
+                );
+            }
+        }
+    }
     for (voie, rank, option) in character.ability_options() {
         if !options(character, voie, rank).contains(&option) {
             violations.push(Violation::deviation(
@@ -877,6 +894,30 @@ mod tests {
     fn diversite_asks_for_an_origin() {
         assert_eq!(Voie::Humain.speciality(Rank::new(1)), Some("origine"));
         assert_eq!(Voie::Humain.speciality(Rank::new(2)), None);
+        let human = zero().with_rank(Voie::Humain, 1);
+        assert_eq!(
+            option_violations(&human),
+            [(ability(Voie::Humain, 1), Category::Incomplete)]
+        );
+        let mut violations = Vec::new();
+        check(&human, &mut violations);
+        assert_eq!(
+            violations[0]
+                .parameters()
+                .first()
+                .map(|p| (p.name(), p.value().clone())),
+            Some(("speciality", "origine".into()))
+        );
+        let written = human.with_speciality(Voie::Humain, 1, "montagnard");
+        assert_eq!(option_violations(&written), []);
+        let erased = written.without_speciality(Voie::Humain, 1);
+        assert_eq!(option_violations(&erased).len(), 1);
+        // Kept through the voie du mage, Diversité still asks for one.
+        let mage = zero().with_peuple(Peuple::Humain).with_rank(Voie::Mage, 1);
+        assert_eq!(
+            option_violations(&mage),
+            [(ability(Voie::Humain, 1), Category::Incomplete)]
+        );
     }
 
     #[test]

@@ -707,6 +707,11 @@ impl Character {
         self.peuple_malus
     }
 
+    /// The speciality chosen for the capacité at `rank` in `voie`.
+    pub(crate) fn speciality(&self, voie: Voie, rank: Rank) -> Option<&Speciality> {
+        self.specialities.get(&(voie, rank))
+    }
+
     /// The option chosen for the capacité at `rank` in `voie`.
     pub(crate) fn ability_option(&self, voie: Voie, rank: Rank) -> Option<AbilityOption> {
         self.ability_options.get(&(voie, rank)).copied()

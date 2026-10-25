@@ -79,10 +79,12 @@ const MESSAGES: Record<string, Message> = {
           : p.reason === "level-one"
             ? `${s} : capacité de rang 1 du profil prise au niveau 1, elle ne s'oublie pas.`
             : `${s} : oubliez d'abord les rangs supérieurs de la voie.`,
-  "COF.CNT.VOIE": (s, _p, v) =>
-    v.category.kind === "incomplete"
-      ? `${s} : choisissez l'option de la capacité.`
-      : `${s} : cette option n'est pas offerte par la capacité.`,
+  "COF.CNT.VOIE": (s, p, v) =>
+    p.speciality !== undefined
+      ? `${s} : écrivez sa spécialité (${p.speciality}).`
+      : v.category.kind === "incomplete"
+        ? `${s} : choisissez l'option de la capacité.`
+        : `${s} : cette option n'est pas offerte par la capacité.`,
   "COF.DER.ARMOUR-LIMIT": (s) => `${s} : au-delà de ce que le profil permet.`,
   "COF.CRE.EQUIPMENT": (s, p) =>
     p.min === undefined
@@ -140,6 +142,7 @@ const MESSAGES: Record<string, Message> = {
   "COC.PRG.LIMITS": (_s, p) => `${p.voies} voies, ${p.max} au plus.`,
   "COC.PRG.XP-USE": (s) =>
     `${s} : l'XP n'achète que des rangs, une classe sociale de plus ou la guérison d'une toxicomanie.`,
+  "COC.CNT.VOIES": (s, p) => `${s} : écrivez sa spécialité (${p.speciality}).`,
   "COC.PRG.CARAC": (s, _p, v) =>
     v.category.kind === "incomplete"
       ? `${s} : choisissez la caractéristique augmentée.`

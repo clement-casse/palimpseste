@@ -14,8 +14,8 @@ use crate::{
     Character, Value, Voie,
     rules::{
         AGE_BRACKET, CAPACITY_POINTS, CARAC_GROWTH, CARAC_LIMITS, CARAC_LOWERED, CARAC_PHYSICAL,
-        CARAC_POINTS, DOMAINE, DOMAINES, EQUIPMENT, MAX_VOIES, ONE_RANK, PRG_COST, PRG_LIMITS,
-        SOCIAL_CLASS, TRAIT_POINTS, TRAITS, VOIE_MECHANIC, XP_USE,
+        CARAC_POINTS, CONTENT_VOIES, DOMAINE, DOMAINES, EQUIPMENT, MAX_VOIES, ONE_RANK, PRG_COST,
+        PRG_LIMITS, SOCIAL_CLASS, TRAIT_POINTS, TRAITS, VOIE_MECHANIC, XP_USE,
     },
 };
 
@@ -43,7 +43,7 @@ pub enum Step {
 
 /// The step of each rule; the domaine and adjustment notices are refined in
 /// [`Step::of`].
-const RULE_STEPS: [(RuleId, Step); 20] = [
+const RULE_STEPS: [(RuleId, Step); 21] = [
     (AGE_BRACKET, Step::DomaineAndAge),
     (DOMAINE, Step::DomaineAndAge),
     (VOIE_STRUCTURE, Step::Voies),
@@ -55,6 +55,7 @@ const RULE_STEPS: [(RuleId, Step); 20] = [
     (PRG_LIMITS, Step::Voies),
     (XP_USE, Step::Traits),
     (CARAC_GROWTH, Step::Characteristics),
+    (CONTENT_VOIES, Step::Voies),
     (DOMAINES, Step::Traits),
     (TRAITS, Step::Traits),
     (TRAIT_POINTS, Step::Traits),
@@ -211,18 +212,27 @@ pub(crate) fn placement(character: &Character, violation: &Violation) -> Placeme
         spending_parameter(violation)
             .map(|number| Placement::Spending(number, SpendingStep::Traits))
     } else if *rule == CARAC_GROWTH {
-        match violation.subject() {
-            Subject::Ability(id) => Voie::from_ability_id(id.as_str())
-                .and_then(|(voie, rank)| character.bought_in(voie, rank))
-                .map(|number| Placement::Spending(number, SpendingStep::Characteristics)),
-            _ => None,
-        }
+        bought_in(character, violation)
+            .map(|number| Placement::Spending(number, SpendingStep::Characteristics))
+    } else if *rule == CONTENT_VOIES {
+        bought_in(character, violation)
+            .map(|number| Placement::Spending(number, SpendingStep::Ranks))
     } else if *rule == VOIE_ORDER || *rule == VOIE_STRUCTURE {
         voie_placement(character, violation)
     } else {
         None
     };
     spending.unwrap_or_else(|| Placement::Creation(Step::of(violation)))
+}
+
+/// The spending that bought the capacité `violation` is about, `None` when
+/// it is about no capacité or one acquired at creation.
+fn bought_in(character: &Character, violation: &Violation) -> Option<usize> {
+    match violation.subject() {
+        Subject::Ability(id) => Voie::from_ability_id(id.as_str())
+            .and_then(|(voie, rank)| character.bought_in(voie, rank)),
+        _ => None,
+    }
 }
 
 /// A voie structure finding the creation ranks alone do not raise belongs
@@ -375,6 +385,25 @@ mod tests {
             "COC.PRG.CARAC".to_owned(),
             Placement::Creation(Step::Characteristics)
         )));
+    }
+
+    #[test]
+    fn a_missing_speciality_belongs_where_the_capacite_was_bought() {
+        use crate::XpSpending;
+        let bought = Character::new()
+            .with_rank(Voie::Discours, 1)
+            .with_speciality(Voie::Discours, 1, "persuasion")
+            .with_experience(2)
+            .with_xp_spending(XpSpending::new().with_rank(Voie::Discours, 2));
+        assert!(placements(&bought).contains(&(
+            "COC.CNT.VOIES".to_owned(),
+            Placement::Spending(1, SpendingStep::Ranks)
+        )));
+        let created = Character::new().with_rank(Voie::Discours, 1);
+        assert!(
+            placements(&created)
+                .contains(&("COC.CNT.VOIES".to_owned(), Placement::Creation(Step::Voies)))
+        );
     }
 
     #[test]

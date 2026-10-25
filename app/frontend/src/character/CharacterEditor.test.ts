@@ -109,6 +109,7 @@ describe("the COF voies step", () => {
     await fireEvent.change(origin, { target: { value: "" } });
     await vi.advanceTimersByTimeAsync(600);
     expect(saves(sent)[1].body).toMatchObject({ specialities: [] });
+    expect(screen.getAllByText(/écrivez sa spécialité \(origine\)/).length).toBeGreaterThan(0);
   });
 });
 

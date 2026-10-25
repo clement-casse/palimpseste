@@ -401,6 +401,10 @@ mod tests {
                 ranks: vec![1],
             })
             .collect();
+        document.specialities = vec![SpecialityEntry {
+            ability: "cof.humain.1".into(),
+            speciality: "citadin".into(),
+        }];
         document.level_ups = vec![LevelUpEntry {
             abilities: abilities.iter().map(|id| (*id).to_owned()).collect(),
             ..LevelUpEntry::default()
