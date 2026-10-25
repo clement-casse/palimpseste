@@ -49,6 +49,21 @@ describe("the theme toggle", () => {
   });
 });
 
+describe("a sheet", () => {
+  it("takes the whole screen, without the top bar and the footer", async () => {
+    stubBackend(({ url }) => {
+      if (url === "/api/me") return Response.json({ nickname: "Ana", profile: "" });
+      return new Response(null, { status: 404 });
+    });
+    navigate("/characters/7/sheet");
+    render(App);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByRole("contentinfo")).toBeNull();
+    navigate("/");
+  });
+});
+
 describe("signing out", () => {
   it("ends the session and shows the sign-in page", async () => {
     const sent = stubBackend(({ method, url }) => {

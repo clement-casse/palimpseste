@@ -26,6 +26,7 @@
   import Characteristics from "./Characteristics.svelte";
   import EquipmentSection from "./EquipmentSection.svelte";
   import HealthTrack from "./HealthTrack.svelte";
+  import Identity from "./Identity.svelte";
   import Marks from "./Marks.svelte";
   import NoteList from "./NoteList.svelte";
   import { type Note, marksAt, steps } from "./notes";
@@ -65,15 +66,17 @@
 
   const domaine = $derived(catalog.domaines.find((d) => d.id === choices.domaine));
   const health = $derived(line(HEALTH)?.total);
-  const identity = $derived(
-    [
-      choices.age === undefined
-        ? "Âge à choisir"
-        : `${choices.age} ans${details.ageBracket ? ` (${details.ageBracket})` : ""}`,
-      domaine?.name ?? "Domaine à choisir",
-      `Classe sociale : ${details.socialClass ?? "contradictoire"}`,
-    ].join(" · "),
-  );
+  const identity = $derived([
+    {
+      label: "Âge",
+      value:
+        choices.age === undefined
+          ? "À choisir"
+          : `${choices.age} ans${details.ageBracket ? ` (${details.ageBracket})` : ""}`,
+    },
+    { label: "Domaine", value: domaine?.name ?? "À choisir" },
+    { label: "Classe sociale", value: details.socialClass ?? "contradictoire" },
+  ]);
   const protections = $derived(namesOf(catalog.protections));
   const traits = $derived(
     (choices.traits ?? []).flatMap((taken) => {
@@ -136,9 +139,9 @@
   );
 </script>
 
-<p class="mb-3 text-gray-500 dark:text-gray-400">
-  {identity}<Marks notes={marksAt(notes, ...steps("domaine-and-age"))} />
-</p>
+<div class="my-3">
+  <Identity fields={identity} notes={marksAt(notes, ...steps("domaine-and-age"))} />
+</div>
 
 <div
   class="sticky top-0 z-10 -mx-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-gray-200 bg-white px-4 py-2 print:static dark:border-gray-700 dark:bg-gray-900"
@@ -160,141 +163,152 @@
   {#if play}<Restore {play} />{/if}
 </div>
 
-<div class="mt-4 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
-  <Block title="Caractéristiques" notes={marksAt(notes, ...steps("characteristics"))}>
-    <Characteristics characteristics={sheet.characteristics} {notes} />
-  </Block>
+<!-- As a printed sheet: the characteristics down the left,
+     combat in the middle, the voies and traits on the right, the equipment below. -->
+<div class="mt-4 grid items-start gap-4 md:grid-cols-2 lg:grid-cols-12">
+  <div class="grid gap-4 lg:col-span-3">
+    <Block title="Caractéristiques" notes={marksAt(notes, ...steps("characteristics"))}>
+      <Characteristics characteristics={sheet.characteristics} {notes} />
+    </Block>
+  </div>
 
-  <Block title="Combat" notes={marksAt(notes, ...steps("secondary"))}>
-    <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
-      {#each COMBAT as tile (tile.id)}
-        {@const value = line(tile.id)}
-        <Tile
-          label={tile.label}
-          title={tile.title}
-          value={shown(value, tile.signed)}
-          notes={valueMarks(tile.id)}
-          contributions={value?.contributions}
-        />
-      {/each}
-      {#if line("coc.agi-test-modifier")?.total}
-        {@const agi = line("coc.agi-test-modifier")}
-        <Tile
-          label="Tests d'AGI"
-          value={shown(agi, true)}
-          notes={valueMarks("coc.agi-test-modifier")}
-          contributions={agi?.contributions}
-        />
-      {/if}
-      {#each ATTACKS as mode (mode)}
-        {@const attack = line(`coc.attack.${mode}`)}
-        {#if attack}
+  <div class="grid gap-4 lg:col-span-5">
+
+    <Block title="Combat" notes={marksAt(notes, ...steps("secondary"))}>
+      <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
+        {#each COMBAT as tile (tile.id)}
+          {@const value = line(tile.id)}
           <Tile
-            label={attack.label}
-            value={shown(attack, true)}
-            notes={valueMarks(attack.id)}
-            contributions={attack.contributions}
+            label={tile.label}
+            title={tile.title}
+            value={shown(value, tile.signed)}
+            notes={valueMarks(tile.id)}
+            contributions={value?.contributions}
+          />
+        {/each}
+        {#if line("coc.agi-test-modifier")?.total}
+          {@const agi = line("coc.agi-test-modifier")}
+          <Tile
+            label="Tests d'AGI"
+            value={shown(agi, true)}
+            notes={valueMarks("coc.agi-test-modifier")}
+            contributions={agi?.contributions}
           />
         {/if}
-      {/each}
-    </ul>
-    <Table class="mt-3">
-      <TableHead>
-        <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Att.</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
-      </TableHead>
-      <TableBody>
-        {#each weapons as w (w.weapon.id)}
-          <TableBodyRow>
-            <TableHeadCell scope="row" class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">{w.weapon.name}{#if w.quantity > 1}{` ×${w.quantity}`}{/if}</TableHeadCell>
-            <TableBodyCell title={w.attack?.label} class="px-2 py-2">{shown(w.attack, true)}</TableBodyCell>
-            <TableBodyCell class="px-2 py-2">
-              {damage(w.damage)}{#if w.damage}<Marks notes={valueMarks(w.damage.id)} />{/if}
-            </TableBodyCell>
-            <TableBodyCell class="px-2 py-2">
-              {range(w.range)}{#if w.bonus?.total !== undefined}{` · ${signed(w.bonus.total)}`}{/if}
-            </TableBodyCell>
-          </TableBodyRow>
-        {/each}
-      </TableBody>
-    </Table>
-  </Block>
-
-  <Block title="Voies" notes={marksAt(notes, ...steps("voies"))}>
-    <VoieRanks
-      voies={currentVoies(catalog, details.abilitiesHeld)}
-      names={namesOf(catalog.voies)}
-      {notes}
-      {catalog}
-      held={details.abilitiesHeld}
-    />
-    <p class="mt-2 text-sm">
-      XP restante : {line("coc.experience")?.total ?? "—"}
-      {#if play && characterId !== undefined}
-        · <a class="underline" href={`${characterPath(characterId)}#progression`} onclick={follow}>
-          Fin de séance : inscrire l’XP gagnée
-        </a>
-      {/if}
-    </p>
-  </Block>
-
-  <Block title="Traits distinctifs" notes={marksAt(notes, ...steps("traits"))}>
-    {#each [true, false] as advantage (advantage)}
-      {@const listed = traits.filter((t) => t.advantage === advantage)}
-      <Heading tag="h4" class="text-base text-gray-500 dark:text-gray-400">
-        {advantage ? "Avantages" : "Désavantages"}
-        {signed(advantage ? details.advantages : details.disadvantages)}
-      </Heading>
-      {#if listed.length > 0}
-        <ul class="space-y-1">
-          {#each listed as t (t.id)}
-            <li>{t.name} ({signed(t.points)})</li>
-          {/each}
-        </ul>
-      {:else}
-        <p class="text-sm text-gray-500 dark:text-gray-400">Aucun.</p>
-      {/if}
-    {/each}
-    {#if (choices.acquiredSequels ?? []).length > 0}
-      <Heading tag="h4" class="text-base text-gray-500 dark:text-gray-400">Séquelles subies</Heading>
-      <ul class="space-y-1">
-        {#each choices.acquiredSequels ?? [] as id (id)}
-          <li>{catalog.sequels.find((s) => s.id === id)?.name ?? id}</li>
+        {#each ATTACKS as mode (mode)}
+          {@const attack = line(`coc.attack.${mode}`)}
+          {#if attack}
+            <Tile
+              label={attack.label}
+              value={shown(attack, true)}
+              notes={valueMarks(attack.id)}
+              contributions={attack.contributions}
+            />
+          {/if}
         {/each}
       </ul>
-    {/if}
-  </Block>
-
-  <EquipmentSection
-    notes={marksAt(notes, ...steps("equipment"))}
-    items={equipment.items ?? []}
-    weapons={catalog.weapons.filter((w) => w.attackMode.id !== "unarmed")}
-    findings={sheet.inPlay}
-    kept={play !== null && play.equipment !== null}
-    onitems={play ? (items) => equip({ items }) : undefined}
-    onforget={() => play?.forgetEquipment()}
-  >
-    {#snippet worn(editing: boolean)}
-      {#if editing}
-        <fieldset class="flex flex-col gap-2">
-          <legend class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Protections</legend>
-          {#each catalog.protections as protection (protection.id)}
-            <Checkbox
-              checked={equipment.protections?.includes(protection.id) ?? false}
-              onchange={(e) =>
-                wear(protection.id, e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked)}
-            >
-              {protection.name}
-            </Checkbox>
+      <Table class="mt-3">
+        <TableHead>
+          <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Att.</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
+        </TableHead>
+        <TableBody>
+          {#each weapons as w (w.weapon.id)}
+            <TableBodyRow>
+              <TableHeadCell scope="row" class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">{w.weapon.name}{#if w.quantity > 1}{` ×${w.quantity}`}{/if}</TableHeadCell>
+              <TableBodyCell title={w.attack?.label} class="px-2 py-2">{shown(w.attack, true)}</TableBodyCell>
+              <TableBodyCell class="px-2 py-2">
+                {damage(w.damage)}{#if w.damage}<Marks notes={valueMarks(w.damage.id)} />{/if}
+              </TableBodyCell>
+              <TableBodyCell class="px-2 py-2">
+                {range(w.range)}{#if w.bonus?.total !== undefined}{` · ${signed(w.bonus.total)}`}{/if}
+              </TableBodyCell>
+            </TableBodyRow>
           {/each}
-        </fieldset>
-      {:else}
-        <li>
-          Protections :
-          {(equipment.protections ?? []).map((id) => protections.get(id) ?? id).join(", ") || "aucune"}
-        </li>
-      {/if}
-    {/snippet}
-  </EquipmentSection>
+        </TableBody>
+      </Table>
+    </Block>
+  </div>
 
-  <NoteList {notes} />
+  <div class="grid gap-4 md:col-span-2 lg:col-span-4">
+    <Block title="Voies" notes={marksAt(notes, ...steps("voies"))}>
+      <VoieRanks
+        voies={currentVoies(catalog, details.abilitiesHeld)}
+        names={namesOf(catalog.voies)}
+        {notes}
+        {catalog}
+        held={details.abilitiesHeld}
+      />
+      <p class="mt-2 text-sm">
+        XP restante : {line("coc.experience")?.total ?? "—"}
+        {#if play && characterId !== undefined}
+          · <a class="underline" href={`${characterPath(characterId)}#progression`} onclick={follow}>
+            Fin de séance : inscrire l’XP gagnée
+          </a>
+        {/if}
+      </p>
+    </Block>
+
+    <Block title="Traits distinctifs" notes={marksAt(notes, ...steps("traits"))}>
+      {#each [true, false] as advantage (advantage)}
+        {@const listed = traits.filter((t) => t.advantage === advantage)}
+        <Heading tag="h4" class="text-base text-gray-500 dark:text-gray-400">
+          {advantage ? "Avantages" : "Désavantages"}
+          {signed(advantage ? details.advantages : details.disadvantages)}
+        </Heading>
+        {#if listed.length > 0}
+          <ul class="space-y-1">
+            {#each listed as t (t.id)}
+              <li>{t.name} ({signed(t.points)})</li>
+            {/each}
+          </ul>
+        {:else}
+          <p class="text-sm text-gray-500 dark:text-gray-400">Aucun.</p>
+        {/if}
+      {/each}
+      {#if (choices.acquiredSequels ?? []).length > 0}
+        <Heading tag="h4" class="text-base text-gray-500 dark:text-gray-400">Séquelles subies</Heading>
+        <ul class="space-y-1">
+          {#each choices.acquiredSequels ?? [] as id (id)}
+            <li>{catalog.sequels.find((s) => s.id === id)?.name ?? id}</li>
+          {/each}
+        </ul>
+      {/if}
+    </Block>
+  </div>
+
+  <div class="grid items-start gap-4 md:col-span-2 md:grid-cols-2 lg:col-span-12">
+    <EquipmentSection
+      notes={marksAt(notes, ...steps("equipment"))}
+      items={equipment.items ?? []}
+      weapons={catalog.weapons.filter((w) => w.attackMode.id !== "unarmed")}
+      findings={sheet.inPlay}
+      kept={play !== null && play.equipment !== null}
+      onitems={play ? (items) => equip({ items }) : undefined}
+      onforget={() => play?.forgetEquipment()}
+    >
+      {#snippet worn(editing: boolean)}
+        {#if editing}
+          <fieldset class="flex flex-col gap-2">
+            <legend class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Protections</legend>
+            {#each catalog.protections as protection (protection.id)}
+              <Checkbox
+                checked={equipment.protections?.includes(protection.id) ?? false}
+                onchange={(e) =>
+                  wear(protection.id, e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked)}
+              >
+                {protection.name}
+              </Checkbox>
+            {/each}
+          </fieldset>
+        {:else}
+          <li>
+            Protections :
+            {(equipment.protections ?? []).map((id) => protections.get(id) ?? id).join(", ") || "aucune"}
+          </li>
+        {/if}
+      {/snippet}
+    </EquipmentSection>
+
+    <NoteList {notes} />
+  </div>
 </div>

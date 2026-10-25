@@ -99,7 +99,7 @@ describe("the sheet", () => {
     if (document.engine !== "fantasy") throw new Error("fantasy expected");
     document.levelUps = [{ abilities: ["cof.pourfendeur.2", "cof.rage.2"], forgotten: [] }];
     render(CharacterSheet, { character: character(document) });
-    expect(screen.getByText(/Niveau 2 \(d4° : d4\)/)).toBeTruthy();
+    expect(screen.getByText("2 (d4° : d4)")).toBeTruthy();
     expect(screen.getByText("2. Défier la mort")).toBeTruthy();
     // Réflexes éclair: rank + 2 to AGI dodge tests, at pourfendeur rank 2.
     expect(screen.getByText(/\+4\s*esquiver\s*\(AGI\)/)).toBeTruthy();

@@ -68,8 +68,8 @@ FE-THEMES).
 
 **FE-THEMES: Four themes, chosen per device.** "Système" (the default)
 follows the device between light and dark; "Clair", "Sombre" and "OLED"
-are chosen with the four-icon toggle of the top bar, in this order
-(`ThemePicker.svelte`),
+are chosen with the four-icon toggle of the top bar or the sheet's nameplate, in
+this order (`ThemePicker.svelte`),
 kept in `localStorage` and applied as `data-theme` on the root before
 the app shows, with the `dark` class that turns Flowbite's components
 dark (Sombre, OLED, or Système on a dark device, followed as it
@@ -169,7 +169,12 @@ each COF2 weapon with its attack and the dice the engine gives): a resource bar 
 reach (COF2 PV, PM for a character who knows a spell, PC and DR; COC2 the
 échelle de santé, its states from the catalogue, ADR ENG-HEALTH-STATES),
 then characteristics, combat and weapons, voies, traits and equipment as
-cards in a grid; a value, hovered or focused, shows its breakdown in a popover
+cards in a grid laid out as a printed sheet. The sheet takes the whole
+screen: the top bar and the footer are hidden, a nameplate (the name, the
+way back, the theme toggle and the wake lock) heads it, the identity as
+labelled boxes under it, each section a card under a banner, the
+characteristics down the left, combat in the middle, the voies on the
+right on a wide screen; a value, hovered or focused, shows its breakdown in a popover
 (`BreakdownPopover`, never a modal; the editor's characteristics show
 it on hover too), every source
 named, a capacité included. Each waiver and

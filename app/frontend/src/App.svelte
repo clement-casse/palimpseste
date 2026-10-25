@@ -47,11 +47,11 @@
   }
 
   const page = $derived(match(route.path));
-  const wide = $derived(
-    page.name === "character" ||
-      page.name === "character-sheet" ||
-      page.name === "character-progression" ||
-      page.name === "friend-sheet",
+  const wide = $derived(page.name === "character" || page.name === "character-progression");
+  // A sheet takes the whole screen, without the top bar and the footer: it
+  // stays open on the table (ADR FE-SHEET).
+  const immersive = $derived(
+    Boolean(session.user) && (page.name === "character-sheet" || page.name === "friend-sheet"),
   );
 
   // Signed out, only the sign-in page and creating an account; signed in,
@@ -70,26 +70,28 @@
   });
 </script>
 
-<Navbar class="border-b border-gray-200 print:hidden dark:border-gray-700">
-  <NavBrand href="/" onclick={follow}>
-    <span class="text-xl font-semibold text-primary-800 dark:text-primary-300">Palimpseste</span>
-  </NavBrand>
-  <div class="flex items-center gap-2 md:order-2">
-    <ThemePicker />
+{#if !immersive}
+  <Navbar class="border-b border-gray-200 print:hidden dark:border-gray-700">
+    <NavBrand href="/" onclick={follow}>
+      <span class="text-xl font-semibold text-primary-800 dark:text-primary-300">Palimpseste</span>
+    </NavBrand>
+    <div class="flex items-center gap-2 md:order-2">
+      <ThemePicker />
+      {#if session.user}
+        <Button size="sm" color="alternative" onclick={leave}>Se déconnecter</Button>
+        <NavHamburger />
+      {/if}
+    </div>
     {#if session.user}
-      <Button size="sm" color="alternative" onclick={leave}>Se déconnecter</Button>
-      <NavHamburger />
+      <NavUl activeUrl={route.path}>
+        <NavLi href="/" onclick={follow}>Personnages</NavLi>
+        <NavLi href={FRIENDS} onclick={follow}>Amis</NavLi>
+        <NavLi href={PROFILE} onclick={follow}>Profil</NavLi>
+      </NavUl>
     {/if}
-  </div>
-  {#if session.user}
-    <NavUl activeUrl={route.path}>
-      <NavLi href="/" onclick={follow}>Personnages</NavLi>
-      <NavLi href={FRIENDS} onclick={follow}>Amis</NavLi>
-      <NavLi href={PROFILE} onclick={follow}>Profil</NavLi>
-    </NavUl>
-  {/if}
-</Navbar>
-<main class={["mx-auto p-4", wide ? "max-w-5xl" : "max-w-2xl"]}>
+  </Navbar>
+{/if}
+<main class={["mx-auto p-4", immersive ? "max-w-7xl" : wide ? "max-w-5xl" : "max-w-2xl"]}>
   <StatusBanner />
   {#if failure}
     <ErrorMessage error={failure} />
@@ -123,4 +125,4 @@
     {/if}
   {/if}
 </main>
-<Disclaimer {wide} />
+{#if !immersive}<Disclaimer {wide} />{/if}

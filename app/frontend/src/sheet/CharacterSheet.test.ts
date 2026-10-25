@@ -42,7 +42,8 @@ describe("the COF sheet", () => {
   it("shows the character at a glance", () => {
     open(lhagva());
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Lhagva");
-    expect(screen.getByText(/Barbare \(Combattants\) · Humain · Niveau 1/)).toBeTruthy();
+    const identity = screen.getAllByRole("definition").map((field) => field.textContent);
+    expect(identity).toEqual(["Barbare (Combattants)", "Humain", expect.stringMatching(/^1 \(d4° : /)]);
     expect(screen.getByRole("rowheader", { name: "Épée longue" })).toBeTruthy();
     expect(screen.getByRole("rowheader", { name: "Javelot ×2" })).toBeTruthy();
     expect(screen.getByText("adventurer's bag")).toBeTruthy();

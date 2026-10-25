@@ -26,6 +26,7 @@
   import Characteristics from "./Characteristics.svelte";
   import Counter from "./Counter.svelte";
   import EquipmentSection from "./EquipmentSection.svelte";
+  import Identity from "./Identity.svelte";
   import Marks from "./Marks.svelte";
   import NoteList from "./NoteList.svelte";
   import { type Note, marksAt, steps } from "./notes";
@@ -60,13 +61,14 @@
   const peuple = $derived(catalog.peuples.find((p) => p.id === choices.peuple));
   const armour = $derived(catalog.armours.find((a) => a.id === equipment.armour));
   const shield = $derived(catalog.shields.find((s) => s.id === equipment.shield));
-  const identity = $derived(
-    [
-      profil ? `${profil.name}${details.family ? ` (${details.family.name})` : ""}` : "Profil à choisir",
-      peuple?.name ?? "Peuple à choisir",
-      `Niveau ${details.level} (d4° : ${details.evolutiveDie})`,
-    ].join(" · "),
-  );
+  const identity = $derived([
+    {
+      label: "Profil",
+      value: profil ? `${profil.name}${details.family ? ` (${details.family.name})` : ""}` : "À choisir",
+    },
+    { label: "Peuple", value: peuple?.name ?? "À choisir" },
+    { label: "Niveau", value: `${details.level} (d4° : ${details.evolutiveDie})` },
+  ]);
 
   function line(id: string): ValueLine | undefined {
     return sheet.values.find((l) => l.id === id);
@@ -120,9 +122,9 @@
   );
 </script>
 
-<p class="mb-3 text-gray-500 dark:text-gray-400">
-  {identity}<Marks notes={marksAt(notes, ...steps("profil", "peuple"))} />
-</p>
+<div class="my-3">
+  <Identity fields={identity} notes={marksAt(notes, ...steps("profil", "peuple"))} />
+</div>
 
 <div
   class="sticky top-0 z-10 -mx-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-gray-200 bg-white px-4 py-2 print:static dark:border-gray-700 dark:bg-gray-900"
@@ -141,110 +143,122 @@
   {#if play}<Restore {play} />{/if}
 </div>
 
-<div class="mt-4 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
-  <Block title="Caractéristiques" notes={marksAt(notes, ...steps("characteristics"))}>
-    <Characteristics characteristics={sheet.characteristics} {notes} />
-  </Block>
+<!-- As a printed sheet: the characteristics down the left, combat in the
+     middle, the voies on the right, the equipment below. -->
+<div class="mt-4 grid items-start gap-4 md:grid-cols-2 lg:grid-cols-12">
+  <div class="grid gap-4 lg:col-span-3">
+    <Block title="Caractéristiques" notes={marksAt(notes, ...steps("characteristics"))}>
+      <Characteristics characteristics={sheet.characteristics} {notes} />
+    </Block>
+  </div>
 
-  <Block title="Combat" notes={marksAt(notes, ...steps("derived"))}>
-    <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
-      {#each COMBAT as tile (tile.id)}
-        {@const value = line(tile.id)}
-        <Tile
-          label={tile.label}
-          title={tile.title}
-          value={shown(value, tile.signed)}
-          notes={valueMarks(tile.id)}
-          contributions={value?.contributions}
-        />
-      {/each}
-    </ul>
-    {#if weapons.length > 0}
-      <Table class="mt-3">
-        <TableHead>
-          <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Usage</TableHeadCell><TableHeadCell class="px-2 py-2">Attaque</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
-        </TableHead>
-        <TableBody>
-          {#each weapons as { weapon, quantity, damages, critical } (weapon.id)}
-            {#each damages as dm, i (dm.id)}
-              <TableBodyRow>
-                {#if i === 0}
-                  <TableHeadCell scope="row" rowspan={damages.length} class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">
-                    {weapon.name}{#if quantity > 1}{` ×${quantity}`}{/if}
-                  </TableHeadCell>
-                {/if}
-                <TableBodyCell class="px-2 py-2">{weapon.uses[i]?.name ?? ""}</TableBodyCell>
-                {@const attackId = dm.id.replace("cof.damage.", "cof.attack.")}
-                <TableBodyCell class="px-2 py-2">{shown(line(attackId), true)}<Marks notes={valueMarks(attackId)} /></TableBodyCell>
-                <TableBodyCell class="px-2 py-2">{damage(dm)}<Marks notes={valueMarks(dm.id)} /></TableBodyCell>
-                {#if i === 0}
-                  <TableBodyCell rowspan={damages.length} class="px-2 py-2">
-                    {range(critical)}{#if critical}<Marks notes={valueMarks(critical.id)} />{/if}
-                  </TableBodyCell>
-                {/if}
-              </TableBodyRow>
-            {/each}
-          {/each}
-        </TableBody>
-      </Table>
-    {/if}
-  </Block>
+  <div class="grid gap-4 lg:col-span-5">
 
-  <Block title="Voies" notes={marksAt(notes, ...steps("voies"))}>
-    <VoieRanks
-      voies={currentVoies(catalog, details.abilitiesHeld)}
-      names={namesOf(catalog.voies)}
-      {notes}
-      {catalog}
-      held={details.abilitiesHeld}
-      levels
-    />
-  </Block>
-
-  <EquipmentSection
-    notes={marksAt(notes, ...steps("equipment"))}
-    items={equipment.items ?? []}
-    weapons={catalog.weapons}
-    findings={sheet.inPlay}
-    kept={play !== null && play.equipment !== null}
-    onitems={play ? (items) => equip({ items }) : undefined}
-    onforget={() => play?.forgetEquipment()}
-  >
-    {#snippet worn(editing: boolean)}
-      {#if editing}
-        <Label class="flex flex-col gap-2">
-          Armure
-          <Select
-            placeholder=""
-            value={equipment.armour ?? ""}
-            onchange={(e) => equip({ armour: valueOf(e) || undefined })}
-          >
-            <option value="">Aucune</option>
-            {#each catalog.armours as a (a.id)}
-              <option value={a.id}>{a.name} (DEF {signed(a.defence)})</option>
+    <Block title="Combat" notes={marksAt(notes, ...steps("derived"))}>
+      <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
+        {#each COMBAT as tile (tile.id)}
+          {@const value = line(tile.id)}
+          <Tile
+            label={tile.label}
+            title={tile.title}
+            value={shown(value, tile.signed)}
+            notes={valueMarks(tile.id)}
+            contributions={value?.contributions}
+          />
+        {/each}
+      </ul>
+      {#if weapons.length > 0}
+        <Table class="mt-3">
+          <TableHead>
+            <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Usage</TableHeadCell><TableHeadCell class="px-2 py-2">Attaque</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
+          </TableHead>
+          <TableBody>
+            {#each weapons as { weapon, quantity, damages, critical } (weapon.id)}
+              {#each damages as dm, i (dm.id)}
+                <TableBodyRow>
+                  {#if i === 0}
+                    <TableHeadCell scope="row" rowspan={damages.length} class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">
+                      {weapon.name}{#if quantity > 1}{` ×${quantity}`}{/if}
+                    </TableHeadCell>
+                  {/if}
+                  <TableBodyCell class="px-2 py-2">{weapon.uses[i]?.name ?? ""}</TableBodyCell>
+                  {@const attackId = dm.id.replace("cof.damage.", "cof.attack.")}
+                  <TableBodyCell class="px-2 py-2">{shown(line(attackId), true)}<Marks notes={valueMarks(attackId)} /></TableBodyCell>
+                  <TableBodyCell class="px-2 py-2">{damage(dm)}<Marks notes={valueMarks(dm.id)} /></TableBodyCell>
+                  {#if i === 0}
+                    <TableBodyCell rowspan={damages.length} class="px-2 py-2">
+                      {range(critical)}{#if critical}<Marks notes={valueMarks(critical.id)} />{/if}
+                    </TableBodyCell>
+                  {/if}
+                </TableBodyRow>
+              {/each}
             {/each}
-          </Select>
-        </Label>
-        <Label class="flex flex-col gap-2">
-          Bouclier
-          <Select
-            placeholder=""
-            value={equipment.shield ?? ""}
-            onchange={(e) => equip({ shield: valueOf(e) || undefined })}
-          >
-            <option value="">Aucun</option>
-            {#each catalog.shields as s (s.id)}
-              <option value={s.id}>{s.name} (DEF {signed(s.defence)})</option>
-            {/each}
-          </Select>
-        </Label>
-      {:else}
-        <li>Armure : {armour ? `${armour.name} (DEF ${signed(armour.defence)})` : "aucune"}</li>
-        <li>Bouclier : {shield ? `${shield.name} (DEF ${signed(shield.defence)})` : "aucun"}</li>
-        <li>Bourse : {details.money ?? "—"}<Marks notes={valueMarks("cof.money")} /></li>
+          </TableBody>
+        </Table>
       {/if}
-    {/snippet}
-  </EquipmentSection>
+    </Block>
+  </div>
 
-  <NoteList {notes} />
+  <div class="grid gap-4 md:col-span-2 lg:col-span-4">
+    <Block title="Voies" notes={marksAt(notes, ...steps("voies"))}>
+      <VoieRanks
+        voies={currentVoies(catalog, details.abilitiesHeld)}
+        names={namesOf(catalog.voies)}
+        {notes}
+        {catalog}
+        held={details.abilitiesHeld}
+        levels
+      />
+    </Block>
+  </div>
+
+  <div class="grid items-start gap-4 md:col-span-2 md:grid-cols-2 lg:col-span-12">
+
+    <EquipmentSection
+      notes={marksAt(notes, ...steps("equipment"))}
+      items={equipment.items ?? []}
+      weapons={catalog.weapons}
+      findings={sheet.inPlay}
+      kept={play !== null && play.equipment !== null}
+      onitems={play ? (items) => equip({ items }) : undefined}
+      onforget={() => play?.forgetEquipment()}
+    >
+      {#snippet worn(editing: boolean)}
+        {#if editing}
+          <Label class="flex flex-col gap-2">
+            Armure
+            <Select
+              placeholder=""
+              value={equipment.armour ?? ""}
+              onchange={(e) => equip({ armour: valueOf(e) || undefined })}
+            >
+              <option value="">Aucune</option>
+              {#each catalog.armours as a (a.id)}
+                <option value={a.id}>{a.name} (DEF {signed(a.defence)})</option>
+              {/each}
+            </Select>
+          </Label>
+          <Label class="flex flex-col gap-2">
+            Bouclier
+            <Select
+              placeholder=""
+              value={equipment.shield ?? ""}
+              onchange={(e) => equip({ shield: valueOf(e) || undefined })}
+            >
+              <option value="">Aucun</option>
+              {#each catalog.shields as s (s.id)}
+                <option value={s.id}>{s.name} (DEF {signed(s.defence)})</option>
+              {/each}
+            </Select>
+          </Label>
+        {:else}
+          <li>Armure : {armour ? `${armour.name} (DEF ${signed(armour.defence)})` : "aucune"}</li>
+          <li>Bouclier : {shield ? `${shield.name} (DEF ${signed(shield.defence)})` : "aucun"}</li>
+          <li>Bourse : {details.money ?? "—"}<Marks notes={valueMarks("cof.money")} /></li>
+        {/if}
+      {/snippet}
+    </EquipmentSection>
+
+    <NoteList {notes} />
+  </div>
 </div>

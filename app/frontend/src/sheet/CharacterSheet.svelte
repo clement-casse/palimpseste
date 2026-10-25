@@ -5,13 +5,14 @@
   // kept on. Meant for finished characters; an unfinished one shows what is
   // left to settle. A friend's character is only read: no resource counted,
   // its creation equipment, nothing kept on the device.
-  import { A, Alert, Badge, Button, Heading } from "flowbite-svelte";
+  import { A, Alert, Badge, Button, Card, Heading } from "flowbite-svelte";
   import { ArrowLeftOutline } from "flowbite-svelte-icons";
   import { untrack } from "svelte";
 
   import type { Character, Friend } from "../api";
   import { ENGINES, unsettled, unsettledAll } from "../engines";
   import { nextLabel } from "../progression/progression";
+  import ThemePicker from "../ThemePicker.svelte";
   import { characterPath, characterProgressionPath, follow, friendPath } from "../router.svelte";
   import { keepAwake, wakeLock } from "../wakelock.svelte";
   import { type Equipment, type Sheet, catalog, evaluateInPlay } from "../wasm/palimpseste_wasm";
@@ -102,41 +103,57 @@
 </script>
 
 <section>
-  <header class="flex flex-wrap items-center gap-x-4 gap-y-2">
-    {#if owner}
-      <A href={friendPath(owner.id)} onclick={follow} class="gap-1 print:hidden">
-        <ArrowLeftOutline size="sm" /> {owner.nickname}
-      </A>
-    {:else}
-      <A href="/" onclick={follow} class="gap-1 print:hidden"><ArrowLeftOutline size="sm" /> Personnages</A>
-    {/if}
-    <Heading tag="h2" class="w-auto text-2xl">{initial.name}</Heading>
-    <Badge color="gray">{ENGINES[initial.engine]}</Badge>
-    {#if owner}<span class="text-gray-500 dark:text-gray-400">Personnage de {owner.nickname}</span>{/if}
-    <span class="ms-auto flex flex-wrap items-center gap-2 print:hidden">
-      {#if !owner}
-        <Button color="alternative" class="min-h-11" href={characterPath(initial.id)} onclick={follow}>Modifier</Button>
-        {#if open + later === 0}
-          <Button class="min-h-11" href={characterProgressionPath(initial.id, "new")} onclick={follow}>
-            {nextLabel(choices)}
+  <!-- The nameplate: the app's top bar is hidden on the sheet, so the way
+       back and the theme sit here. -->
+  <Card
+    size="xl"
+    class="flex flex-col gap-3 border-2 border-primary-700 bg-primary-50 p-4 dark:border-primary-400 dark:bg-gray-800"
+  >
+    <header class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      {#if owner}
+        <A href={friendPath(owner.id)} onclick={follow} class="gap-1 print:hidden">
+          <ArrowLeftOutline size="sm" /> {owner.nickname}
+        </A>
+      {:else}
+        <A href="/" onclick={follow} class="gap-1 print:hidden"><ArrowLeftOutline size="sm" /> Personnages</A>
+      {/if}
+      <span class="ms-auto flex flex-wrap items-center gap-2 print:hidden">
+        <ThemePicker />
+        {#if wakeLock.supported && !owner}
+          <Button
+            size="sm"
+            color={wakeLock.wanted ? "primary" : "alternative"}
+            aria-pressed={wakeLock.wanted}
+            title="Empêche l’écran de se mettre en veille"
+            onclick={() => keepAwake(!wakeLock.wanted)}
+          >
+            Écran toujours allumé
           </Button>
-        {:else}
-          <Button class="min-h-11" disabled title="Terminez d’abord le personnage">{nextLabel(choices)}</Button>
         {/if}
+      </span>
+    </header>
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <Heading tag="h2" class="w-auto text-3xl font-bold tracking-wide text-primary-900 dark:text-primary-200"
+        >{initial.name}</Heading
+      >
+      <Badge color="gray">{ENGINES[initial.engine]}</Badge>
+      {#if owner}<span class="text-gray-500 dark:text-gray-400">Personnage de {owner.nickname}</span>{/if}
+      {#if !owner}
+        <span class="ms-auto flex flex-wrap items-center gap-2 print:hidden">
+          <Button color="alternative" class="min-h-11" href={characterPath(initial.id)} onclick={follow}
+            >Modifier</Button
+          >
+          {#if open + later === 0}
+            <Button class="min-h-11" href={characterProgressionPath(initial.id, "new")} onclick={follow}>
+              {nextLabel(choices)}
+            </Button>
+          {:else}
+            <Button class="min-h-11" disabled title="Terminez d’abord le personnage">{nextLabel(choices)}</Button>
+          {/if}
+        </span>
       {/if}
-      {#if wakeLock.supported && !owner}
-        <Button
-          color={wakeLock.wanted ? "primary" : "alternative"}
-          class="min-h-11"
-          aria-pressed={wakeLock.wanted}
-          title="Empêche l’écran de se mettre en veille"
-          onclick={() => keepAwake(!wakeLock.wanted)}
-        >
-          Écran toujours allumé
-        </Button>
-      {/if}
-    </span>
-  </header>
+    </div>
+  </Card>
 
   {#if open > 0}
     <Alert color="yellow" role="note" class="my-3">
