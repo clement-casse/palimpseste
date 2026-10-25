@@ -77,7 +77,7 @@ pub fn evaluate_in_play_js(
 mod tests {
     use palimpseste_document::{
         AdjustmentEntry, Characteristic, ContemporainDocument, FantasyDocument, ItemEntry,
-        LevelUpEntry, Subject, Target, VoieEntry, WaiverEntry, XpSpendingEntry,
+        LevelUpEntry, SpecialityEntry, Subject, Target, VoieEntry, WaiverEntry, XpSpendingEntry,
     };
 
     use super::*;
@@ -447,10 +447,13 @@ mod tests {
         assert_eq!(shield.test_bonuses.len(), 1);
         assert_eq!(shield.test_bonuses[0].value.total, Some(3));
         assert_eq!(shield.bonus_die, None);
+        let heroic = held("cof.brute.4").bonus_die.as_ref().unwrap();
+        assert_eq!(heroic.characteristics, [Characteristic::For]);
         assert_eq!(
-            held("cof.brute.4").bonus_die,
-            Some(vec![Characteristic::For])
+            (heroic.scope.as_str(), heroic.on_speciality),
+            ("tous les tests", false)
         );
+        assert_eq!(shield.test_bonuses[0].scope, "éviter la surprise");
         assert!(value(&sheet, "cof.attack.hache.one-handed").total.is_some());
         assert_eq!(
             value(&sheet, "cof.damage.hache.one-handed").dice.as_deref(),
@@ -726,6 +729,70 @@ mod tests {
                 required: false,
                 progression: None,
             }]
+        );
+    }
+
+    #[test]
+    fn capacites_carry_their_actions_spell_costs_and_specialities() {
+        let Catalog::Fantasy(fantasy) = catalog(Engine::Fantasy) else {
+            panic!("fantasy catalog expected");
+        };
+        let entry = |id: &str| fantasy.abilities.iter().find(|a| a.id == id).unwrap();
+        let lightning = entry("cof.air.4");
+        assert_eq!(lightning.spell_cost, Some(4));
+        assert_eq!(
+            lightning
+                .actions
+                .iter()
+                .map(|a| (a.abbreviation.as_str(), a.name.as_str()))
+                .collect::<Vec<_>>(),
+            [("A", "Action d'attaque")]
+        );
+        let brute = entry("cof.brute.1");
+        assert_eq!((brute.actions.len(), brute.spell_cost), (0, None));
+        assert_eq!(entry("cof.humain.1").speciality.as_deref(), Some("origine"));
+        let Catalog::Contemporain(contemporain) = catalog(Engine::Contemporain) else {
+            panic!("contemporain catalog expected");
+        };
+        let arts = contemporain
+            .abilities
+            .iter()
+            .find(|a| a.id == "coc.arts-et-artisanats.1")
+            .unwrap();
+        assert_eq!(
+            (
+                arts.speciality.as_deref(),
+                arts.actions.len(),
+                arts.spell_cost
+            ),
+            (Some("discipline"), 0, None)
+        );
+    }
+
+    #[test]
+    fn held_capacites_show_their_speciality_and_its_bonus() {
+        let mut document = ContemporainDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "coc.arts-et-artisanats".into(),
+            ranks: vec![1],
+        }];
+        document.specialities = vec![SpecialityEntry {
+            ability: "coc.arts-et-artisanats.1".into(),
+            speciality: "Peinture".into(),
+        }];
+        let Details::Contemporain(details) = contemporain(document).details else {
+            panic!("contemporain details expected");
+        };
+        let [held] = details.abilities_held.as_slice() else {
+            panic!("one capacité expected");
+        };
+        assert_eq!(held.speciality.as_deref(), Some("Peinture"));
+        let [bonus] = held.test_bonuses.as_slice() else {
+            panic!("one bonus expected");
+        };
+        assert_eq!(
+            (bonus.scope.as_str(), bonus.on_speciality),
+            ("culture et pratique de la discipline", true)
         );
     }
 
