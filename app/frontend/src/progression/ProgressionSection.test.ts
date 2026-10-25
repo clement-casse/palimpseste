@@ -101,6 +101,9 @@ describe("the sheet", () => {
     render(CharacterSheet, { character: character(document) });
     expect(screen.getByText(/Niveau 2 \(d4° : d4\)/)).toBeTruthy();
     expect(screen.getByText("2. Défier la mort")).toBeTruthy();
+    // Réflexes éclair: rank + 2 to AGI dodge tests, at pourfendeur rank 2.
+    expect(screen.getByText(/tests \+4\s*\(AGI\)/)).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Attaque" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Monter au niveau 3" })).toBeTruthy();
   });
 });

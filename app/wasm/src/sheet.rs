@@ -287,14 +287,34 @@ pub struct AbilityOptionLine {
     pub progression: Option<u32>,
 }
 
-/// A capacité held, and where it was acquired.
+/// A capacité held, where it was acquired, and what it gives the tests.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
 pub struct HeldAbility {
     /// The capacité's identifier.
     pub ability: String,
     /// The level-up (COF2) or spending (COC2) that acquired it, `None` for
     /// creation.
     pub progression: Option<u32>,
+    /// Its permanent bonuses to tests (ADR ENG-TEST-BONUSES).
+    pub test_bonuses: Vec<TestBonusLine>,
+    /// The characteristics of its dé bonus to tests, empty when the
+    /// catalogue names none; `None` without a dé bonus.
+    pub bonus_die: Option<Vec<Characteristic>>,
+}
+
+/// A capacité's permanent bonus to some tests.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+pub struct TestBonusLine {
+    /// The bonus as a value, the target of its adjustments.
+    pub value: ValueLine,
+    /// The characteristics of the tests, when the catalogue names them.
+    pub characteristics: Vec<Characteristic>,
+}
+
+/// `characteristics` as the document names them.
+fn named(characteristics: &[co_kernel::Characteristic]) -> Vec<Characteristic> {
+    characteristics.iter().map(|c| (*c).into()).collect()
 }
 
 /// What COC2 computes besides values.
@@ -659,7 +679,12 @@ fn fantasy(
     }
     for weapon in carried(items, Weapon::from_id) {
         for weapon_use in WeaponUse::ALL {
-            if let Some(dice) = weapon.dice(weapon_use) {
+            let dice = match &played {
+                Some(played) => played.damage_dice(weapon, weapon_use),
+                None => character.damage_dice(weapon, weapon_use),
+            };
+            if let Some(dice) = dice {
+                values.push(line(Value::WeaponAttack(weapon, weapon_use)));
                 let mut damage = line(Value::Damage(weapon, weapon_use));
                 damage.dice = Some(dice.to_string());
                 values.push(damage);
@@ -667,6 +692,10 @@ fn fantasy(
         }
         values.push(line(Value::CriticalRange(weapon)));
     }
+    let bonus_dice = match &played {
+        Some(played) => played.bonus_dice(),
+        None => character.bonus_dice(),
+    };
     let details = Details::Fantasy(FantasyDetails {
         family: character
             .family()
@@ -682,16 +711,7 @@ fn fantasy(
         evolutive_die: format!("d{}", character.level().evolutive_die().faces()),
         levels: fantasy_levels(&character),
         ability_options: fantasy_options(&character),
-        abilities_held: character
-            .ranks()
-            .into_iter()
-            .map(|(voie, rank)| HeldAbility {
-                ability: voie.ability(rank).as_str().to_owned(),
-                progression: character
-                    .acquired_at(voie, rank)
-                    .map(|level| u32::from(level.get())),
-            })
-            .collect(),
+        abilities_held: fantasy_held(&character, &bonus_dice, &line),
     });
     let in_play = played.as_ref().map(co_fantasy::InPlay::report);
     Ok(common.sheet(
@@ -781,14 +801,7 @@ fn contemporain(
         disadvantages: character.disadvantages(),
         spendings: contemporain_spendings(&character, spendings),
         rank_five: contemporain_rank_five(&character),
-        abilities_held: character
-            .ranks()
-            .into_iter()
-            .map(|(voie, rank)| HeldAbility {
-                ability: voie.ability(rank).as_str().to_owned(),
-                progression: character.bought_in(voie, rank).map(count),
-            })
-            .collect(),
+        abilities_held: contemporain_held(&character, &line),
     });
     Ok(common.sheet(|c| character.characteristic(c), values, details, None))
 }
@@ -796,6 +809,68 @@ fn contemporain(
 /// A count or number from the engines, as the bindings send it.
 fn count(number: usize) -> u32 {
     u32::try_from(number).unwrap_or(u32::MAX)
+}
+
+/// Every COF2 capacité held, with the level-up that acquired it, its test
+/// bonuses and its dé bonus among `dice`.
+fn fantasy_held(
+    character: &co_fantasy::Character,
+    dice: &[co_fantasy::BonusDie],
+    line: &dyn Fn(co_fantasy::Value) -> ValueLine,
+) -> Vec<HeldAbility> {
+    let bonuses = character.test_bonuses();
+    character
+        .ranks()
+        .into_iter()
+        .map(|(voie, rank)| HeldAbility {
+            ability: voie.ability(rank).as_str().to_owned(),
+            progression: character
+                .acquired_at(voie, rank)
+                .map(|level| u32::from(level.get())),
+            test_bonuses: bonuses
+                .iter()
+                .filter(|bonus| (bonus.voie(), bonus.rank()) == (voie, rank))
+                .map(|bonus| TestBonusLine {
+                    value: line(co_fantasy::Value::TestBonus(*bonus)),
+                    characteristics: named(bonus.characteristics()),
+                })
+                .collect(),
+            bonus_die: dice
+                .iter()
+                .find(|die| (die.voie(), die.rank()) == (voie, rank))
+                .map(|die| named(die.characteristics())),
+        })
+        .collect()
+}
+
+/// Every COC2 capacité held, with the spending that bought it, its test
+/// bonuses and its dé bonus.
+fn contemporain_held(
+    character: &co_contemporain::Character,
+    line: &dyn Fn(co_contemporain::Value) -> ValueLine,
+) -> Vec<HeldAbility> {
+    let bonuses = character.test_bonuses();
+    let dice = character.bonus_dice();
+    character
+        .ranks()
+        .into_iter()
+        .map(|(voie, rank)| HeldAbility {
+            ability: voie.ability(rank).as_str().to_owned(),
+            progression: character.bought_in(voie, rank).map(count),
+            test_bonuses: bonuses
+                .iter()
+                .filter(|bonus| (bonus.voie(), bonus.rank()) == (voie, rank))
+                .map(|bonus| TestBonusLine {
+                    value: line(co_contemporain::Value::TestBonus(*bonus)),
+                    characteristics: named(bonus.characteristics()),
+                })
+                .collect(),
+            bonus_die: dice
+                .iter()
+                .find(|die| (die.voie(), die.rank()) == (voie, rank))
+                .map(|die| named(die.characteristics())),
+        })
+        .collect()
 }
 
 /// What each COF2 level-up offers within the rules.

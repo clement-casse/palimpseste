@@ -162,7 +162,7 @@
     {#if weapons.length > 0}
       <Table class="mt-3">
         <TableHead>
-          <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Usage</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
+          <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Usage</TableHeadCell><TableHeadCell class="px-2 py-2">Attaque</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
         </TableHead>
         <TableBody>
           {#each weapons as { weapon, quantity, damages, critical } (weapon.id)}
@@ -174,6 +174,8 @@
                   </TableHeadCell>
                 {/if}
                 <TableBodyCell class="px-2 py-2">{weapon.uses[i]?.name ?? ""}</TableBodyCell>
+                {@const attackId = dm.id.replace("cof.damage.", "cof.attack.")}
+                <TableBodyCell class="px-2 py-2">{shown(line(attackId), true)}<Marks notes={valueMarks(attackId)} /></TableBodyCell>
                 <TableBodyCell class="px-2 py-2">{damage(dm)}<Marks notes={valueMarks(dm.id)} /></TableBodyCell>
                 {#if i === 0}
                   <TableBodyCell rowspan={damages.length} class="px-2 py-2">

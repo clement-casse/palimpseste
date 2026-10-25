@@ -409,6 +409,59 @@ mod tests {
     }
 
     #[test]
+    fn capacites_held_carry_their_test_bonuses_and_weapons_their_attack() {
+        let mut document = levelled(&[]);
+        document.voies.push(VoieEntry {
+            id: "cof.brute".into(),
+            ranks: vec![1, 2, 3, 4],
+        });
+        document.items = vec![ItemEntry::Weapon {
+            id: "cof.weapon.hache".into(),
+            quantity: 1,
+        }];
+        let sheet = fantasy(document);
+        let Details::Fantasy(details) = &sheet.details else {
+            panic!("fantasy details expected")
+        };
+        let held = |id: &str| {
+            details
+                .abilities_held
+                .iter()
+                .find(|h| h.ability == id)
+                .unwrap()
+        };
+        let shield = held("cof.bouclier.1");
+        assert_eq!(shield.test_bonuses.len(), 1);
+        assert_eq!(shield.test_bonuses[0].value.total, Some(3));
+        assert_eq!(shield.bonus_die, None);
+        assert_eq!(
+            held("cof.brute.4").bonus_die,
+            Some(vec![Characteristic::For])
+        );
+        assert!(value(&sheet, "cof.attack.hache.one-handed").total.is_some());
+        assert_eq!(
+            value(&sheet, "cof.damage.hache.one-handed").dice.as_deref(),
+            Some("1d8")
+        );
+
+        let mut document = ContemporainDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "coc.crime".into(),
+            ranks: vec![1],
+        }];
+        let sheet = contemporain(document);
+        let Details::Contemporain(details) = &sheet.details else {
+            panic!("contemporain details expected")
+        };
+        let pickpocket = &details.abilities_held[0];
+        assert_eq!(pickpocket.test_bonuses[0].value.total, Some(5));
+        assert_eq!(
+            pickpocket.test_bonuses[0].characteristics,
+            [Characteristic::Agi, Characteristic::Cha]
+        );
+    }
+
+    #[test]
     fn level_ups_have_their_status_and_offer() {
         let sheet = fantasy(levelled(&["cof.bouclier.2"]));
         assert_eq!(sheet.progression.len(), 1);
