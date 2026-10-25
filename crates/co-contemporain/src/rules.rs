@@ -44,6 +44,9 @@ pub(crate) const CRIT_RANGE: RuleId = RuleId::from_static("COC.DER.CRIT-RANGE");
 /// D-30).
 pub(crate) const EQUIPMENT: RuleId = RuleId::from_static("COC.CRE.EQUIPMENT");
 
+/// COC.CNT.VOIES: the speciality a capacité asks for.
+pub(crate) const CONTENT_VOIES: RuleId = RuleId::from_static("COC.CNT.VOIES");
+
 /// COC.PRG.COST: rank n costs n XP, within the XP earned.
 pub(crate) const PRG_COST: RuleId = RuleId::from_static("COC.PRG.COST");
 /// COC.PRG.ONE-RANK: one rank at a time (D-09).

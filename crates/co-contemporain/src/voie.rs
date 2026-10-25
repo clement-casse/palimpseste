@@ -6,7 +6,7 @@ use co_kernel::{
 
 use crate::{
     AttackMode, Character, Value,
-    rules::{CAPACITY_POINTS, MAX_VOIES, VOIE_MECHANIC},
+    rules::{CAPACITY_POINTS, CONTENT_VOIES, MAX_VOIES, VOIE_MECHANIC},
 };
 
 /// One of the 18 voies of COC2.
@@ -405,6 +405,27 @@ pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     check_voie_budget(character, violations);
     check_max_voies(character, violations);
     check_capacity_points(character, violations);
+    check_specialities(character, violations);
+}
+
+/// COC.CNT.VOIES: a capacité held that asks for a speciality has one.
+fn check_specialities(character: &Character, violations: &mut Vec<Violation>) {
+    for (voie, ranks) in character.voies() {
+        for rank in ranks {
+            if let Some(asked) = voie.speciality(rank)
+                && character.speciality(voie, rank).is_none()
+            {
+                violations.push(
+                    Violation::incomplete(
+                        CONTENT_VOIES,
+                        VOIE_MECHANIC,
+                        Subject::Ability(voie.ability(rank)),
+                    )
+                    .with_parameter("speciality", asked),
+                );
+            }
+        }
+    }
 }
 
 /// COC.CRE.CAPACITY-POINTS: no rank above the bracket's maximum.
@@ -495,9 +516,17 @@ mod tests {
 
     use super::*;
 
+    /// The voie violations besides the specialities, tested on their own.
     fn voie_violations(character: &Character) -> Vec<Violation> {
         let mut violations = Vec::new();
         check(character, &mut violations);
+        violations.retain(|v| v.rule() != &CONTENT_VOIES);
+        violations
+    }
+
+    fn speciality_violations(character: &Character) -> Vec<Violation> {
+        let mut violations = Vec::new();
+        check_specialities(character, &mut violations);
         violations
     }
 
@@ -519,6 +548,45 @@ mod tests {
             .flat_map(|voie| (1..=5).filter(|r| voie.speciality(rank(*r)).is_some()))
             .count();
         assert_eq!(asking, 42);
+    }
+
+    #[test]
+    fn a_missing_speciality_is_incomplete() {
+        let character = ranks(Character::new(), Voie::Discours, 2);
+        let violations = speciality_violations(&character);
+        assert_eq!(violations.len(), 2);
+        let first = &violations[0];
+        assert_eq!(first.rule(), &CONTENT_VOIES);
+        assert_eq!(first.category(), Category::Incomplete);
+        assert_eq!(
+            first.subject(),
+            &Subject::Ability(Voie::Discours.ability(Rank::new(1)))
+        );
+        assert_eq!(
+            first
+                .parameters()
+                .first()
+                .map(|p| (p.name(), p.value().clone())),
+            Some(("speciality", "approche".into()))
+        );
+        let written = character
+            .with_speciality(Voie::Discours, 1, "persuasion")
+            .with_speciality(Voie::Discours, 2, "négociation");
+        assert_eq!(speciality_violations(&written), []);
+        let erased = written.without_speciality(Voie::Discours, 2);
+        assert_eq!(speciality_violations(&erased).len(), 1);
+    }
+
+    #[test]
+    fn a_speciality_without_its_capacite_is_kept_silently() {
+        let character = Character::new().with_speciality(Voie::Discours, 1, "persuasion");
+        assert_eq!(speciality_violations(&character), []);
+        assert_eq!(
+            character
+                .speciality(Voie::Discours, Rank::new(1))
+                .map(co_kernel::Speciality::as_str),
+            Some("persuasion")
+        );
     }
 
     fn ranks(character: Character, voie: Voie, highest: u8) -> Character {

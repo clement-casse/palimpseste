@@ -699,6 +699,11 @@ impl Character {
         self.spendings.iter()
     }
 
+    /// The speciality chosen for the capacité at `rank` in `voie`.
+    pub(crate) fn speciality(&self, voie: Voie, rank: Rank) -> Option<&Speciality> {
+        self.specialities.get(&(voie, rank))
+    }
+
     /// The characteristic chosen for the rank 5 of `voie`.
     pub(crate) fn raised_characteristic(&self, voie: Voie) -> Option<Characteristic> {
         self.raised.get(&voie).copied()
