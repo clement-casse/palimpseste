@@ -77,11 +77,15 @@ fn content_name(id: &str) -> Option<&'static str> {
         .or_else(|| Voie::from_id(id).map(Voie::name))
 }
 
-/// The display name of the capacité `id`, `<voie>.<rank>`.
+/// The display name of the capacité `id`, `<voie>.<rank>`: its name, then
+/// its voie and rank, since names repeat across voies.
 fn ability_name(id: &str) -> Option<String> {
-    let (voie, rank) = id.rsplit_once('.')?;
-    let rank: u8 = rank.parse().ok()?;
-    Some(format!("{}, rang {rank}", Voie::from_id(voie)?.name()))
+    let (voie, rank) = Voie::from_ability_id(id)?;
+    let place = format!("{}, rang {}", voie.name(), rank.get());
+    Some(match voie.ability_name(rank) {
+        Some(name) => format!("{name} ({place})"),
+        None => place,
+    })
 }
 
 #[cfg(test)]
@@ -140,7 +144,11 @@ mod tests {
         );
         assert_eq!(
             label(Voie::Rage.ability(1.into()).as_str()).as_deref(),
-            Some("Voie de la rage, rang 1")
+            Some("Cri de guerre (Voie de la rage, rang 1)")
+        );
+        assert_eq!(
+            label(Voie::Rage.ability(6.into()).as_str()).as_deref(),
+            Some("Voie de la rage, rang 6")
         );
         assert_eq!(label("cof.unknown"), None);
         assert_eq!(label("cof.unknown.1"), None);

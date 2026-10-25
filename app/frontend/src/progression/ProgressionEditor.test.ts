@@ -47,8 +47,8 @@ describe("a COF level-up", () => {
     open(lhagva());
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Niveau 2");
     expect(screen.getByText("Points de capacité : 0 / 2")).toBeTruthy();
-    await acquire("Voie du pourfendeur, rang 2");
-    await acquire("Voie de la rage, rang 2");
+    await acquire("Charge (Voie du pourfendeur, rang 2)");
+    await acquire("Défier la mort (Voie de la rage, rang 2)");
     expect(screen.getByText("Points de capacité : 2 / 2")).toBeTruthy();
     // Nothing is saved before the level is validated.
     expect(saves(sent)).toHaveLength(0);
@@ -73,11 +73,11 @@ describe("a COF level-up", () => {
   it("keeps the draft on the device across a reload", async () => {
     stubBackend(storing());
     const form = open(lhagva());
-    await acquire("Voie de la rage, rang 2");
+    await acquire("Défier la mort (Voie de la rage, rang 2)");
     form.unmount();
     open(lhagva());
     const acquired = screen.getByRole("list", { name: "Capacités acquises" });
-    expect(within(acquired).getByText("Voie de la rage, rang 2")).toBeTruthy();
+    expect(within(acquired).getByText("Défier la mort (Voie de la rage, rang 2)")).toBeTruthy();
     expect(loadDraft(1)?.number).toBe(2);
   });
 
@@ -92,7 +92,7 @@ describe("a COF level-up", () => {
   it("accepts a rule broken only through a waiver granted on it", async () => {
     const sent = stubBackend(storing());
     open(lhagva());
-    await acquire("Voie du pourfendeur, rang 2");
+    await acquire("Charge (Voie du pourfendeur, rang 2)");
     // Another profil's voie, out of the rules.
     await fireEvent.click(screen.getByRole("button", { name: /Hors règles : autres capacités/ }));
     await fireEvent.change(screen.getByRole("combobox", { name: "Acquérir hors règles" }), {
@@ -140,7 +140,7 @@ describe("a COC spending of XP", () => {
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Dépense d’XP 1");
     expect(screen.getByText("XP restants : 3")).toBeTruthy();
     const list = screen.getByRole("list", { name: "Rangs à acheter" });
-    const row = within(list).getByText("Voie de la survie, rang 3").closest("li");
+    const row = within(list).getByText("Baroudeur (Voie de la survie, rang 3)").closest("li");
     if (!row) throw new Error("no row for survie 3");
     await fireEvent.click(within(row).getByRole("button", { name: "Acheter (3 XP)" }));
     expect(screen.getByText("XP restants : 0")).toBeTruthy();

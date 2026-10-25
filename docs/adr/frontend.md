@@ -129,9 +129,8 @@ above 1 is simply the levels validated during creation: no target level
 is stored. The COC2 XP earned ("+1 XP (fin de séance)") and the sequels
 acquired in play are editor choices, saved at once like the creation
 ones; a sequel is recorded after the engine shows what it changes. A
-capacité is shown by its identifier through `Ability.svelte`
-(`abilityLabel`), today "Voie X, rang n", where its name, description and
-effect will show later. *Why drafts:* a level is gained at once, with the
+capacité is shown by its identifier through `Ability.svelte`: its catalog
+label (name, voie and rank), or, under its voie, its rank and name. *Why drafts:* a level is gained at once, with the
 Game Master; a half-spent level saved on the way would leave the
 character in between.
 
