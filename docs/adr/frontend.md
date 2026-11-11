@@ -168,7 +168,12 @@ to it (ADR ENG-SPECIALITIES); the modifiers that hold only in a
 situation (ADR ENG-SITUATIONAL) are never in a total: listed under the
 combat values and the characteristics ("Selon la situation", with their
 capacité), in each value's breakdown ("En situation"), and in a weapon's
-row, the COC2 XP left and sequels acquired;
+row; each capacité's effects (ADR ENG-ABILITY-EFFECTS) under it, on the
+sheet, in the creation ranks and in what a level-up or spending offers,
+those the engine counts in a total muted ("déjà compté dans la fiche"),
+the others in full, an effect giving a test bonus or a dé bonus showing
+its computed amount on the sheet in place of its text, and in place of
+the capacité's separate bonus line, the COC2 XP left and sequels acquired;
 each COF2 weapon with its attack and the dice the engine gives): a resource bar kept in
 reach (COF2 PV, PM for a character who knows a spell, PC and DR; COC2 the
 échelle de santé, its states from the catalogue, ADR ENG-HEALTH-STATES),

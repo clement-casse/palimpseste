@@ -21,6 +21,7 @@
     LevelUpEntry,
   } from "../wasm/palimpseste_wasm";
   import Ability from "./Ability.svelte";
+  import AbilityEffects from "./AbilityEffects.svelte";
   import AbilityOptionPicker from "./AbilityOptionPicker.svelte";
   import { askingSpeciality } from "./progression";
   import SpecialityField from "./SpecialityField.svelte";
@@ -96,7 +97,10 @@
     <Listgroup class="flex-col" aria-label="Capacités à acquérir">
       {#each offer.acquirable as entry (entry.ability)}
         <ListgroupItem class="justify-between gap-2 text-gray-900 dark:text-white">
-          <Ability {catalog} id={entry.ability} />
+          <span class="flex flex-col gap-1">
+            <Ability {catalog} id={entry.ability} />
+            <AbilityEffects {catalog} id={entry.ability} />
+          </span>
           <Button size="xs" onclick={() => acquire(entry.ability)}>
             Acquérir ({entry.cost} pt{entry.cost > 1 ? "s" : ""})
           </Button>

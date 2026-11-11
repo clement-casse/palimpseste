@@ -5,6 +5,7 @@
 
   import { signed } from "../character/edits";
   import Ability from "../progression/Ability.svelte";
+  import AbilityEffects from "../progression/AbilityEffects.svelte";
   import { type Abilities, scopeLabel } from "../progression/progression";
   import type { HeldAbility, VoieEntry } from "../wasm/palimpseste_wasm";
   import Marks from "./Marks.svelte";
@@ -66,6 +67,8 @@
           <ul class="w-full text-sm text-gray-500 dark:text-gray-400">
             {#each heldIn(voie.id) as h (h.ability)}
               {@const entry = entryOf(h.ability)}
+              <!-- With its effects written, a capacité shows its bonuses in them. -->
+              {@const written = (entry?.effects.length ?? 0) > 0}
               {@const spoken = [...h.testBonuses, ...(h.bonusDie ? [h.bonusDie] : [])].some((b) => b.onSpeciality)}
               <li>
                 <Ability {catalog} id={h.ability} short />{#if h.speciality && !spoken}
@@ -79,16 +82,17 @@
                 {/if}
                 {#if h.progression != null}
                   · {levels ? `niveau ${h.progression}` : `dépense d’XP ${h.progression}`}{/if}
-                {#each h.testBonuses as bonus (bonus.value.id)}
+                {#each written ? [] : h.testBonuses as bonus (bonus.value.id)}
                   · {bonus.value.total == null ? "—" : signed(bonus.value.total)}
                   {scopeLabel(bonus, h.speciality)}{#if bonus.characteristics.length > 0}
                     {` (${bonus.characteristics.join(", ")})`}{/if}<Marks
                     notes={marksAt(notes, { kind: "value", id: bonus.value.id })}
                   />
                 {/each}
-                {#if h.bonusDie}
+                {#if h.bonusDie && !written}
                   · dé bonus : {scopeLabel(h.bonusDie, h.speciality)}{#if h.bonusDie.characteristics.length > 0}{` (${h.bonusDie.characteristics.join(", ")})`}{/if}
                 {/if}
+                <AbilityEffects {catalog} id={h.ability} held={h} {notes} />
               </li>
             {/each}
           </ul>
