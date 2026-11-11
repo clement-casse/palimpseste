@@ -769,6 +769,8 @@ mod tests {
         );
         let links: Vec<_> = tunnels.iter().map(|e| e.bonus.clone()).collect();
         assert_eq!(links, [None, Some(catalog::EffectBonus::Test { index: 1 })]);
+        let tattoos = &entry("cof.pagne.3").effects;
+        assert_eq!(tattoos[0].bonus, Some(catalog::EffectBonus::AllTests));
         let superior = &entry("cof.mage.4").effects;
         assert_eq!(superior[1].bonus, Some(catalog::EffectBonus::Die));
         let brute = entry("cof.brute.1");

@@ -39,13 +39,13 @@
   const dynamic =
     "italic text-primary-700 underline decoration-dotted underline-offset-2 dark:text-primary-400";
 
-  /** The held test bonuses `effect` gives: its number, or all for 0. */
+  /** The held test bonuses `effect` gives: by its number, or all of them. */
   function bonuses(effect: AbilityEffectEntry): TestBonusLine[] {
     const bonus = effect.bonus;
-    if (!held || bonus?.kind !== "test") return [];
-    return held.testBonuses.filter(
-      (line) => bonus.index === 0 || line.value.id.endsWith(`.${bonus.index}`),
-    );
+    if (!held || !bonus) return [];
+    if (bonus.kind === "all-tests") return held.testBonuses;
+    if (bonus.kind !== "test") return [];
+    return held.testBonuses.filter((line) => line.value.id.endsWith(`.${bonus.index}`));
   }
 
   const characteristics = (list: string[]) => (list.length > 0 ? ` (${list.join(", ")})` : "");

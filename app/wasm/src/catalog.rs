@@ -114,11 +114,14 @@ pub struct AbilityEffectEntry {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum EffectBonus {
-    /// The capacité's test bonus numbered `index`, all of them for 0.
+    /// The capacité's test bonus numbered `index`.
     Test {
-        /// The bonus's number within the capacité, 0 for all.
+        /// The bonus's number within the capacité, from 1.
         index: u8,
     },
+    /// All of the capacité's test bonuses, one at a time.
+    #[serde(rename = "all-tests")]
+    AllTests,
     /// The capacité's dé bonus.
     Die,
 }
@@ -130,6 +133,7 @@ impl From<co_kernel::AbilityEffect> for AbilityEffectEntry {
             computed: effect.application() == co_kernel::Application::Computed,
             bonus: effect.bonus().map(|bonus| match bonus {
                 co_kernel::Bonus::Test(index) => EffectBonus::Test { index },
+                co_kernel::Bonus::AllTests => EffectBonus::AllTests,
                 co_kernel::Bonus::Die => EffectBonus::Die,
             }),
             choice: effect.choice(),
