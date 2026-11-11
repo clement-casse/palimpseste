@@ -3,6 +3,7 @@
   // gap or a rank beyond 5 can be entered, and the engine reports it.
   import { Checkbox } from "flowbite-svelte";
 
+  import AbilityEffects from "../progression/AbilityEffects.svelte";
   import type { Abilities } from "../progression/progression";
 
   let {
@@ -33,8 +34,11 @@
 
 <span class="grid w-full items-start gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-5">
   {#each shown as rank (rank)}
-    <Checkbox title="Rang {rank}" checked={ranks.includes(rank)} onchange={() => toggle(rank)}>
-      {rank}. {names.get(rank) ?? `Rang ${rank}`}
-    </Checkbox>
+    <span class="flex flex-col gap-1">
+      <Checkbox title="Rang {rank}" checked={ranks.includes(rank)} onchange={() => toggle(rank)}>
+        {rank}. {names.get(rank) ?? `Rang ${rank}`}
+      </Checkbox>
+      <AbilityEffects {catalog} id="{voie}.{rank}" />
+    </span>
   {/each}
 </span>

@@ -66,6 +66,39 @@ describe("the COF sheet", () => {
     expect(screen.getByText("Sort · 1 PM")).toBeTruthy();
   });
 
+  it("lists each capacité's effects, those already in the sheet muted", () => {
+    const document = lhagva();
+    if (document.engine !== "fantasy") throw new Error("fantasy expected");
+    document.voies = [...(document.voies ?? []), { id: "cof.nain", ranks: [1, 2] }];
+    open(document);
+    expect(screen.getByText("vision dans le noir 30 m").getAttribute("title")).toBeNull();
+    const effects = screen.getAllByRole("list", { name: "Effets" });
+    const computed = effects
+      .flatMap((list) => within(list).queryAllByText(/\+1 attaque et DM/))
+      .find(Boolean);
+    if (!computed) throw new Error("no computed effect");
+    expect(computed.getAttribute("title")).toBe("Déjà compté dans la fiche");
+    expect(computed.textContent).toContain("(déjà compté dans la fiche)");
+  });
+
+  it("shows a bonus's amount in place of its effect's text, once", () => {
+    const document = lhagva();
+    if (document.engine !== "fantasy") throw new Error("fantasy expected");
+    document.voies = [
+      ...(document.voies ?? []),
+      { id: "cof.nain", ranks: [1] },
+      { id: "cof.mage", ranks: [1, 2, 3, 4] },
+    ];
+    open(document);
+    const stone = screen.getAllByText(/pierre, architecture, mines/);
+    expect(stone).toHaveLength(1);
+    expect(stone[0].textContent).toMatch(/^\s*\+3\s+pierre/);
+    expect(stone[0].closest("ul")?.getAttribute("aria-label")).toBe("Effets");
+    // Occultisme at mage rank 4: rang + 2 is +6.
+    expect(screen.getByText(/\+6\s+connaissances magiques/)).toBeTruthy();
+    expect(screen.getByText(/dé bonus : tous les tests \(INT\)/)).toBeTruthy();
+  });
+
   it("lists the modifiers that hold only in a situation, out of the totals", () => {
     const document = lhagva();
     if (document.engine !== "fantasy") throw new Error("fantasy expected");
