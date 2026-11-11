@@ -732,6 +732,381 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
             c("+1 DEF au rôdeur et au loup par rang 5 de rôdeur"),
         ],
     ),
+    // Voie de la survie.
+    (
+        Voie::Survie,
+        1,
+        &[
+            t(1, "rang + 2 escalade et survie en milieu sauvage"),
+            d("dépense un DR en extérieur : +1d4° PV"),
+        ],
+    ),
+    (
+        Voie::Survie,
+        2,
+        &[d(
+            "1/jour : nourriture pour rang personnes et herbes de soin (1d4° PV par rang)",
+        )],
+    ),
+    (
+        Voie::Survie,
+        3,
+        &[d(
+            "en extérieur : +1 DEF (+2 au rang 5), 10 m de déplacement gratuit, ignore le terrain difficile naturel",
+        )],
+    ),
+    (
+        Voie::Survie,
+        4,
+        &[c("CON +1"), die("dé bonus aux tests de CON")],
+    ),
+    (
+        Voie::Survie,
+        5,
+        &[d(
+            "1/combat à 0 PV : au tour suivant, récupère [4d4° + CON] PV, +5 DEF 1 round, perd les états non permanents",
+        )],
+    ),
+    // Voie du traqueur.
+    (
+        Voie::Traqueur,
+        1,
+        &[
+            t(1, "en extérieur : rang + 2 discrétion, vigilance, pistage"),
+            c("peut échanger le +1 PC de sa famille contre +1 DR"),
+        ],
+    ),
+    (
+        Voie::Traqueur,
+        2,
+        &[d(
+            "attaque au contact rapide : +AGI à l'attaque et aux DM (avec 10 m de déplacement au rang 5)",
+        )],
+    ),
+    (
+        Voie::Traqueur,
+        3,
+        &[
+            d("+1d4° DM contre les animaux"),
+            d("un type d'ennemi juré de plus par rang 5 de rôdeur"),
+        ],
+    ),
+    (
+        Voie::Traqueur,
+        4,
+        &[c("PER +1"), die("dé bonus aux tests de PER")],
+    ),
+    (
+        Voie::Traqueur,
+        5,
+        &[d(
+            "en extérieur : s'éloigne de 30 m et disparaît sur AGI 10 (15 en terrain découvert)",
+        )],
+    ),
+    // Voie du combat à deux armes.
+    (
+        Voie::CombatADeuxArmes,
+        1,
+        &[
+            d(
+                "1/round, après une attaque ratée de la main principale : attaque gratuite de l'autre main",
+            ),
+            d("dague, hachette ou épée courte ; autre arme à une main : dé malus"),
+        ],
+    ),
+    (
+        Voie::CombatADeuxArmes,
+        2,
+        &[d(
+            "avec deux armes : +1 DEF (+2 au rang 5), doublé sans attaque de la main gauche",
+        )],
+    ),
+    (
+        Voie::CombatADeuxArmes,
+        3,
+        &[
+            d(
+                "1/round : une attaque gratuite de l'autre main à chaque attaque de la main principale (autre cible : dé malus)",
+            ),
+            d("remplace le rang 1"),
+        ],
+    ),
+    (
+        Voie::CombatADeuxArmes,
+        4,
+        &[
+            c("au choix : AGI +1 ou FOR +1"),
+            die("avec AGI +1 : dé bonus aux tests d'AGI"),
+            d("avec FOR +1 : la même arme dans chaque main sans dé malus"),
+        ],
+    ),
+    (
+        Voie::CombatADeuxArmes,
+        5,
+        &[d(
+            "les deux armes touchent la même cible dans le tour : +1d4° DM à l'une des attaques",
+        )],
+    ),
+    // Voie de l'assassin.
+    (
+        Voie::Assassin,
+        1,
+        &[
+            t(1, "rang + 2 discrétion, déguisement, dissimuler une arme"),
+            d("langage des signes des voleurs"),
+            d("dé bonus en attaque contre un ennemi surpris"),
+        ],
+    ),
+    (
+        Voie::Assassin,
+        2,
+        &[d(
+            "1/round, ennemi surpris ou de dos, arme légère : +2d4° DM (+1d4°/rang 4 de voleur, max. 7d4°) ; sinon ÷ 2",
+        )],
+    ),
+    (
+        Voie::Assassin,
+        3,
+        &[d(
+            "attaque sournoise en action d'attaque contre un ennemi surpris : +2d4° DM",
+        )],
+    ),
+    (
+        Voie::Assassin,
+        4,
+        &[d(
+            "1/combat : disparaît jusqu'au tour suivant, réapparaît à 20 m, peut porter une attaque sournoise",
+        )],
+    ),
+    (
+        Voie::Assassin,
+        5,
+        &[d(
+            "1/combat : une attaque sournoise est un critique automatique",
+        )],
+    ),
+    // Voie de l'aventurier.
+    (
+        Voie::Aventurier,
+        1,
+        &[
+            t(1, "rang + 2 bluff, séduction, négociation, marché noir"),
+            d("utilise parchemins et baguettes (attaque magique 10 + 2 × rang du sort)"),
+        ],
+    ),
+    (
+        Voie::Aventurier,
+        2,
+        &[d(
+            "CHA opposé à l'INT : un humanoïde doit l'attaquer ; riposte gratuite avec attaque sournoise ou +1d4° DM",
+        )],
+    ),
+    (
+        Voie::Aventurier,
+        3,
+        &[
+            c("+2 DEF et Init (+3 au rang 5)"),
+            d("se relève par une action de mouvement"),
+        ],
+    ),
+    (
+        Voie::Aventurier,
+        4,
+        &[c("CHA +1"), die("dé bonus aux tests de CHA")],
+    ),
+    (
+        Voie::Aventurier,
+        5,
+        &[
+            d(
+                "1/combat : un coup immobilise un humanoïde 1d4 rounds (paralysé si NC < moitié de son niveau)",
+            ),
+            d("contre un immobilisé : attaque sournoise ou +1d4° DM"),
+        ],
+    ),
+    // Voie du déplacement.
+    (
+        Voie::Deplacement,
+        1,
+        &[
+            t(1, "rang + 2 tests de déplacement"),
+            c("+1 DEF et Init (+2 au rang 3, +3 au rang 5)"),
+        ],
+    ),
+    (
+        Voie::Deplacement,
+        2,
+        &[
+            d("DM de chute ÷ 2"),
+            d("une action de mouvement de plus par combat (deux au rang 5)"),
+        ],
+    ),
+    (
+        Voie::Deplacement,
+        3,
+        &[d(
+            "1/round, AGI 15 : franchit un obstacle ou passe derrière un ennemi, puis attaque sournoise ou +1d4° DM",
+        )],
+    ),
+    (
+        Voie::Deplacement,
+        4,
+        &[c("AGI +1"), die("dé bonus aux tests d'AGI")],
+    ),
+    (
+        Voie::Deplacement,
+        5,
+        &[d(
+            "1/round : attaque à distance opposée à l'attaque magique pour éviter un sort qui inflige des DM",
+        )],
+    ),
+    // Voie du roublard.
+    (
+        Voie::Roublard,
+        1,
+        &[
+            t(1, "rang + 2 crochetage, pièges, vol à la tire, estimation"),
+            c("dagues et couteaux lancés : +1 DM (+2 au rang 3, +3 au rang 5)"),
+        ],
+    ),
+    (
+        Voie::Roublard,
+        2,
+        &[
+            t(1, "rang + 2 fouille, pièges, passages secrets, embuscades"),
+            d("DM des pièges ÷ 2"),
+        ],
+    ),
+    (
+        Voie::Roublard,
+        3,
+        &[d(
+            "1/combat : fait le mort (INT 20 pour le voir) ; en se relevant, soigne 1d4° PV et surprend un ennemi au contact",
+        )],
+    ),
+    (
+        Voie::Roublard,
+        4,
+        &[
+            die("dé bonus aux tests d'investigation et de contrefaçon"),
+            d("1 PC : obtient un indice manqué"),
+        ],
+    ),
+    (
+        Voie::Roublard,
+        5,
+        &[d(
+            "3 doses de poison/jour : +2d4° DM et CON ou affaibli, ou endormir par la nourriture",
+        )],
+    ),
+    // Voie du spadassin.
+    (
+        Voie::Spadassin,
+        1,
+        &[
+            c("+AGI à l'Init"),
+            c("arme légère à une main : AGI au lieu de FOR pour toucher (pas aux DM)"),
+            t(1, "rang + 2 intimidation"),
+        ],
+    ),
+    (
+        Voie::Spadassin,
+        2,
+        &[d(
+            "1/combat : détourne une attaque vers un autre ennemi au contact (pas un critique)",
+        )],
+    ),
+    (
+        Voie::Spadassin,
+        3,
+        &[c(
+            "armes légères : critique +2 (18-20), jamais au-delà de 16",
+        )],
+    ),
+    (
+        Voie::Spadassin,
+        4,
+        &[d(
+            "chaque round : attaque gratuite de l'autre main à la dague ou à l'épée courte (sans attaque sournoise)",
+        )],
+    ),
+    (
+        Voie::Spadassin,
+        5,
+        &[d(
+            "critique à l'arme légère : un état 1 round (chacun 1/combat) ou une attaque sournoise en plus",
+        )],
+    ),
+    // Voie de la brute.
+    (
+        Voie::Brute,
+        1,
+        &[
+            c("+FOR aux PV max"),
+            d(
+                "+FOR aux tests de CHA de négociation, persuasion, intimidation, pour lui et ses alliés au contact",
+            ),
+        ],
+    ),
+    (
+        Voie::Brute,
+        2,
+        &[
+            d("+10 à un test de FOR (pas attaque ni DM) pour 1d4° PV"),
+            d("capacités de barbare : limite d'armure relevée à la chemise de mailles"),
+        ],
+    ),
+    (
+        Voie::Brute,
+        3,
+        &[d(
+            "attaque au contact : +1d4° DM, ou −3 en attaque pour +2d4° ; peut échanger des dés de DM contre repousser ou renverser",
+        )],
+    ),
+    (
+        Voie::Brute,
+        4,
+        &[c("FOR +1"), die("dé bonus aux tests de FOR")],
+    ),
+    (
+        Voie::Brute,
+        5,
+        &[
+            c("critique au contact +1"),
+            d("un critique étourdit 1 round"),
+            d("limite d'armure relevée à la cotte de mailles"),
+        ],
+    ),
+    // Voie du pagne.
+    (
+        Voie::Pagne,
+        1,
+        &[t(1, "rang + 2 course, saut, escalade"), c("+1 PV par rang")],
+    ),
+    (
+        Voie::Pagne,
+        2,
+        &[c(
+            "CON au lieu d'AGI à la DEF (plafond de l'armure), sinon +1 DEF (+2 au rang 4)",
+        )],
+    ),
+    (
+        Voie::Pagne,
+        3,
+        &[
+            t(
+                0,
+                "+3 aux tests d'une caractéristique choisie (bonus magique)",
+            ),
+            d("étourdi devient ralenti"),
+        ],
+    ),
+    (
+        Voie::Pagne,
+        4,
+        &[c("CON +1"), die("dé bonus aux tests de CON")],
+    ),
+    (Voie::Pagne, 5, &[c("RD 3, au moins 1 DM par attaque")]),
 ];
 
 #[cfg(test)]
