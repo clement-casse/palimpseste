@@ -752,6 +752,24 @@ mod tests {
                 .collect::<Vec<_>>(),
             [("A", "Action d'attaque")]
         );
+        let tunnels = &entry("cof.nain.1").effects;
+        assert_eq!(
+            tunnels
+                .iter()
+                .map(|e| (e.text.as_str(), e.computed))
+                .collect::<Vec<_>>(),
+            [
+                ("vision dans le noir 30 m", false),
+                (
+                    "+3 pierre, architecture, mines, passages secrets, pièges muraux",
+                    false
+                )
+            ]
+        );
+        let links: Vec<_> = tunnels.iter().map(|e| e.bonus.clone()).collect();
+        assert_eq!(links, [None, Some(catalog::EffectBonus::Test { index: 1 })]);
+        let superior = &entry("cof.mage.4").effects;
+        assert_eq!(superior[1].bonus, Some(catalog::EffectBonus::Die));
         let brute = entry("cof.brute.1");
         assert_eq!((brute.actions.len(), brute.spell_cost), (0, None));
         assert_eq!(entry("cof.humain.1").speciality.as_deref(), Some("origine"));
