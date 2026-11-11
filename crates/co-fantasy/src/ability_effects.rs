@@ -1107,6 +1107,387 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         &[c("CON +1"), die("dé bonus aux tests de CON")],
     ),
     (Voie::Pagne, 5, &[c("RD 3, au moins 1 DM par attaque")]),
+    // Voie du pourfendeur.
+    (
+        Voie::Pourfendeur,
+        1,
+        &[
+            t(1, "rang + 2 aux tests d'AGI pour esquiver"),
+            c("+3 Init"),
+            c("+1 DEF (+2 au rang 5)"),
+        ],
+    ),
+    (
+        Voie::Pourfendeur,
+        2,
+        &[d(
+            "déplacement en ligne droite de 5 à 10 m puis attaque au contact : dé bonus, +1d4° DM",
+        )],
+    ),
+    (
+        Voie::Pourfendeur,
+        3,
+        &[d(
+            "met un ennemi à 0 PV au contact : attaque gratuite contre un autre ennemi au contact",
+        )],
+    ),
+    (
+        Voie::Pourfendeur,
+        4,
+        &[d(
+            "course de 10 m à travers les ennemis : une attaque à −2 contre chacun",
+        )],
+    ),
+    (
+        Voie::Pourfendeur,
+        5,
+        &[d(
+            "1/combat : DM de l'arme automatiques à chaque cible dans un rayon de 5 m",
+        )],
+    ),
+    // Voie du primitif.
+    (
+        Voie::Primitif,
+        1,
+        &[
+            t(
+                1,
+                "en extérieur : rang + 2 survie (récupération comprise) et discrétion",
+            ),
+            c("+1 PV"),
+        ],
+    ),
+    (
+        Voie::Primitif,
+        2,
+        &[
+            c("sans armure : +2 DEF (+3 au rang 5) ; en armure : +1 DEF"),
+            d("se relève par une action de mouvement"),
+        ],
+    ),
+    (
+        Voie::Primitif,
+        3,
+        &[
+            t(1, "rang + 2 repérer pièges et embuscades"),
+            d("immunité aux attaques sournoises des créatures de niveau inférieur"),
+        ],
+    ),
+    (
+        Voie::Primitif,
+        4,
+        &[d(
+            "1/round : attaque magique opposée pour ignorer un sort (dé malus pour un hybride lanceur de sorts)",
+        )],
+    ),
+    (
+        Voie::Primitif,
+        5,
+        &[d(
+            "entre 1 PV et le tiers de ses PV max : récupère 1d4° PV par heure",
+        )],
+    ),
+    // Voie de la rage.
+    (
+        Voie::Rage,
+        1,
+        &[
+            d(
+                "1/combat : les ennemis à 10 m de FOR inférieure ont un dé malus en attaque au contact au tour suivant",
+            ),
+            t(1, "rang + 2 pour résister à la peur"),
+        ],
+    ),
+    (
+        Voie::Rage,
+        2,
+        &[d(
+            "1/combat : CON 10 pour rester à 1 PV au lieu de 0 (automatique en rage)",
+        )],
+    ),
+    (
+        Voie::Rage,
+        3,
+        &[
+            d(
+                "rage 1/jour (+1/rang 4 de barbare) : +1d4° DM au contact, −2 DEF, dé bonus aux tests de VOL",
+            ),
+            d("en rage : ni retraite ni attaque à distance ; VOL 15 pour arrêter avant la fin"),
+        ],
+    ),
+    (
+        Voie::Rage,
+        4,
+        &[d(
+            "1/combat : ignore les DM d'un critique ; peut entrer en rage par une action gratuite",
+        )],
+    ),
+    (
+        Voie::Rage,
+        5,
+        &[d(
+            "consomme deux rages : +2d4° DM, −4 DEF ; VOL 20 pour arrêter avant la fin",
+        )],
+    ),
+    // Voie du cavalier.
+    (
+        Voie::Cavalier,
+        1,
+        &[
+            d(
+                "cheval de guerre : DEF 12 + rang, PV 10 + niveau × 4, Init du chevalier, attaque +5, DM 1d4° + 5",
+            ),
+            d("monté : 10 m de déplacement en plus autour d'une action"),
+            t(1, "rang + 2 équitation et dressage"),
+        ],
+    ),
+    (
+        Voie::Cavalier,
+        2,
+        &[
+            d("monté : +1 DM au contact (+2 au rang 5)"),
+            d("la monture utilise sa DEF ; monter en selle est gratuit"),
+        ],
+    ),
+    (
+        Voie::Cavalier,
+        3,
+        &[d(
+            "charge montée de 10 à 20 m : dé bonus, +1d4° DM ; FOR 20 pour lui barrer la route",
+        )],
+    ),
+    (
+        Voie::Cavalier,
+        4,
+        &[d(
+            "peut appeler sa monture d'un autre plan (L), où elle guérit entièrement",
+        )],
+    ),
+    (
+        Voie::Cavalier,
+        5,
+        &[
+            d(
+                "monture puissante : DEF 20, PV 10 + niveau × 6, DM 2d4° + 5, attaque gratuite 1/round",
+            ),
+            d("monture volante au niveau 9, avec l'accord du MJ"),
+        ],
+    ),
+    // Voie de la guerre.
+    (
+        Voie::Guerre,
+        1,
+        &[
+            d("malus d'armure aux tests ÷ 2"),
+            c("en armure de plaques : +1 DEF par rang 5 de chevalier"),
+        ],
+    ),
+    (
+        Voie::Guerre,
+        2,
+        &[d(
+            "retire la DEF de l'armure (+ bouclier au rang 5) aux DM d'une attaque au contact ; ni étourdi ni renversé par elle",
+        )],
+    ),
+    (
+        Voie::Guerre,
+        3,
+        &[d(
+            "attaque au contact : DM ÷ 2 même ratée (pas sur un 1 naturel)",
+        )],
+    ),
+    (
+        Voie::Guerre,
+        4,
+        &[c("FOR +1"), die("dé bonus aux tests de FOR")],
+    ),
+    (
+        Voie::Guerre,
+        5,
+        &[d(
+            "1/combat : coup d'armure automatique, [1d4° + FOR] DM ; cible de FOR inférieure renversée, étourdie ou repoussée",
+        )],
+    ),
+    // Voie du preux.
+    (
+        Voie::Preux,
+        1,
+        &[
+            d("1/combat : reporte les DM d'une attaque (pas un critique) à la fin du combat"),
+            t(1, "rang + 2 haranguer une foule"),
+        ],
+    ),
+    (
+        Voie::Preux,
+        2,
+        &[d(
+            "contre les attaques à distance : RD selon l'armure (plaques 3, mailles 2, cuir 1)",
+        )],
+    ),
+    (
+        Voie::Preux,
+        3,
+        &[d(
+            "contre un chef ennemi identifiable : +1d4° DM au contact ; il doit l'attaquer (INT 15)",
+        )],
+    ),
+    (
+        Voie::Preux,
+        4,
+        &[c("CHA +1"), die("dé bonus aux tests de CHA")],
+    ),
+    (
+        Voie::Preux,
+        5,
+        &[d(
+            "3 ennemis ou plus l'attaquent au contact dans le round : une action d'attaque en plus",
+        )],
+    ),
+    // Voie du meneur d'hommes.
+    (
+        Voie::MeneurDHomme,
+        1,
+        &[
+            d("immunité à la peur ; ses alliés ajoutent son CHA contre la peur"),
+            t(1, "rang + 2 stratégie et commandement"),
+        ],
+    ),
+    (
+        Voie::MeneurDHomme,
+        2,
+        &[d(
+            "1/round : subit une attaque visant un allié au contact, avec sa DEF, DM − rang",
+        )],
+    ),
+    (
+        Voie::MeneurDHomme,
+        3,
+        &[d(
+            "1/round : dé bonus à un allié qui attaque un ennemi au contact de lui",
+        )],
+    ),
+    (
+        Voie::MeneurDHomme,
+        4,
+        &[d(
+            "1/combat : lui et ses alliés en vue gagnent 10 m, dé bonus et +1d4° DM en attaque",
+        )],
+    ),
+    (
+        Voie::MeneurDHomme,
+        5,
+        &[d(
+            "1/round : un allié en vue gagne une action d'attaque ou de mouvement (1/allié/combat)",
+        )],
+    ),
+    // Voie de la noblesse.
+    (
+        Voie::Noblesse,
+        1,
+        &[
+            d("sait lire et écrire ; une langue de plus"),
+            t(1, "rang + 2 histoire, héraldique, géographie, étiquette"),
+        ],
+    ),
+    (
+        Voie::Noblesse,
+        2,
+        &[
+            d("un écuyer fidèle (caractéristiques selon le niveau)"),
+            c("critique au contact +1"),
+            d("après une récupération complète, le groupe soigne +1d4° PV"),
+        ],
+    ),
+    (
+        Voie::Noblesse,
+        3,
+        &[
+            t(1, "rang + 2 commander et intimider"),
+            d("peut porter la plaque complète (DEF +7) avec toutes les capacités de chevalier"),
+        ],
+    ),
+    (
+        Voie::Noblesse,
+        4,
+        &[d(
+            "contre la piétaille (4 créatures semblables ou plus, jamais des cavaliers) : +1d4° DM",
+        )],
+    ),
+    (
+        Voie::Noblesse,
+        5,
+        &[
+            d("capacité de rang 1 à 3 d'un profil combattant ou aventurier"),
+            die("dé bonus aux tests d'une caractéristique choisie"),
+        ],
+    ),
+    // Voie du bouclier.
+    (
+        Voie::Bouclier,
+        1,
+        &[
+            d("1/round : +2 DEF à un allié au contact contre une attaque"),
+            t(1, "rang + 2 pour éviter la surprise"),
+        ],
+    ),
+    (
+        Voie::Bouclier,
+        2,
+        &[
+            d(
+                "attaque au contact opposée (AGI possible) : bloque une attaque avant son tour (DM ÷ 2 d'un ennemi énorme)",
+            ),
+            d("au rang 5 : action gratuite avec dé malus"),
+        ],
+    ),
+    (
+        Voie::Bouclier,
+        3,
+        &[
+            c("avec un bouclier : +1 DEF (+2 au rang 5)"),
+            d("DM de zone − rang"),
+        ],
+    ),
+    (
+        Voie::Bouclier,
+        4,
+        &[d(
+            "au lieu de parer : test opposé à l'attaque magique pour absorber un sort",
+        )],
+    ),
+    (
+        Voie::Bouclier,
+        5,
+        &[d(
+            "renvoie un sort absorbé à son lanceur (pas un sort de zone)",
+        )],
+    ),
+    // Voie du combat.
+    (
+        Voie::Combat,
+        1,
+        &[
+            c("+3 Init"),
+            d("+3 pour éviter immobilisé ou renversé"),
+            d("une action de mouvement de plus par combat"),
+        ],
+    ),
+    (Voie::Combat, 2, &[d("dé bonus aux manœuvres de combat")]),
+    (
+        Voie::Combat,
+        3,
+        &[d(
+            "accepte un dé malus pour +2d4° DM au contact (+3d4° en action limitée)",
+        )],
+    ),
+    (Voie::Combat, 4, &[d("deux attaques au contact à −2")]),
+    (
+        Voie::Combat,
+        5,
+        &[d(
+            "une attaque au contact à −2 contre chaque ennemi au contact",
+        )],
+    ),
 ];
 
 #[cfg(test)]
