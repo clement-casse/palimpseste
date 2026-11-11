@@ -789,6 +789,15 @@ mod tests {
             ),
             (Some("discipline"), 0, None)
         );
+        let links: Vec<_> = arts
+            .effects
+            .iter()
+            .map(|e| (e.computed, e.bonus.clone()))
+            .collect();
+        assert_eq!(
+            links,
+            [(false, Some(catalog::EffectBonus::Test { index: 1 }))]
+        );
     }
 
     #[test]

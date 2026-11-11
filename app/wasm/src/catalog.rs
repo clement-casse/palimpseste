@@ -654,6 +654,11 @@ fn contemporain() -> ContemporainCatalog {
                     let ability = co_kernel::Rank::new(rank);
                     AbilityEntry {
                         speciality: voie.speciality(ability).map(str::to_owned),
+                        effects: voie
+                            .ability_effects(ability)
+                            .iter()
+                            .map(|effect| (*effect).into())
+                            .collect(),
                         ..ability_entry(
                             voie.ability(ability).as_str(),
                             voie.id().as_str(),
