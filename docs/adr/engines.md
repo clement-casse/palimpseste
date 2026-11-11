@@ -152,9 +152,8 @@ its default or its
 option (a spell's 1 PM, D-23, is the rule's); and its effects name each
 of its test bonuses (0 for all of them) and its dé bonus, and nothing
 else. When a change implements a described effect, it marks it
-computed. Every COF2 capacité has its effects, a test holding it; COC2
-fills its table in batches of voies, a capacité not written yet having
-none. A COC2 rank 5 is tested with the characteristic it raises chosen,
+computed. Every capacité of both engines has its effects, a test
+holding it. A COC2 rank 5 is tested with the characteristic it raises chosen,
 and a "+2 becomes +5" is described on the capacité giving it, the sheet
 showing the raised amount on the bonus it raises.
 
