@@ -444,8 +444,10 @@ pub struct BonusDieLine {
 
 /// The speciality `specialities` give the capacité `ability`.
 fn speciality_of(specialities: &[SpecialityEntry], ability: &str) -> Option<String> {
+    // The last entry wins, as when the document converts to the engine.
     specialities
         .iter()
+        .rev()
         .find(|entry| entry.ability == ability)
         .map(|entry| entry.speciality.clone())
 }
@@ -1023,6 +1025,7 @@ fn fantasy_held(
             choice: document
                 .ability_options
                 .iter()
+                .rev()
                 .find(|entry| entry.ability == voie.ability(rank).as_str())
                 .and_then(|entry| co_fantasy::AbilityOption::from_id(&entry.option))
                 .map(|option| option.name().to_owned()),
@@ -1070,6 +1073,7 @@ fn contemporain_held(
             choice: document
                 .raised_characteristics
                 .iter()
+                .rev()
                 .find(|entry| rank.get() == 5 && entry.voie == voie.id().as_str())
                 .map(|entry| {
                     co_kernel::Characteristic::from(entry.characteristic)
