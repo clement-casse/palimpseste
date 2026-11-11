@@ -15,6 +15,7 @@ builds a complete character. Read it first.
 |---|---|---|
 | `character.rs` | `Character` (the choices and their `with_*` / `without_*` builders), `Value` (`FIXED`, `name()`), `Target`, `AttackMode` (`id()`, `name()`); the `violations()` and `report()` entry points | |
 | `rules.rs` | every `RuleId`, `Mechanic` and engine `ValueId` constant | |
+| `ability_effects.rs` | the effects of each capacité in our own words, computed or described | ENG-ABILITY-EFFECTS |
 | `age.rs` | `Age`, `AgeBracket`, the limits of each bracket | COC.CRE.AGE-BRACKET |
 | `domaine.rs` | `Domaine` (18), its voie slots and social class requirements | COC.CRE.DOMAINE, COC.CNT.DOMAINES |
 | `voie.rs` | `Voie` (18), the names of its capacités, the characteristic each rank 5 raises, the speciality a capacité asks for, the checks on the ranks acquired and the specialities | CO.VOIE.* (the kernel's `voie_rank_violations`), COC.CRE.CAPACITY-POINTS, COC.CRE.MAX-VOIES, COC.CNT.VOIES |
