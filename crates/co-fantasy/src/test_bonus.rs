@@ -102,6 +102,12 @@ impl TestBonus {
         }
     }
 
+    /// The bonus's number within its capacité, from 1.
+    #[cfg(test)]
+    pub(crate) const fn index(self) -> u8 {
+        self.index
+    }
+
     /// Every bonus of the catalogue, in voie and rank order.
     pub(crate) fn all() -> impl Iterator<Item = Self> {
         let mut keys: Vec<Self> = BONUSES
@@ -484,6 +490,14 @@ const BONUS_DICE: &[Die] = &[
     // Esprit supérieur.
     heroic(Voie::Mage, 4, Int),
 ];
+
+/// Whether the capacité at `rank` in `voie` gives a dé bonus to tests.
+#[cfg(test)]
+pub(crate) fn gives_bonus_die(voie: Voie, rank: u8) -> bool {
+    BONUS_DICE
+        .iter()
+        .any(|(_, _, effect)| (effect.voie(), effect.rank()) == (voie, rank))
+}
 
 /// Whether the effects of `bonus` apply to the character.
 fn applies(character: &Character, values: &Characteristics, bonus: TestBonus) -> bool {

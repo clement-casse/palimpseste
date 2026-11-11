@@ -134,6 +134,26 @@ another characteristic, listed on that characteristic. *Why
 not toggles:* a situation changes from one attack to the next; the sheet
 shows the modifier, the player applies it.
 
+**ENG-ABILITY-EFFECTS: Every capacité lists its effects.**
+`Voie::ability_effects(rank)` gives a capacité's effects (ADR
+KER-ABILITY-EFFECTS) from a table of rows (voie, rank, effects) in
+`ability_effects.rs`: short French texts written for this application,
+rules only, never the book's wording nor a translation of the co-rules
+catalogue, at most 120 characters each, the action and PM cost left to
+`actions` and `spell_cost`. An effect is `Computed` only when the engine
+counts it in a total of the sheet (ADR KER-ABILITY-EFFECTS), an option
+chosen once included; test bonuses, dé bonus, masteries, armour limits,
+weapon size and situational modifiers are `Described`. A described
+effect giving a test bonus or a dé bonus names it (`Bonus`), so the sheet
+shows its amount. Two tests hold the table to the engine: a capacité has
+a computed effect exactly when it is named by a characteristic or a
+value, or changes a weapon's attack or dice, with its default or its
+option (a spell's 1 PM, D-23, is the rule's); and its effects name each
+of its test bonuses (0 for all of them) and its dé bonus, and nothing
+else. When a change implements a described effect, it marks it
+computed. The table is filled in batches of voies; until the last, a
+capacité not written yet has no effects.
+
 **ENG-FINDINGS: One finding per waiver.** Waivers match rule and subject
 and ignore severity (ADR KER-MATCHING), so two findings a waiver could
 confuse get distinct rules or subjects. COC.CRE.CARAC is split into
