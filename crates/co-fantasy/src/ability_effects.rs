@@ -1488,6 +1488,387 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
             "une attaque au contact à −2 contre chaque ennemi au contact",
         )],
     ),
+    // Voie du maître d'armes.
+    (
+        Voie::MaitreDArmes,
+        1,
+        &[
+            d(
+                "+1 en attaque avec une catégorie d'armes choisie (épées, haches, masses, lances, armes de jet)",
+            ),
+            t(1, "rang + 2 expertise des armes, réputation martiale"),
+        ],
+    ),
+    (
+        Voie::MaitreDArmes,
+        2,
+        &[d("armes de prédilection : critique +1")],
+    ),
+    (
+        Voie::MaitreDArmes,
+        3,
+        &[
+            d("armes de prédilection : +1 DM"),
+            d("chaque rang 5 de guerrier : une catégorie de plus ou +1 DM (max. +6)"),
+        ],
+    ),
+    (
+        Voie::MaitreDArmes,
+        4,
+        &[d(
+            "arme de prédilection : dé bonus et +1d4° DM, ou désarme un ennemi de NC < bonus aux DM",
+        )],
+    ),
+    (
+        Voie::MaitreDArmes,
+        5,
+        &[d(
+            "1/round : attaque contre un ennemi au contact qui vient de le rater",
+        )],
+    ),
+    // Voie de la résistance.
+    (
+        Voie::Resistance,
+        1,
+        &[
+            c("PV max + (rang + 2)"),
+            t(1, "rang + 2 pour résister à l'effort, la chaleur, le froid"),
+        ],
+    ),
+    (
+        Voie::Resistance,
+        2,
+        &[
+            d("repos court en 10 min (5 au rang 4)"),
+            t(1, "+ rang pour résister à étourdi et affaibli"),
+        ],
+    ),
+    (
+        Voie::Resistance,
+        3,
+        &[
+            c("+1 DEF, sauf avec l'option armure lourde"),
+            d("option : armure de plaques permise avec toutes les capacités de guerrier"),
+        ],
+    ),
+    (
+        Voie::Resistance,
+        4,
+        &[c("CON +1"), die("dé bonus aux tests de CON")],
+    ),
+    (
+        Voie::Resistance,
+        5,
+        &[
+            c("+1 DEF"),
+            d("1/combat : agit un round de plus à 0 PV"),
+            d("pas de dé malus immobilisé ; peut attaquer étourdi"),
+        ],
+    ),
+    // Voie du soldat.
+    (
+        Voie::Soldat,
+        1,
+        &[
+            d("1/round : attaque gratuite contre une créature au contact qui s'éloigne"),
+            t(1, "rang + 2 contre l'alcool et les privations"),
+        ],
+    ),
+    (
+        Voie::Soldat,
+        2,
+        &[d(
+            "1/round, après le jet : 1d4° PV pour +5 à un test de FOR ou de CON",
+        )],
+    ),
+    (
+        Voie::Soldat,
+        3,
+        &[d(
+            "1/round : attaque gratuite contre un ennemi au contact qui en attaque un autre",
+        )],
+    ),
+    (
+        Voie::Soldat,
+        4,
+        &[c("FOR +1"), die("dé bonus aux tests de FOR")],
+    ),
+    (
+        Voie::Soldat,
+        5,
+        &[
+            d("le rang 1 vaut contre AGI + 2 ennemis par round ; touché, l'ennemi s'arrête"),
+            c("+1 DEF"),
+        ],
+    ),
+    // Voie de l'air.
+    (
+        Voie::Air,
+        1,
+        &[
+            d("message de 10 mots à une cible connue ou visible (CHA × 100 m), entend la réponse"),
+            c("+1 Init, +1 DEF"),
+        ],
+    ),
+    (
+        Voie::Air,
+        2,
+        &[
+            d("CHA min : qui l'attaque au contact subit 1d4° DM"),
+            d("action d'attaque : décharge à 10 m, [1d4° + CHA] DM"),
+        ],
+    ),
+    (
+        Voie::Air,
+        3,
+        &[d(
+            "déplace un objet ou une cible consentante de 50 kg/rang à 20 m pendant CHA min ; peut la lâcher sur une cible surprise",
+        )],
+    ),
+    (
+        Voie::Air,
+        4,
+        &[d("ligne de 10 m : [4d4° + CHA] DM (AGI : ÷ 2)")],
+    ),
+    (
+        Voie::Air,
+        5,
+        &[d(
+            "intangible CHA min : traverse les murs, immunité aux DM physiques ; ni attaque ni sort",
+        )],
+    ),
+    // Voie de la divination.
+    (
+        Voie::Divination,
+        1,
+        &[
+            d(
+                "attaque magique opposée : révèle l'identité publique d'une créature de NC inférieur",
+            ),
+            c("+1 Init et +1 DEF (+1 au rang 3, +1 par rang 5 d'ensorceleur)"),
+        ],
+    ),
+    (
+        Voie::Divination,
+        2,
+        &[d(
+            "CHA min : détecte les créatures invisibles ou cachées à 20 m",
+        )],
+    ),
+    (
+        Voie::Divination,
+        3,
+        &[d(
+            "CHA rounds : voit et entend un lieu connu, ou derrière une porte touchée",
+        )],
+    ),
+    (
+        Voie::Divination,
+        4,
+        &[
+            c("PER +1"),
+            die("dé bonus aux tests de PER"),
+            c("+PER aux PM"),
+        ],
+    ),
+    (
+        Voie::Divination,
+        5,
+        &[d(
+            "1/combat, pendant un round : +10 en attaque, DEF et PER, DM subis ÷ 2, agit quand il veut",
+        )],
+    ),
+    // Voie de l'envoûteur.
+    (
+        Voie::Envouteur,
+        1,
+        &[
+            d(
+                "attaque magique opposée (20 m) : la cible obéit à un ordre de 2 ou 3 mots au tour suivant",
+            ),
+            t(1, "rang + 2 persuasion et séduction"),
+        ],
+    ),
+    (
+        Voie::Envouteur,
+        2,
+        &[d(
+            "1/combat : [1d4° + CHA] créatures de faible NC dans une zone de 10 m dorment CHA min (NC max. relevé aux rangs 4 et 5)",
+        )],
+    ),
+    (
+        Voie::Envouteur,
+        3,
+        &[d(
+            "attaque magique opposée : cible confuse CHA rounds (VOL pour en sortir)",
+        )],
+    ),
+    (
+        Voie::Envouteur,
+        4,
+        &[d(
+            "attaque magique opposée : un humanoïde de niveau inférieur agit en vieil ami jusqu'à ce qu'on l'attaque",
+        )],
+    ),
+    (
+        Voie::Envouteur,
+        5,
+        &[d(
+            "attaque magique opposée : contrôle une cible de niveau inférieur CHA min (une seule action si trop haut)",
+        )],
+    ),
+    // Voie des illusions.
+    (
+        Voie::Illusions,
+        1,
+        &[
+            d(
+                "illusion fixe visuelle et sonore (2 m de côté par rang, 50 m) pendant CHA min ; animée au rang 4",
+            ),
+            t(1, "rang + 2 pour tromper"),
+        ],
+    ),
+    (
+        Voie::Illusions,
+        2,
+        &[d(
+            "[1d4 + CHA] rounds : une attaque qui le touche est annulée sur 5-6 au d6",
+        )],
+    ),
+    (
+        Voie::Illusions,
+        3,
+        &[d(
+            "attaque illusoire : [3d4° + CHA] à une cible ou [2d4° + CHA] à rang cibles ; un test de PER l'annule",
+        )],
+    ),
+    (
+        Voie::Illusions,
+        4,
+        &[d(
+            "prend l'apparence d'une créature vue, de même taille, pendant CHA min",
+        )],
+    ),
+    (
+        Voie::Illusions,
+        5,
+        &[d(
+            "attaque magique opposée : un humanoïde vivant tombe à 0 PV (de niveau égal ou supérieur : étourdi 1 round)",
+        )],
+    ),
+    // Voie de l'invocation.
+    (
+        Voie::Invocation,
+        1,
+        &[d(
+            "attaque magique contre la DEF à 20 m : [1d4° + CHA] DM ; cible de faible NC renversée sauf FOR 10",
+        )],
+    ),
+    (
+        Voie::Invocation,
+        2,
+        &[d(
+            "force invisible qui fait des tâches simples à 20 m pendant CHA min (FOR = CHA)",
+        )],
+    ),
+    (
+        Voie::Invocation,
+        3,
+        &[d(
+            "lame d'énergie rang rounds : attaque magique gratuite chaque round à 20 m, [1d4° + CHA] DM",
+        )],
+    ),
+    (
+        Voie::Invocation,
+        4,
+        &[d("se téléporte avec CHA alliés jusqu'à 60 m, en vue")],
+    ),
+    (
+        Voie::Invocation,
+        5,
+        &[d(
+            "mur invisible indestructible ou dôme de 3 m pendant CHA min",
+        )],
+    ),
+    // Voie des artefacts.
+    (
+        Voie::Artefacts,
+        1,
+        &[
+            c("bâton : [1d4° + INT] DM magiques"),
+            d(
+                "au rang 3 : attaque au contact en action limitée avec l'attaque magique, [2d4° + INT] DM",
+            ),
+        ],
+    ),
+    (
+        Voie::Artefacts,
+        2,
+        &[
+            d(
+                "ouvre une porte fermée (attaque magique contre la serrure) ou la scelle INT min (+5 solidité et RD)",
+            ),
+            d("au rang 4 : scellé permanent avec une gemme de 100 pa"),
+        ],
+    ),
+    (
+        Voie::Artefacts,
+        3,
+        &[d(
+            "sac de 50 kg par rang ; 1/heure, des objets temporaires d'au plus 25 pa",
+        )],
+    ),
+    (
+        Voie::Artefacts,
+        4,
+        &[d(
+            "onde de choc de 10 m : [3d4° + INT] DM automatiques ; FOR ou renversé",
+        )],
+    ),
+    (
+        Voie::Artefacts,
+        5,
+        &[d(
+            "appareil : Téléportation, Interruption du temps, Forme éthérée, Prescience, 1/jour chacun (échoue sur 1-2)",
+        )],
+    ),
+    // Voie des élixirs.
+    (
+        Voie::Elixirs,
+        1,
+        &[
+            d("soigne 1d4° PV et donne un dé bonus aux 3 tests suivants dans les 30 min"),
+            t(1, "rang + 2 alchimie et identifier les potions"),
+        ],
+    ),
+    (
+        Voie::Elixirs,
+        2,
+        &[d(
+            "lancé à 10 m, explosion de 3 m : 2d4° DM (3d4° au rang 4, 4d4° au rang 5) ; AGI : ÷ 2",
+        )],
+    ),
+    (
+        Voie::Elixirs,
+        3,
+        &[d(
+            "après 1 min : soigne [2d4° + INT] PV ou guérit un poison",
+        )],
+    ),
+    (
+        Voie::Elixirs,
+        4,
+        &[d(
+            "apprend INT élixirs (max. 4) : Forme gazeuse, Maîtrise des éléments, Chute ralentie, Masque mortuaire",
+        )],
+    ),
+    (
+        Voie::Elixirs,
+        5,
+        &[d(
+            "apprend INT élixirs (max. 4, chacun en vaut deux) : Invisibilité, Vol, Accélération, Masque du prédateur",
+        )],
+    ),
 ];
 
 #[cfg(test)]
@@ -1593,7 +1974,7 @@ mod tests {
     /// Whether the engine counts the capacité at `rank` in `voie` in a total,
     /// with its default or its option: named by a characteristic or a value,
     /// without armour or in plate with a shield, at level 1 or 10; or
-    /// changing a weapon's attack or dice from the ranks below it.
+    /// changing a weapon's attack, DM or dice from the ranks below it.
     fn computed(voie: Voie, rank: u8) -> bool {
         [false, true]
             .into_iter()
@@ -1605,12 +1986,25 @@ mod tests {
         let id = voie.ability(Rank::new(rank)).as_str().to_owned();
         let held = ranks(voie, rank, optional);
         let below = ranks(voie, rank - 1, optional);
-        let total = |c: &Character, value| c.value(value).map(|v| v.total());
+        // A total without the other capacités' terms: a lower rank reaching
+        // a higher amount (Doigts agiles at rank 5) is not this capacité.
+        let total = |c: &Character, value| {
+            c.value(value).map(|line| {
+                line.contributions()
+                    .iter()
+                    .filter(
+                        |t| !matches!(t.source(), Source::Ability(other) if other.as_str() != id),
+                    )
+                    .map(Contribution::amount)
+                    .sum::<i32>()
+            })
+        };
         let differs = WEAPONS.iter().any(|w| {
             WeaponUse::ALL.iter().any(|u| {
                 held.damage_dice(*w, *u) != below.damage_dice(*w, *u)
-                    || total(&held, Value::WeaponAttack(*w, *u))
-                        != total(&below, Value::WeaponAttack(*w, *u))
+                    || [Value::WeaponAttack(*w, *u), Value::Damage(*w, *u)]
+                        .into_iter()
+                        .any(|value| total(&held, value) != total(&below, value))
             })
         });
         let plated = |c: &Character| {
