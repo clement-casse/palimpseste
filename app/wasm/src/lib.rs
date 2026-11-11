@@ -933,10 +933,17 @@ mod tests {
             id: "cof.combat-a-deux-armes".into(),
             ranks: vec![1, 2, 3, 4],
         }];
-        document.ability_options = vec![AbilityOptionEntry {
-            ability: "cof.combat-a-deux-armes.4".into(),
-            option: "cof.option.for".into(),
-        }];
+        // Two entries for one capacité: the last wins, as in the engine.
+        document.ability_options = vec![
+            AbilityOptionEntry {
+                ability: "cof.combat-a-deux-armes.4".into(),
+                option: "cof.option.agi".into(),
+            },
+            AbilityOptionEntry {
+                ability: "cof.combat-a-deux-armes.4".into(),
+                option: "cof.option.for".into(),
+            },
+        ];
         let Details::Fantasy(details) = fantasy(document).details else {
             panic!("fantasy details expected");
         };
