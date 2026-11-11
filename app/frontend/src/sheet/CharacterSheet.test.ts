@@ -208,6 +208,18 @@ describe("the COC sheet", () => {
     expect(member.closest("ul")?.getAttribute("aria-label")).toBe("Effets");
   });
 
+  it("shows the characteristic a rank 5 raises beside its effect, or that it is to choose", () => {
+    const document = amelia();
+    if (document.engine !== "contemporain") throw new Error("contemporain expected");
+    document.voies = [...(document.voies ?? []), { id: "coc.crime", ranks: [1, 2, 3, 4, 5] }];
+    const { unmount } = open(document, "Amelia");
+    expect(screen.getByText(/PER ou CHA \+1/).textContent).toMatch(/à choisir/);
+    unmount();
+    document.raisedCharacteristics = [{ voie: "coc.crime", characteristic: "CHA" }];
+    open(document, "Amelia");
+    expect(screen.getByText(/PER ou CHA \+1/).textContent).toMatch(/choisi : CHA/);
+  });
+
   it("notes a characteristic tested in place of another", () => {
     const document = amelia();
     if (document.engine !== "contemporain") throw new Error("contemporain expected");

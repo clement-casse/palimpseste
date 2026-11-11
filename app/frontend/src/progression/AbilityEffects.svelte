@@ -3,7 +3,9 @@
   // the engine counts in a total are muted; the others are what the player
   // applies, so they stand out. Given the capacité as held, an effect giving
   // a test bonus or a dé bonus shows its computed amount in place of its
-  // text ("+4 escalade" for "rang + 2 escalade").
+  // text ("+4 escalade" for "rang + 2 escalade"), and an effect depending on
+  // a choice shows the option taken ("PER ou VOL +1 · choisi : VOL"), or
+  // that it is still to choose.
   import { signed } from "../character/edits";
   import Marks from "../sheet/Marks.svelte";
   import { type Note, marksAt } from "../sheet/notes";
@@ -35,9 +37,15 @@
   <ul class="text-xs leading-snug" aria-label="Effets">
     {#each effects as effect, i (i)}
       {@const given = bonuses(effect)}
-      {#if effect.computed}
+      {#if effect.choice && held && !held.choice}
+        <li class="text-gray-900 dark:text-white">
+          {effect.text} · <strong class="text-primary-700 dark:text-primary-400">à choisir</strong>
+        </li>
+      {:else if effect.computed}
         <li class="text-gray-400 dark:text-gray-500" title="Déjà compté dans la fiche">
-          {effect.text}<span class="sr-only"> (déjà compté dans la fiche)</span>
+          {effect.text}{#if effect.choice && held?.choice} · choisi : {held.choice}{/if}<span
+            class="sr-only"
+          > (déjà compté dans la fiche)</span>
         </li>
       {:else if given.length > 0}
         {#each given as line (line.value.id)}
