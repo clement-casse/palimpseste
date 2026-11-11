@@ -105,6 +105,9 @@ pub struct AbilityEffectEntry {
     pub computed: bool,
     /// The bonus it gives, whose amount the sheet shows in its place.
     pub bonus: Option<EffectBonus>,
+    /// Whether it depends on a choice recorded for its capacité, which the
+    /// sheet shows beside it.
+    pub choice: bool,
 }
 
 /// The bonus a described effect gives.
@@ -129,6 +132,7 @@ impl From<co_kernel::AbilityEffect> for AbilityEffectEntry {
                 co_kernel::Bonus::Test(index) => EffectBonus::Test { index },
                 co_kernel::Bonus::Die => EffectBonus::Die,
             }),
+            choice: effect.choice(),
         }
     }
 }
