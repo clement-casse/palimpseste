@@ -77,7 +77,7 @@ fn fantasy_written(character: &co_fantasy::Character) -> Vec<WrittenEffects> {
         &co_fantasy::Voie::ALL,
         co_fantasy::Voie::ability_effects,
         |voie, rank| voie.ability(rank).as_str().to_owned(),
-        |voie, rank| character.ability_effects(voie, rank),
+        |voie, rank| character.written_effects(voie, rank),
     )
 }
 
@@ -87,7 +87,7 @@ fn contemporain_written(character: &co_contemporain::Character) -> Vec<WrittenEf
         &co_contemporain::Voie::ALL,
         co_contemporain::Voie::ability_effects,
         |voie, rank| voie.ability(rank).as_str().to_owned(),
-        |voie, rank| character.ability_effects(voie, rank),
+        |voie, rank| character.written_effects(voie, rank),
     )
 }
 
@@ -111,7 +111,7 @@ fn written_effects<V: Copy>(
     voies: &[V],
     effects: impl Fn(V, co_kernel::Rank) -> &'static [co_kernel::AbilityEffect],
     id: impl Fn(V, co_kernel::Rank) -> String,
-    written: impl Fn(V, co_kernel::Rank) -> Vec<Vec<co_kernel::EffectPart>>,
+    written: impl Fn(V, co_kernel::Rank) -> Vec<(co_kernel::AbilityEffect, Vec<co_kernel::EffectPart>)>,
 ) -> Vec<WrittenEffects> {
     voies
         .iter()
@@ -119,7 +119,10 @@ fn written_effects<V: Copy>(
         .filter(|(voie, rank)| effects(*voie, *rank).iter().any(|e| !e.terms().is_empty()))
         .map(|(voie, rank)| WrittenEffects {
             ability: id(voie, rank),
-            effects: written(voie, rank).into_iter().map(part_lines).collect(),
+            effects: written(voie, rank)
+                .into_iter()
+                .map(|(_, parts)| part_lines(parts))
+                .collect(),
         })
         .collect()
 }
