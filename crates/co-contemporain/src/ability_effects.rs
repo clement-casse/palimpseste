@@ -5,8 +5,8 @@ use co_kernel::{AbilityEffect, Bonus, Rank};
 
 use crate::Voie;
 
-/// The effects of the capacité at `rank` in `voie`, empty when not written
-/// yet or outside ranks 1 to 5.
+/// The effects of the capacité at `rank` in `voie`, empty outside ranks 1
+/// to 5.
 pub(crate) fn of(voie: Voie, rank: Rank) -> &'static [AbilityEffect] {
     EFFECTS
         .iter()
@@ -425,6 +425,396 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
             c("CHA ou INT +1"),
         ],
     ),
+    // Voie de la furtivité.
+    (
+        Voie::Furtivite,
+        1,
+        &[t(
+            1,
+            "+5 en AGI pour se déplacer en silence ou agir discrètement",
+        )],
+    ),
+    (
+        Voie::Furtivite,
+        2,
+        &[
+            t(1, "+5 aux tests de PER des cinq sens"),
+            d("PER 15 pour éviter la surprise ou un piège"),
+        ],
+    ),
+    (
+        Voie::Furtivite,
+        3,
+        &[d(
+            "−5 à qui veut se souvenir de lui, le trouver, le filer ou le repérer (un compagnon au rang 4, deux au rang 5)",
+        )],
+    ),
+    (
+        Voie::Furtivite,
+        4,
+        &[
+            t(
+                1,
+                "+5 en PER pour trouver une cachette, une faille de sécurité, un accès discret",
+            ),
+            d("réussi : dé bonus au test d'AGI qui suit"),
+        ],
+    ),
+    (
+        Voie::Furtivite,
+        5,
+        &[
+            die("dé bonus à un test des rangs 1 à 4"),
+            d("une planque secrète (5 semaines d'autonomie)"),
+            c("PER ou AGI +1"),
+        ],
+    ),
+    // Voie de l'investigation.
+    (
+        Voie::Investigation,
+        1,
+        &[t(
+            1,
+            "+1 par rang pour trouver un indice (PER) ou remarquer un détail (INT) en fouillant",
+        )],
+    ),
+    (
+        Voie::Investigation,
+        2,
+        &[die("dé bonus aux tests d'INT d'une spécialité")],
+    ),
+    (
+        Voie::Investigation,
+        3,
+        &[
+            d("fouilles en 1d6 au lieu de 2d6"),
+            d("le MJ signale un indice manqué : nouveau test de PER ou d'INT 15"),
+        ],
+    ),
+    (
+        Voie::Investigation,
+        4,
+        &[
+            d("mémoire parfaite sur demande"),
+            die("dé bonus dans une deuxième spécialité"),
+        ],
+    ),
+    (
+        Voie::Investigation,
+        5,
+        &[d("durée de fouille réduite d'un cran"), c("INT ou PER +1")],
+    ),
+    // Voie des langues.
+    (
+        Voie::Langues,
+        1,
+        &[d("parle, lit et écrit une langue de plus par rang")],
+    ),
+    (
+        Voie::Langues,
+        2,
+        &[t(
+            1,
+            "+5 en INT sur la géographie, l'histoire et la culture d'un pays dont il parle la langue",
+        )],
+    ),
+    (
+        Voie::Langues,
+        3,
+        &[t(
+            1,
+            "+5 en INT pour se servir d'une langue inconnue d'une famille qu'il parle",
+        )],
+    ),
+    (
+        Voie::Langues,
+        4,
+        &[t(
+            1,
+            "+5 en INT pour déchiffrer écritures et codes inconnus, et en mathématiques",
+        )],
+    ),
+    (
+        Voie::Langues,
+        5,
+        &[die("dé bonus aux tests des rangs 2 à 4"), c("INT +1")],
+    ),
+    // Voie de la médecine.
+    (
+        Voie::Medecine,
+        1,
+        &[
+            t(
+                1,
+                "+5 en INT pour les premiers soins et stabiliser un mourant",
+            ),
+            t(
+                2,
+                "+1 par rang aux tests de VOL contre le choc des scènes médicales",
+            ),
+        ],
+    ),
+    (
+        Voie::Medecine,
+        2,
+        &[
+            t(
+                1,
+                "+5 en INT dans une spécialité médicale et en culture médicale",
+            ),
+            c("INT au lieu de FOR ou d'AGI aux DM, si elle est plus haute"),
+        ],
+    ),
+    (
+        Voie::Medecine,
+        3,
+        &[
+            d("1d6 h et INT 15 : annule une séquelle physique de moins de 24 h"),
+            t(1, "+5 dans une deuxième spécialité médicale"),
+        ],
+    ),
+    (
+        Voie::Medecine,
+        4,
+        &[
+            d("pas de malus pour de mauvaises conditions ou des soins improvisés"),
+            t(1, "+5 avec une médecine traditionnelle"),
+        ],
+    ),
+    (
+        Voie::Medecine,
+        5,
+        &[
+            t(1, "+5 aux tests sociaux sur ses spécialités"),
+            die("dé bonus en INT dans une spécialité choisie des rangs 2 ou 4"),
+            c("INT +1"),
+        ],
+    ),
+    // Voie de la psychologie.
+    (
+        Voie::Psychologie,
+        1,
+        &[t(
+            1,
+            "+5 en PER pour lire l'état émotionnel et les attitudes",
+        )],
+    ),
+    (
+        Voie::Psychologie,
+        2,
+        &[d(
+            "2 min d'échange, PER opposée (avec le +5) : détecte un mensonge ou une dissimulation ; échec : 1 essai/24 h par cible",
+        )],
+    ),
+    (
+        Voie::Psychologie,
+        3,
+        &[
+            t(1, "+2 en VOL contre les événements traumatisants"),
+            t(
+                2,
+                "+5 en VOL opposée pour calmer une personne choquée ou violente",
+            ),
+        ],
+    ),
+    (
+        Voie::Psychologie,
+        4,
+        &[d(
+            "PER opposée en conversation, ou INT 15 sur dossier : un indice et la meilleure approche sociale",
+        )],
+    ),
+    (
+        Voie::Psychologie,
+        5,
+        &[
+            die("dé bonus aux tests de PER de psychologie"),
+            c("PER ou VOL +1"),
+        ],
+    ),
+    // Voie de la technologie.
+    (
+        Voie::Technologie,
+        1,
+        &[t(
+            1,
+            "+1 par rang en INT pour comprendre, entretenir, réparer ou saboter un système",
+        )],
+    ),
+    (
+        Voie::Technologie,
+        2,
+        &[t(1, "+5 dans une spécialité technique")],
+    ),
+    (
+        Voie::Technologie,
+        3,
+        &[
+            d(
+                "1/séance : +5 au test de CHA 10 pour trouver un fournisseur ; 1/aventure : matériel lourd (3d6 h)",
+            ),
+            t(1, "+5 dans une deuxième spécialité technique"),
+        ],
+    ),
+    (
+        Voie::Technologie,
+        4,
+        &[
+            d(
+                "1/séance, après 1d6 × 10 min : +2 aux performances d'un objet (véhicule, programme, attaque ou DM d'une arme)",
+            ),
+            t(1, "+5 dans une troisième spécialité technique"),
+        ],
+    ),
+    (
+        Voie::Technologie,
+        5,
+        &[
+            d("pas de pénalité sans les outils adaptés ; temps ÷ 2 avec"),
+            die("dé bonus dans une spécialité choisie"),
+            c("INT +1"),
+        ],
+    ),
+    // Voie des sciences.
+    (
+        Voie::Sciences,
+        1,
+        &[
+            t(1, "+5 en INT dans une discipline"),
+            t(
+                2,
+                "+1 par rang aux tests de CHA avec ses pairs (s'ajoute à corporations rang 1 dans le même milieu)",
+            ),
+        ],
+    ),
+    (
+        Voie::Sciences,
+        2,
+        &[
+            d("accès aux ressources professionnelles"),
+            t(1, "+5 dans une deuxième discipline du même groupe"),
+        ],
+    ),
+    (
+        Voie::Sciences,
+        3,
+        &[
+            d("test d'INT à la place d'un test physique de même difficulté"),
+            t(1, "+5 dans une troisième discipline (tout groupe)"),
+        ],
+    ),
+    (
+        Voie::Sciences,
+        4,
+        &[
+            d("le bonus de CHA du rang 1 vaut aussi pour lever des fonds et face aux médias"),
+            t(1, "+5 dans une quatrième discipline"),
+        ],
+    ),
+    (
+        Voie::Sciences,
+        5,
+        &[
+            t(1, "+5 aux tests sociaux sur ses spécialités"),
+            die("dé bonus dans une discipline choisie"),
+            c("INT +1"),
+        ],
+    ),
+    // Voie de la survie.
+    (
+        Voie::Survie,
+        1,
+        &[t(
+            1,
+            "+1 par rang en INT sur les coutumes locales, les moyens de voyage, passer pour un local",
+        )],
+    ),
+    (
+        Voie::Survie,
+        2,
+        &[t(
+            1,
+            "+5 aux tests de survie et d'équipement dans un milieu hostile choisi",
+        )],
+    ),
+    (
+        Voie::Survie,
+        3,
+        &[
+            d("4 h de sommeil lui suffisent"),
+            t(
+                1,
+                "+1 par rang en CON contre la fatigue, la faim, la maladie, le poison",
+            ),
+            t(2, "+5 dans un deuxième milieu"),
+        ],
+    ),
+    (
+        Voie::Survie,
+        4,
+        &[
+            d("jusqu'à [5 + CHA] compagnons : +5 à leurs tests de survie"),
+            t(1, "+5 dans un troisième milieu"),
+        ],
+    ),
+    (
+        Voie::Survie,
+        5,
+        &[
+            die("dé bonus en connaissance ou en survie dans un milieu choisi"),
+            c("CON +1"),
+        ],
+    ),
+    // Voie des véhicules.
+    (
+        Voie::Vehicules,
+        1,
+        &[
+            t(1, "+2 pour piloter un véhicule choisi à un seul pilote"),
+            t(
+                2,
+                "+1 par rang à l'entretien courant (s'ajoute à technologie rang 1)",
+            ),
+        ],
+    ),
+    (
+        Voie::Vehicules,
+        2,
+        &[
+            t(1, "+2 avec un deuxième véhicule"),
+            d("le premier véhicule passe à +5"),
+            d("une manœuvre périlleuse sans élargir la zone d'échec (+2 seulement pour deux)"),
+        ],
+    ),
+    (
+        Voie::Vehicules,
+        3,
+        &[
+            t(1, "+2 avec un troisième véhicule"),
+            d("ignore une condition défavorable de poursuite"),
+            d("les occupants subissent 1d6 DM de moins en accident"),
+        ],
+    ),
+    (
+        Voie::Vehicules,
+        4,
+        &[
+            t(1, "+2 avec un quatrième véhicule (avec équipage possible)"),
+            d("le deuxième véhicule passe à +5"),
+            d("deux manœuvres périlleuses librement"),
+            d("en mouvement : +2 DEF au véhicule et aux occupants"),
+        ],
+    ),
+    (
+        Voie::Vehicules,
+        5,
+        &[
+            t(1, "+2 avec un cinquième véhicule"),
+            d("le troisième véhicule passe à +5 ; équipage +2"),
+            die("dé bonus avec un véhicule choisi"),
+            c("AGI +1"),
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -534,6 +924,17 @@ mod tests {
         assert_eq!(keys.len(), unique.len());
         assert_eq!(Voie::Crime.ability_effects(Rank::new(2)).len(), 3);
         assert_eq!(Voie::Crime.ability_effects(Rank::new(6)), []);
+    }
+
+    #[test]
+    fn every_capacite_has_its_effects() {
+        let missing: Vec<_> = Voie::ALL
+            .into_iter()
+            .flat_map(|voie| (1..=5).map(move |rank| (voie, rank)))
+            .filter(|(voie, rank)| voie.ability_effects(Rank::new(*rank)).is_empty())
+            .collect();
+        assert_eq!(missing, []);
+        assert_eq!(EFFECTS.len(), Voie::ALL.len() * 5);
     }
 
     #[test]
