@@ -43,7 +43,10 @@ situational modifier (ADR ENG-SITUATIONAL), what the engine does not
 compute. A described effect may give a `Bonus` the engine computes (a
 test bonus by its number, 0 for all of the capacité's, or its dé bonus),
 so the sheet shows the amount ("+4 escalade") in place of the text
-("rang + 2 escalade"). *Why a list with a state:* the sheet shows the
+("rang + 2 escalade"). A computed effect may depend on a choice
+recorded for its capacité (`chosen`, such as "PER ou VOL +1"), so the
+sheet shows the option taken beside the text, or that it is still to
+choose. *Why a list with a state:* the sheet shows the
 computed ones quietly and the described ones prominently, and a
 described effect becomes computed when a later change implements its
 mechanic, without rewriting the others. Which capacités have which effects stays in the

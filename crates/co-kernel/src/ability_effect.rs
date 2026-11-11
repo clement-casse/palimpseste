@@ -33,6 +33,7 @@ pub struct AbilityEffect {
     text: &'static str,
     application: Application,
     bonus: Option<Bonus>,
+    choice: bool,
 }
 
 impl AbilityEffect {
@@ -43,6 +44,19 @@ impl AbilityEffect {
             text,
             application: Application::Computed,
             bonus: None,
+            choice: false,
+        }
+    }
+
+    /// A computed effect that depends on a choice recorded for its capacité
+    /// (the characteristic it raises), which the sheet shows beside it.
+    #[must_use]
+    pub const fn chosen(text: &'static str) -> Self {
+        Self {
+            text,
+            application: Application::Computed,
+            bonus: None,
+            choice: true,
         }
     }
 
@@ -53,6 +67,7 @@ impl AbilityEffect {
             text,
             application: Application::Described,
             bonus: None,
+            choice: false,
         }
     }
 
@@ -63,6 +78,7 @@ impl AbilityEffect {
             text,
             application: Application::Described,
             bonus: Some(bonus),
+            choice: false,
         }
     }
 
@@ -82,6 +98,13 @@ impl AbilityEffect {
     #[must_use]
     pub const fn bonus(self) -> Option<Bonus> {
         self.bonus
+    }
+
+    /// Whether it depends on a choice recorded for its capacité, shown
+    /// beside its text.
+    #[must_use]
+    pub const fn choice(self) -> bool {
+        self.choice
     }
 }
 
@@ -105,6 +128,11 @@ mod tests {
         assert_eq!(
             (giving.application(), giving.bonus()),
             (Application::Described, Some(Bonus::Test(1)))
+        );
+        let chosen = AbilityEffect::chosen("PER ou VOL +1");
+        assert_eq!(
+            (chosen.application(), chosen.choice(), described.choice()),
+            (Application::Computed, true, false)
         );
     }
 }
