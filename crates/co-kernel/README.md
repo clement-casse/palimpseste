@@ -1,7 +1,7 @@
 # co-kernel
 
 The concepts that mean exactly the same thing in every Chroniques Oubliées
-engine: characteristics, voie ranks and their checks, items carried, specialities,
+engine: characteristics, voie ranks and their checks, items carried, specialities, the effects of a capacité,
 derived values with their breakdown, adjustments, violations, waivers, the
 violation report, and dice. Nothing engine-specific belongs here. No
 formula, budget, table or game content goes in this crate.
@@ -18,6 +18,7 @@ depends on it.
 | `voie.rs` | `Rank`, `VoieId`, `AbilityId`, `VOIE_STRUCTURE`, `VOIE_ORDER`, `voie_rank_violations` | KER-VOIE |
 | `item.rs` | `ItemName`, `Quantity` | KER-ITEMS |
 | `speciality.rs` | `Speciality` (free text) | KER-SPECIALITY |
+| `ability_effect.rs` | `AbilityEffect`, `Application` (computed or described), `Bonus` (the test bonus or dé bonus a described effect gives) | KER-ABILITY-EFFECTS |
 | `derived.rs` | `DerivedValue`, `Contribution`, `Source` | KER-SOURCES, KER-TOTAL |
 | `adjustment.rs` | `Adjustment`, `Author` | KER-ADJUSTMENTS |
 | `violation.rs` | `Violation`, `RuleId`, `Mechanic`, `ValueId`, `Subject`, `Category`, `Severity`, `Parameter`, `ADJUSTMENT_RULE`, `adjustment_notice` | KER-IDS, KER-SUBJECT, KER-SEVERITY |

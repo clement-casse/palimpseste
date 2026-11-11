@@ -32,6 +32,23 @@ writes for a capacité asking them to choose a discipline, an approach, a
 vehicle or an origin; no rule reads it. Which capacités ask for one, and
 what they ask, stays in the engines (ADR ENG-SPECIALITIES).
 
+**KER-ABILITY-EFFECTS: A capacité's effects, computed or described.** An
+`AbilityEffect` is one effect of a capacité as a short French text of our
+own, never the book's, with its `Application`: `Computed` when the engine
+counts it in a total of the sheet (a characteristic, PV, DEF, Init, an
+attack, DM, dice, critical range, RD, PC, PM, an option chosen once
+included), so the player need not read it; `Described` otherwise: a
+bonus to some tests, a dé bonus, a mastery, a limit the engine checks, a
+situational modifier (ADR ENG-SITUATIONAL), what the engine does not
+compute. A described effect may give a `Bonus` the engine computes (a
+test bonus by its number, 0 for all of the capacité's, or its dé bonus),
+so the sheet shows the amount ("+4 escalade") in place of the text
+("rang + 2 escalade"). *Why a list with a state:* the sheet shows the
+computed ones quietly and the described ones prominently, and a
+described effect becomes computed when a later change implements its
+mechanic, without rewriting the others. Which capacités have which effects stays in the
+engines (ADR ENG-ABILITY-EFFECTS).
+
 **KER-SOURCES: A closed set of contribution sources.** A `DerivedValue` is
 a list of contributions, each with a `Source`: `Characteristic`,
 `Ability`, `Rule(RuleId)` (a constant the formula sets itself),
