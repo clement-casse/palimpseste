@@ -37,6 +37,91 @@ pub struct Sheet {
     /// The findings of the rules that hold in play, about the equipment in
     /// play (ADR ENG-IN-PLAY); empty from [`evaluate`].
     pub in_play: Vec<ReportedViolation>,
+    /// The effects of the capacités with a formula, written for the
+    /// character (ADR ENG-ABILITY-EFFECTS); the others read as the catalog
+    /// writes them.
+    pub written_effects: Vec<WrittenEffects>,
+}
+
+/// A capacité's effects written for the character: each effect a list of
+/// parts.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+pub struct WrittenEffects {
+    /// The capacité's identifier.
+    pub ability: String,
+    /// Its effects, in the catalog's order.
+    pub effects: Vec<Vec<EffectPartLine>>,
+}
+
+/// A part of an effect written for the character.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum EffectPartLine {
+    /// Text, as written.
+    Text {
+        /// The text.
+        text: String,
+    },
+    /// A value computed from a formula.
+    Value {
+        /// The value, its unit included (`3 min`).
+        value: String,
+        /// The formula (`CHA min`).
+        formula: String,
+    },
+}
+
+/// The COF2 capacités with a formula, written for `character`.
+fn fantasy_written(character: &co_fantasy::Character) -> Vec<WrittenEffects> {
+    written_effects(
+        &co_fantasy::Voie::ALL,
+        co_fantasy::Voie::ability_effects,
+        |voie, rank| voie.ability(rank).as_str().to_owned(),
+        |voie, rank| character.ability_effects(voie, rank),
+    )
+}
+
+/// The COC2 capacités with a formula, written for `character`.
+fn contemporain_written(character: &co_contemporain::Character) -> Vec<WrittenEffects> {
+    written_effects(
+        &co_contemporain::Voie::ALL,
+        co_contemporain::Voie::ability_effects,
+        |voie, rank| voie.ability(rank).as_str().to_owned(),
+        |voie, rank| character.ability_effects(voie, rank),
+    )
+}
+
+/// `parts` as the bindings send them.
+fn part_lines(parts: Vec<co_kernel::EffectPart>) -> Vec<EffectPartLine> {
+    parts
+        .into_iter()
+        .map(|part| match part {
+            co_kernel::EffectPart::Text(text) => EffectPartLine::Text { text },
+            co_kernel::EffectPart::Value { value, formula } => EffectPartLine::Value {
+                value,
+                formula: formula.to_owned(),
+            },
+        })
+        .collect()
+}
+
+/// The capacités of `voies` whose effects hold a formula, written by
+/// `written` for the character.
+fn written_effects<V: Copy>(
+    voies: &[V],
+    effects: impl Fn(V, co_kernel::Rank) -> &'static [co_kernel::AbilityEffect],
+    id: impl Fn(V, co_kernel::Rank) -> String,
+    written: impl Fn(V, co_kernel::Rank) -> Vec<Vec<co_kernel::EffectPart>>,
+) -> Vec<WrittenEffects> {
+    voies
+        .iter()
+        .flat_map(|voie| (1..=5).map(move |rank| (*voie, co_kernel::Rank::new(rank))))
+        .filter(|(voie, rank)| effects(*voie, *rank).iter().any(|e| !e.terms().is_empty()))
+        .map(|(voie, rank)| WrittenEffects {
+            ability: id(voie, rank),
+            effects: written(voie, rank).into_iter().map(part_lines).collect(),
+        })
+        .collect()
 }
 
 /// What is left to settle in a creation step: violations no waiver accepts.
@@ -569,6 +654,7 @@ impl Common<'_> {
                         .collect()
                 })
                 .unwrap_or_default(),
+            written_effects: Vec::new(),
         }
     }
 
@@ -800,13 +886,15 @@ fn fantasy(
         abilities_held: fantasy_held(&character, document, &bonus_dice, &line),
     });
     let in_play = played.as_ref().map(co_fantasy::InPlay::report);
-    Ok(common.sheet(
+    let mut sheet = common.sheet(
         |c| character.characteristic(c),
         |c| situational(co_fantasy::Target::Characteristic(c)),
         values,
         details,
         in_play.as_ref(),
-    ))
+    );
+    sheet.written_effects = fantasy_written(&character);
+    Ok(sheet)
 }
 
 fn contemporain(
@@ -897,13 +985,15 @@ fn contemporain(
         rank_five: contemporain_rank_five(&character),
         abilities_held: contemporain_held(&character, document, &line),
     });
-    Ok(common.sheet(
+    let mut sheet = common.sheet(
         |c| character.characteristic(c),
         |c| situational(co_contemporain::Target::Characteristic(c)),
         values,
         details,
         None,
-    ))
+    );
+    sheet.written_effects = contemporain_written(&character);
+    Ok(sheet)
 }
 
 /// A count or number from the engines, as the bindings send it.

@@ -876,6 +876,32 @@ mod tests {
     }
 
     #[test]
+    fn the_effects_with_a_formula_are_written_for_the_character() {
+        let mut document = FantasyDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "cof.illusions".into(),
+            ranks: vec![1, 2],
+        }];
+        let sheet = fantasy(document);
+        let mirage = sheet
+            .written_effects
+            .iter()
+            .find(|w| w.ability == "cof.illusions.1")
+            .unwrap();
+        assert!(mirage.effects[0].contains(&sheet::EffectPartLine::Value {
+            value: "4 m de côté".into(),
+            formula: "2 m de côté par rang".into(),
+        }));
+        // Only the capacités with a formula are written.
+        assert!(
+            sheet
+                .written_effects
+                .iter()
+                .all(|w| w.ability != "cof.nain.1")
+        );
+    }
+
+    #[test]
     fn held_capacites_carry_the_choice_made() {
         let mut document = ContemporainDocument::empty();
         document.voies = vec![VoieEntry {
