@@ -383,6 +383,355 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         5,
         &[d("+1 PM (cible unique) ou +3 PM (zone) : +1d4° DM au sort")],
     ),
+    // Voie du mercenaire.
+    (
+        Voie::Mercenaire,
+        1,
+        &[
+            t(1, "rang + 2 relations de taverne et résister à l'alcool"),
+            d("mains nues : 1d4° DM non létaux"),
+            d("DM non létaux subis ÷ 2"),
+        ],
+    ),
+    (
+        Voie::Mercenaire,
+        2,
+        &[d(
+            "attaque (DM temporaires possibles) qui désarme, renverse ou affaiblit un ennemi de NC < rang",
+        )],
+    ),
+    (
+        Voie::Mercenaire,
+        3,
+        &[
+            d("capacité de rang 1 de guerrier, de voleur (cuir) ou de rôdeur (cuir renforcé)"),
+            c("+1 DEF"),
+        ],
+    ),
+    (
+        Voie::Mercenaire,
+        4,
+        &[c("CON +1"), die("dé bonus aux tests de CON")],
+    ),
+    (
+        Voie::Mercenaire,
+        5,
+        &[
+            d(
+                "combat de 10 créatures ou plus : une action d'attaque ou de mouvement en plus par tour",
+            ),
+            c("+1 DEF"),
+        ],
+    ),
+    // Voie du pistolero.
+    (
+        Voie::Pistolero,
+        1,
+        &[
+            d("+5 Init pour tirer avec une arme à poudre chargée en main"),
+            d("pas de dé malus pour tirer à la poudre ou à l'arbalète au contact"),
+        ],
+    ),
+    (
+        Voie::Pistolero,
+        2,
+        &[d("après un tir raté : +5 au tir suivant sur la même cible")],
+    ),
+    (
+        Voie::Pistolero,
+        3,
+        &[d(
+            "une pétoire (ou arbalète de poing) dans chaque main : 2 tirs à −2 (sans malus sur la même cible)",
+        )],
+    ),
+    (
+        Voie::Pistolero,
+        4,
+        &[c("AGI +1"), die("dé bonus aux tests d'AGI")],
+    ),
+    (
+        Voie::Pistolero,
+        5,
+        &[d(
+            "tir à la poudre ou à l'arbalète qui dépasse la DEF de 10 ou plus : +2d4° DM",
+        )],
+    ),
+    // Voie de la précision.
+    (
+        Voie::Precision,
+        1,
+        &[d(
+            "ignore le malus de couvert partiel ; couvert important : −2 seulement",
+        )],
+    ),
+    (
+        Voie::Precision,
+        2,
+        &[d(
+            "étudie une cible : au round suivant, tirs contre DEF [10 + AGI de la cible], sans RD ni résistance aux DM",
+        )],
+    ),
+    (
+        Voie::Precision,
+        3,
+        &[c("critique à distance sur 19-20 (18-20 au rang 5)")],
+    ),
+    (
+        Voie::Precision,
+        4,
+        &[d("tir visé à 10 m ou plus : portée × 2, +2d4° DM")],
+    ),
+    (
+        Voie::Precision,
+        5,
+        &[d(
+            "contre un NC < moitié de son niveau : test d'INT [10 + NC], la cible meurt",
+        )],
+    ),
+    // Voie de l'escrime.
+    (
+        Voie::Escrime,
+        1,
+        &[c(
+            "arme légère à une main : AGI au lieu de FOR pour toucher (pas aux DM)",
+        )],
+    ),
+    (
+        Voie::Escrime,
+        2,
+        &[d(
+            "CHA opposé à la PER : au round suivant, première attaque au contact à + 2 × rang, +2d4° DM si réussie",
+        )],
+    ),
+    (
+        Voie::Escrime,
+        3,
+        &[d(
+            "1/combat, INT opposée : désarme, renverse ou aveugle 1 round un ennemi de NC inférieur",
+        )],
+    ),
+    (
+        Voie::Escrime,
+        4,
+        &[d("attaque à l'arme légère : +CHA à l'attaque et aux DM")],
+    ),
+    (
+        Voie::Escrime,
+        5,
+        &[d(
+            "attaque au contact à l'arme légère qui dépasse la DEF de 10 ou plus : +2d4° DM",
+        )],
+    ),
+    // Voie du musicien.
+    (
+        Voie::Musicien,
+        1,
+        &[
+            d("alliés à portée de voix : +1 à tous les tests pendant CHA min (+2 au rang 5)"),
+            t(1, "rang + 2 musique et chant"),
+        ],
+    ),
+    (
+        Voie::Musicien,
+        2,
+        &[d(
+            "joue pendant un repos de 30 min : lui et ses alliés à 10 m récupèrent 1d4° PV (2d4° au rang 4)",
+        )],
+    ),
+    (
+        Voie::Musicien,
+        3,
+        &[d("cône de 10 m : [2d4° + CHA] DM (CON : ÷ 2)")],
+    ),
+    (
+        Voie::Musicien,
+        4,
+        &[d(
+            "sphère de silence de 5 m jusqu'à 30 m pendant CHA min ; y lancer un sort : INT 10",
+        )],
+    ),
+    (
+        Voie::Musicien,
+        5,
+        &[d(
+            "attaque magique opposée (10 m) : la cible danse [1d4° + CHA] rounds, dé malus en attaque, −5 DEF",
+        )],
+    ),
+    // Voie du saltimbanque.
+    (
+        Voie::Saltimbanque,
+        1,
+        &[t(1, "rang + 2 acrobaties, équilibre, saut, escalade")],
+    ),
+    (
+        Voie::Saltimbanque,
+        2,
+        &[
+            c("+CHA à l'Init"),
+            c("+1 DEF (+2 au rang 4)"),
+            t(1, "rang + 2 danse, mime, jonglerie"),
+        ],
+    ),
+    (
+        Voie::Saltimbanque,
+        3,
+        &[d(
+            "1/round, même au contact : lance un couteau de plus ; 10 m ; DM [1d4 + AGI], dé 1d4° au rang 5",
+        )],
+    ),
+    (
+        Voie::Saltimbanque,
+        4,
+        &[d(
+            "immunité à la peur, au contrôle mental, à ralenti et immobilisé",
+        )],
+    ),
+    (
+        Voie::Saltimbanque,
+        5,
+        &[d(
+            "1/round : esquive une attaque par un test d'attaque à distance contre son résultat ; un critique touche",
+        )],
+    ),
+    // Voie de la séduction.
+    (
+        Voie::Seduction,
+        1,
+        &[
+            t(1, "rang + 2 séduire, convaincre, mentir"),
+            d("1 PC : +[1d4° + CHA] au test d'un allié"),
+        ],
+    ),
+    (
+        Voie::Seduction,
+        2,
+        &[c("sans armure : +CHA à la DEF (au plus le rang)")],
+    ),
+    (
+        Voie::Seduction,
+        3,
+        &[d(
+            "10 min et 1 PC (2 sans langue commune) : un humanoïde de NC 1 devient un ami",
+        )],
+    ),
+    (
+        Voie::Seduction,
+        4,
+        &[
+            c("CHA +1"),
+            die("dé bonus aux tests de CHA"),
+            c("peut calculer les PM avec CHA au lieu de VOL"),
+        ],
+    ),
+    (
+        Voie::Seduction,
+        5,
+        &[d(
+            "attaque magique opposée : une créature de niveau inférieur suit une suggestion pendant 1 h",
+        )],
+    ),
+    // Voie du vagabond.
+    (
+        Voie::Vagabond,
+        1,
+        &[t(1, "rang + 2 légendes et identifier les objets magiques")],
+    ),
+    (
+        Voie::Vagabond,
+        2,
+        &[
+            t(1, "+1 à tous les tests de compétence (+1/rang 4 de barde)"),
+            d("non cumulable avec les autres bonus de compétence, sauf le rang 1 de peuple"),
+        ],
+    ),
+    (
+        Voie::Vagabond,
+        3,
+        &[d(
+            "1 PC : un objet courant non listé d'au plus 10 pa ; peut improviser des gadgets",
+        )],
+    ),
+    (
+        Voie::Vagabond,
+        4,
+        &[d(
+            "lit, écrit et parle une langue vivante pendant CHA h (un allié : CHA min) ; langues mortes au rang 5",
+        )],
+    ),
+    (
+        Voie::Vagabond,
+        5,
+        &[d(
+            "prend l'apparence d'un humanoïde de même taille pendant CHA h ; imiter une personne : test de CHA",
+        )],
+    ),
+    // Voie de l'archer.
+    (
+        Voie::Archer,
+        1,
+        &[
+            c("arcs : +PER aux DM, + rang à l'Init"),
+            c("variante armes de jet : +FOR aux DM, pas d'Init"),
+            d("variante armes de jet : portée × 2"),
+        ],
+    ),
+    (
+        Voie::Archer,
+        2,
+        &[d(
+            "tire dans la mêlée sans malus ; ne touche jamais un allié",
+        )],
+    ),
+    (
+        Voie::Archer,
+        3,
+        &[d(
+            "accepte un dé malus pour +2d4° DM (+3d4° en action limitée)",
+        )],
+    ),
+    (Voie::Archer, 4, &[d("deux attaques à distance à −2")]),
+    (
+        Voie::Archer,
+        5,
+        &[d(
+            "dé bonus et +1d4° DM, ou un état (aveuglé, affaibli, ralenti, immobilisé) 1 round sur une cible de NC inférieur",
+        )],
+    ),
+    // Voie du compagnon animal.
+    (
+        Voie::CompagnonAnimal,
+        1,
+        &[d(
+            "un loup obéit à des ordres simples : DEF 12 + rang, PV niveau × 4, Init et attaque magique du rôdeur, DM 1d4 + 2",
+        )],
+    ),
+    (
+        Voie::CompagnonAnimal,
+        2,
+        &[d(
+            "au contact ensemble : le loup a un dé bonus en attaque, le rôdeur en pistage et vigilance",
+        )],
+    ),
+    (
+        Voie::CompagnonAnimal,
+        3,
+        &[d(
+            "télépathie avec le loup ; lui transfère ses PV pour le soigner",
+        )],
+    ),
+    (
+        Voie::CompagnonAnimal,
+        4,
+        &[d("le loup s'améliore : DEF 18, PV niveau × 5, DM 1d4° + 5")],
+    ),
+    (
+        Voie::CompagnonAnimal,
+        5,
+        &[
+            d("le loup : +1d4° DM sur la cible du rôdeur ; soins doublés"),
+            c("+1 DEF au rôdeur et au loup par rang 5 de rôdeur"),
+        ],
+    ),
 ];
 
 #[cfg(test)]
