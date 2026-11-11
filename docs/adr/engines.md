@@ -152,8 +152,7 @@ its default or its
 option (a spell's 1 PM, D-23, is the rule's); and its effects name each
 of its test bonuses (0 for all of them) and its dé bonus, and nothing
 else. When a change implements a described effect, it marks it
-computed. The table is filled in batches of voies; until the last, a
-capacité not written yet has no effects.
+computed. Every COF2 capacité has its effects, a test holding it.
 
 **ENG-FINDINGS: One finding per waiver.** Waivers match rule and subject
 and ignore severity (ADR KER-MATCHING), so two findings a waiver could
