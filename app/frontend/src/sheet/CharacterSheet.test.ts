@@ -201,6 +201,13 @@ describe("the COC sheet", () => {
     expect(screen.getByText("motorbike")).toBeTruthy();
   });
 
+  it("lists a COC capacité's effects, its bonus with its amount", () => {
+    open(amelia(), "Amelia");
+    expect(screen.getByText("membre d'une corporation")).toBeTruthy();
+    const member = screen.getByText(/\+1\s+invented — relations avec les membres/);
+    expect(member.closest("ul")?.getAttribute("aria-label")).toBe("Effets");
+  });
+
   it("notes a characteristic tested in place of another", () => {
     const document = amelia();
     if (document.engine !== "contemporain") throw new Error("contemporain expected");
