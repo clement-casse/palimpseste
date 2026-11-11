@@ -51,6 +51,7 @@
 //! ```
 
 mod ability;
+mod ability_effects;
 mod action;
 mod armour;
 mod character;

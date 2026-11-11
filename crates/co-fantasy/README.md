@@ -25,6 +25,7 @@ complete nain guerrier. Read it first.
 | `level.rs` | `Level` (with its dé évolutif), `LevelUp` (ranks acquired and forgotten, orphan point), `OrphanExchange`, the checks on each level-up | COF.PRG.POINTS, COST, LEVEL-REQ, ORDER, NEW-VOIES, HYBRID, MAX-VOIES, REORIENT, ORPHAN, COF.DER.D4 |
 | `derived.rs` | PV, DR, PC, PM, Init, DEF, RD, attacks, each adding its table of capacité effects | COF.DER.*, COF.PRG.PV |
 | `ability.rs` | `AbilityOption`, the options capacités offer and the specialities they ask for, the per-value tables of capacité effects and characteristic raises (D-13, D-22) | COF.CNT.VOIE, COF.CNT.EFFECT-SHAPES |
+| `ability_effects.rs` | the effects of each capacité in our own words, computed or described | ENG-ABILITY-EFFECTS |
 | `action.rs` | `Action`: the action each capacité takes, and the PM a spell costs | COF.CNT.VOIE, ENG-COF-ACTIONS |
 | `test_bonus.rs` | `TestBonus` and `BonusDie`: the capacités' permanent test bonuses and dé bonus with the tests they cover (`scope`), as tables of capacité effects | COF.DER.COMPETENCE, D-50 |
 | `armour.rs` | `Armour`, `Shield`, the profil's armour limits | COF.EQP.ARMOUR, COF.DER.ARMOUR-LIMIT |

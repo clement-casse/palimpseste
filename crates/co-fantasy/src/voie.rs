@@ -4,7 +4,7 @@
 use co_kernel::{AbilityId, Rank, Severity, Subject, Violation, VoieId, voie_rank_violations};
 
 use crate::{
-    Action, Character, Family, Profil, action, level,
+    Action, Character, Family, Profil, ability_effects, action, level,
     rules::{LEVEL_REQ, MAGE_EXTRA, PEUPLE_VOIE, PROFIL_VOIES, VOIE_DU_MAGE, VOIE_MECHANIC, VOIES},
 };
 
@@ -404,6 +404,14 @@ impl Voie {
                 | Self::Nain
                 | Self::Mage
         )
+    }
+
+    /// The effects of the capacité at `rank`, in our own words, each computed
+    /// by the engine or only described (ADR ENG-ABILITY-EFFECTS); empty
+    /// outside ranks 1 to 5.
+    #[must_use]
+    pub fn ability_effects(self, rank: Rank) -> &'static [co_kernel::AbilityEffect] {
+        ability_effects::of(self, rank)
     }
 
     /// The actions the capacité at `rank` may take to use, the first usual
