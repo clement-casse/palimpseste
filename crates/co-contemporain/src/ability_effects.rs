@@ -1,9 +1,10 @@
 //! What each capacité does, as short effects in our own words, each
 //! computed by the engine or only described (ADR ENG-ABILITY-EFFECTS).
 
-use co_kernel::{AbilityEffect, Bonus, Rank};
+use Characteristic::Cha;
+use co_kernel::{AbilityEffect, Bonus, Characteristic, EffectPart, Measure, Rank, Term};
 
-use crate::Voie;
+use crate::{Character, Voie};
 
 /// The effects of the capacité at `rank` in `voie`, empty outside ranks 1
 /// to 5.
@@ -12,6 +13,35 @@ pub(crate) fn of(voie: Voie, rank: Rank) -> &'static [AbilityEffect] {
         .iter()
         .find(|(v, r, _)| *v == voie && *r == rank.get())
         .map_or(&[], |(_, _, effects)| effects)
+}
+
+/// A rank-reached term, written `formula`.
+const fn rank(formula: &'static str) -> Term {
+    Term::new(Measure::Rank, formula)
+}
+
+/// A characteristic term, written `formula`.
+const fn carac(characteristic: Characteristic, formula: &'static str) -> Term {
+    Term::new(Measure::Characteristic(characteristic), formula)
+}
+
+/// The effects of the capacité at `rank` in `voie` written for
+/// `character`: each formula's value, the rank reached at least `rank`.
+/// COC2 has no level, nor counts of voies.
+pub(crate) fn written(character: &Character, voie: Voie, rank: Rank) -> Vec<Vec<EffectPart>> {
+    let reached = character
+        .highest_rank(voie)
+        .map_or(0, Rank::get)
+        .max(rank.get());
+    let value_of = |measure: Measure| match measure {
+        Measure::Rank => Some(i32::from(reached)),
+        Measure::Characteristic(c) => Some(character.characteristic(c).total()),
+        Measure::Level | Measure::VoiesAt { .. } => None,
+    };
+    of(voie, rank)
+        .iter()
+        .map(|effect| effect.parts(value_of))
+        .collect()
 }
 
 /// An effect the engine computes.
@@ -201,7 +231,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         3,
         &[
             t(1, "+5 dans une troisième discipline"),
-            d("1/séance : + rang à un test"),
+            d("1/séance : {} à un test").with(&[rank("+ rang").signed()]),
         ],
     ),
     (
@@ -209,9 +239,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         4,
         &[
             t(1, "+5 dans une quatrième discipline"),
-            d(
-                "reconnu de ses fans (INT 15 région, 20 pays, 25 monde) : + rang à ses tests de CHA pour obtenir de l'aide",
-            ),
+            d("reconnu de ses fans (INT 15 région, 20 pays, 25 monde) : {} à ses tests de CHA pour obtenir de l'aide").with(&[rank("+ rang").signed()]),
         ],
     ),
     (
@@ -418,7 +446,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         4,
         &[
             t(1, "+5 dans la quatrième approche"),
-            d("1/scène : + rang à la prochaine action des alliés, ou − rang à celle des ennemis"),
+            d("1/scène : {} à la prochaine action des alliés, ou {} à celle des ennemis").with(&[rank("+ rang").signed(), rank("− rang").times(-1)]),
         ],
     ),
     (
@@ -513,7 +541,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Langues,
         1,
-        &[d("parle, lit et écrit une langue de plus par rang")],
+        &[d("parle, lit et écrit {}").with(&[rank("une langue de plus par rang").unit(" langue(s) de plus")])],
     ),
     (
         Voie::Langues,
@@ -758,7 +786,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Survie,
         4,
         &[
-            d("jusqu'à [5 + CHA] compagnons : +5 à leurs tests de survie"),
+            d("jusqu'à {} : +5 à leurs tests de survie").with(&[carac(Cha, "[5 + CHA] compagnons").plus(5).unit(" compagnons")]),
             t(1, "+5 dans un troisième milieu"),
         ],
     ),
@@ -944,6 +972,37 @@ mod tests {
             .map(|voie| (voie, 5))
             .collect();
         assert_eq!(chosen, expected);
+    }
+
+    #[test]
+    fn every_slot_has_its_term() {
+        let wrong: Vec<_> = EFFECTS
+            .iter()
+            .flat_map(|(_, _, effects)| effects.iter())
+            .filter(|e| {
+                e.template().matches("{}").count() != e.terms().len() || e.text().contains("{}")
+            })
+            .map(|e| e.template())
+            .collect();
+        assert_eq!(wrong, Vec::<&str>::new());
+    }
+
+    #[test]
+    fn formulas_are_written_for_the_character() {
+        let linguist = ranks(Voie::Langues, 3);
+        let bilingual = linguist.ability_effects(Voie::Langues, 1);
+        assert_eq!(
+            bilingual[0],
+            [
+                EffectPart::Text("parle, lit et écrit ".to_owned()),
+                EffectPart::Value {
+                    value: "3 langue(s) de plus".to_owned(),
+                    formula: "une langue de plus par rang"
+                }
+            ]
+        );
+        let guide = ranks(Voie::Survie, 4).ability_effects(Voie::Survie, 4);
+        assert!(matches!(&guide[0][1], EffectPart::Value { value, .. } if value == "6 compagnons"));
     }
 
     #[test]

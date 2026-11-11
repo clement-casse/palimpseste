@@ -1,9 +1,10 @@
 //! What each capacité does, as short effects in our own words, each
 //! computed by the engine or only described (ADR ENG-ABILITY-EFFECTS).
 
-use co_kernel::{AbilityEffect, Bonus, Rank};
+use Characteristic::{Agi, Cha, Int, Per, Vol};
+use co_kernel::{AbilityEffect, Bonus, Characteristic, EffectPart, Measure, Rank, Term};
 
-use crate::Voie;
+use crate::{Character, Profil, Voie};
 
 /// The effects of the capacité at `rank` in `voie`, empty outside ranks 1
 /// to 5.
@@ -12,6 +13,53 @@ pub(crate) fn of(voie: Voie, rank: Rank) -> &'static [AbilityEffect] {
         .iter()
         .find(|(v, r, _)| *v == voie && *r == rank.get())
         .map_or(&[], |(_, _, effects)| effects)
+}
+
+/// A rank-reached term, written `formula`.
+const fn rank(formula: &'static str) -> Term {
+    Term::new(Measure::Rank, formula)
+}
+
+/// A characteristic term, written `formula`.
+const fn carac(characteristic: Characteristic, formula: &'static str) -> Term {
+    Term::new(Measure::Characteristic(characteristic), formula)
+}
+
+/// A level term, written `formula`.
+const fn level(formula: &'static str) -> Term {
+    Term::new(Measure::Level, formula)
+}
+
+/// A term counting the voies of a profil, by its identifier, in which the
+/// character holds `rank`, written `formula`.
+const fn voies(group: &'static str, rank: u8, formula: &'static str) -> Term {
+    Term::new(Measure::VoiesAt { group, rank }, formula)
+}
+
+/// The effects of the capacité at `rank` in `voie` written for
+/// `character`: each formula's value, the rank reached at least `rank`.
+pub(crate) fn written(character: &Character, voie: Voie, rank: Rank) -> Vec<Vec<EffectPart>> {
+    let reached = character
+        .highest_rank(voie)
+        .map_or(0, Rank::get)
+        .max(rank.get());
+    let value_of = |measure: Measure| match measure {
+        Measure::Rank => Some(i32::from(reached)),
+        Measure::Characteristic(c) => Some(character.characteristic(c).total()),
+        Measure::Level => Some(i32::from(character.level().get())),
+        Measure::VoiesAt { group, rank } => Profil::from_id(group).map(|profil| {
+            let held = profil
+                .voies()
+                .iter()
+                .filter(|voie| character.has_rank(**voie, Rank::new(rank)))
+                .count();
+            i32::try_from(held).unwrap_or(i32::MAX)
+        }),
+    };
+    of(voie, rank)
+        .iter()
+        .map(|effect| effect.parts(value_of))
+        .collect()
 }
 
 /// An effect the engine computes.
@@ -55,7 +103,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Artilleur,
         2,
         &[
-            d("jusqu'à 2 armes à chargeur de [2 + INT] tirs (+1/rang 3 d'arquebusier)"),
+            d("jusqu'à 2 armes à chargeur de {} ({})").with(&[carac(Int, "[2 + INT] tirs").plus(2).unit(" tirs"), voies("cof.profil.arquebusier", 3, "+1/rang 3 d'arquebusier").signed()]),
             d("recharge : L par tir"),
         ],
     ),
@@ -98,7 +146,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         2,
         &[
             d("charge posée en 3 rounds : [3d4° + INT] DM à une structure, RD ÷ 2"),
-            d("rang charges/jour (avec rangs 4-5)"),
+            d("{} (avec rangs 4-5)").with(&[rank("rang charges/jour").unit(" charges/jour")]),
         ],
     ),
     (
@@ -340,9 +388,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Nain,
         3,
-        &[d(
-            "1/jour, ignore un sort qui le cible (pas de zone, pas d'un NC ≥ 2 × son niveau)",
-        )],
+        &[d("1/jour, ignore un sort qui le cible (pas de zone, pas d'un NC ≥ {})").with(&[level("2 × son niveau").times(2)])],
     ),
     (
         Voie::Nain,
@@ -365,7 +411,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Mage,
         2,
         &[
-            d("détecte la magie à 10 m, l'identifie (INT 10 + rang)"),
+            d("détecte la magie à 10 m, l'identifie (INT {})").with(&[rank("10 + rang").plus(10)]),
             d("dissipe un sort non permanent (attaque magique opposée)"),
         ],
     ),
@@ -401,9 +447,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Mercenaire,
         2,
-        &[d(
-            "attaque (DM temporaires possibles) qui désarme, renverse ou affaiblit un ennemi de NC < rang",
-        )],
+        &[d("attaque (DM temporaires possibles) qui désarme, renverse ou affaiblit un ennemi de NC < {}").with(&[rank("rang")])],
     ),
     (
         Voie::Mercenaire,
@@ -532,7 +576,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Musicien,
         1,
         &[
-            d("alliés à portée de voix : +1 à tous les tests pendant CHA min (+2 au rang 5)"),
+            d("alliés à portée de voix : +1 à tous les tests pendant {} (+2 au rang 5)").with(&[carac(Cha, "CHA min").unit(" min")]),
             t(1, "rang + 2 musique et chant"),
         ],
     ),
@@ -551,9 +595,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Musicien,
         4,
-        &[d(
-            "sphère de silence de 5 m jusqu'à 30 m pendant CHA min ; y lancer un sort : INT 10",
-        )],
+        &[d("sphère de silence de 5 m jusqu'à 30 m pendant {} ; y lancer un sort : INT 10").with(&[carac(Cha, "CHA min").unit(" min")])],
     ),
     (
         Voie::Musicien,
@@ -659,16 +701,12 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Vagabond,
         4,
-        &[d(
-            "lit, écrit et parle une langue vivante pendant CHA h (un allié : CHA min) ; langues mortes au rang 5",
-        )],
+        &[d("lit, écrit et parle une langue vivante pendant {} (un allié : {}) ; langues mortes au rang 5").with(&[carac(Cha, "CHA h").unit(" h"), carac(Cha, "CHA min").unit(" min")])],
     ),
     (
         Voie::Vagabond,
         5,
-        &[d(
-            "prend l'apparence d'un humanoïde de même taille pendant CHA h ; imiter une personne : test de CHA",
-        )],
+        &[d("prend l'apparence d'un humanoïde de même taille pendant {} ; imiter une personne : test de CHA").with(&[carac(Cha, "CHA h").unit(" h")])],
     ),
     // Voie de l'archer.
     (
@@ -706,9 +744,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::CompagnonAnimal,
         1,
-        &[d(
-            "un loup obéit à des ordres simples : DEF 12 + rang, PV niveau × 4, Init et attaque magique du rôdeur, DM 1d4 + 2",
-        )],
+        &[d("un loup obéit à des ordres simples : DEF {}, PV {}, Init et attaque magique du rôdeur, DM 1d4 + 2").with(&[rank("12 + rang").plus(12), level("niveau × 4").times(4)])],
     ),
     (
         Voie::CompagnonAnimal,
@@ -727,7 +763,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::CompagnonAnimal,
         4,
-        &[d("le loup s'améliore : DEF 18, PV niveau × 5, DM 1d4° + 5")],
+        &[d("le loup s'améliore : DEF 18, PV {}, DM 1d4° + 5").with(&[level("niveau × 5").times(5)])],
     ),
     (
         Voie::CompagnonAnimal,
@@ -1214,9 +1250,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Rage,
         3,
         &[
-            d(
-                "rage 1/jour (+1/rang 4 de barbare) : +1d4° DM au contact, −2 DEF, dé bonus aux tests de VOL",
-            ),
+            d("rage 1/jour ({}) : +1d4° DM au contact, −2 DEF, dé bonus aux tests de VOL").with(&[voies("cof.profil.barbare", 4, "+1/rang 4 de barbare").signed()]),
             d("en rage : ni retraite ni attaque à distance ; VOL 15 pour arrêter avant la fin"),
         ],
     ),
@@ -1239,9 +1273,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Cavalier,
         1,
         &[
-            d(
-                "cheval de guerre : DEF 12 + rang, PV 10 + niveau × 4, Init du chevalier, attaque +5, DM 1d4° + 5",
-            ),
+            d("cheval de guerre : DEF {}, PV {}, Init du chevalier, attaque +5, DM 1d4° + 5").with(&[rank("12 + rang").plus(12), level("10 + niveau × 4").times(4).plus(10)]),
             d("monté : 10 m de déplacement en plus autour d'une action"),
             t(1, "rang + 2 équitation et dressage"),
         ],
@@ -1272,9 +1304,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Cavalier,
         5,
         &[
-            d(
-                "monture puissante : DEF 20, PV 10 + niveau × 6, DM 2d4° + 5, attaque gratuite 1/round",
-            ),
+            d("monture puissante : DEF 20, PV {}, DM 2d4° + 5, attaque gratuite 1/round").with(&[level("10 + niveau × 6").times(6).plus(10)]),
             d("monture volante au niveau 9, avec l'accord du MJ"),
         ],
     ),
@@ -1360,9 +1390,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::MeneurDHomme,
         2,
-        &[d(
-            "1/round : subit une attaque visant un allié au contact, avec sa DEF, DM − rang",
-        )],
+        &[d("1/round : subit une attaque visant un allié au contact, avec sa DEF, DM − {}").with(&[rank("rang")])],
     ),
     (
         Voie::MeneurDHomme,
@@ -1602,7 +1630,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Soldat,
         5,
         &[
-            d("le rang 1 vaut contre AGI + 2 ennemis par round ; touché, l'ennemi s'arrête"),
+            d("le rang 1 vaut contre {} ; touché, l'ennemi s'arrête").with(&[carac(Agi, "AGI + 2 ennemis par round").plus(2).unit(" ennemis par round")]),
             c("+1 DEF"),
         ],
     ),
@@ -1611,7 +1639,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Air,
         1,
         &[
-            d("message de 10 mots à une cible connue ou visible (CHA × 100 m), entend la réponse"),
+            d("message de 10 mots à une cible connue ou visible ({}), entend la réponse").with(&[carac(Cha, "CHA × 100 m").times(100).unit(" m")]),
             c("+1 Init, +1 DEF"),
         ],
     ),
@@ -1619,16 +1647,14 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Air,
         2,
         &[
-            d("CHA min : qui l'attaque au contact subit 1d4° DM"),
+            d("{} : qui l'attaque au contact subit 1d4° DM").with(&[carac(Cha, "CHA min").unit(" min")]),
             d("action d'attaque : décharge à 10 m, [1d4° + CHA] DM"),
         ],
     ),
     (
         Voie::Air,
         3,
-        &[d(
-            "déplace un objet ou une cible consentante de 50 kg/rang à 20 m pendant CHA min ; peut la lâcher sur une cible surprise",
-        )],
+        &[d("déplace un objet ou une cible consentante de {} à 20 m pendant {} ; peut la lâcher sur une cible surprise").with(&[rank("50 kg/rang").times(50).unit(" kg"), carac(Cha, "CHA min").unit(" min")])],
     ),
     (
         Voie::Air,
@@ -1638,9 +1664,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Air,
         5,
-        &[d(
-            "intangible CHA min : traverse les murs, immunité aux DM physiques ; ni attaque ni sort",
-        )],
+        &[d("intangible {} : traverse les murs, immunité aux DM physiques ; ni attaque ni sort").with(&[carac(Cha, "CHA min").unit(" min")])],
     ),
     // Voie de la divination.
     (
@@ -1656,16 +1680,12 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Divination,
         2,
-        &[d(
-            "CHA min : détecte les créatures invisibles ou cachées à 20 m",
-        )],
+        &[d("{} : détecte les créatures invisibles ou cachées à 20 m").with(&[carac(Cha, "CHA min").unit(" min")])],
     ),
     (
         Voie::Divination,
         3,
-        &[d(
-            "CHA rounds : voit et entend un lieu connu, ou derrière une porte touchée",
-        )],
+        &[d("{} : voit et entend un lieu connu, ou derrière une porte touchée").with(&[carac(Cha, "CHA rounds").unit(" rounds")])],
     ),
     (
         Voie::Divination,
@@ -1697,16 +1717,12 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Envouteur,
         2,
-        &[d(
-            "1/combat : [1d4° + CHA] créatures de faible NC dans une zone de 10 m dorment CHA min (NC max. relevé aux rangs 4 et 5)",
-        )],
+        &[d("1/combat : [1d4° + CHA] créatures de faible NC dans une zone de 10 m dorment {} (NC max. relevé aux rangs 4 et 5)").with(&[carac(Cha, "CHA min").unit(" min")])],
     ),
     (
         Voie::Envouteur,
         3,
-        &[d(
-            "attaque magique opposée : cible confuse CHA rounds (VOL pour en sortir)",
-        )],
+        &[d("attaque magique opposée : cible confuse {} (VOL pour en sortir)").with(&[carac(Cha, "CHA rounds").unit(" rounds")])],
     ),
     (
         Voie::Envouteur,
@@ -1718,18 +1734,14 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Envouteur,
         5,
-        &[d(
-            "attaque magique opposée : contrôle une cible de niveau inférieur CHA min (une seule action si trop haut)",
-        )],
+        &[d("attaque magique opposée : contrôle une cible de niveau inférieur {} (une seule action si trop haut)").with(&[carac(Cha, "CHA min").unit(" min")])],
     ),
     // Voie des illusions.
     (
         Voie::Illusions,
         1,
         &[
-            d(
-                "illusion fixe visuelle et sonore (2 m de côté par rang, 50 m) pendant CHA min ; animée au rang 4",
-            ),
+            d("illusion fixe visuelle et sonore ({}, 50 m) pendant {} ; animée au rang 4").with(&[rank("2 m de côté par rang").times(2).unit(" m de côté"), carac(Cha, "CHA min").unit(" min")]),
             t(1, "rang + 2 pour tromper"),
         ],
     ),
@@ -1750,9 +1762,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Illusions,
         4,
-        &[d(
-            "prend l'apparence d'une créature vue, de même taille, pendant CHA min",
-        )],
+        &[d("prend l'apparence d'une créature vue, de même taille, pendant {}").with(&[carac(Cha, "CHA min").unit(" min")])],
     ),
     (
         Voie::Illusions,
@@ -1772,9 +1782,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Invocation,
         2,
-        &[d(
-            "force invisible qui fait des tâches simples à 20 m pendant CHA min (FOR = CHA)",
-        )],
+        &[d("force invisible qui fait des tâches simples à 20 m pendant {} (FOR = {})").with(&[carac(Cha, "CHA min").unit(" min"), carac(Cha, "CHA").signed()])],
     ),
     (
         Voie::Invocation,
@@ -1786,14 +1794,12 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Invocation,
         4,
-        &[d("se téléporte avec CHA alliés jusqu'à 60 m, en vue")],
+        &[d("se téléporte avec {} jusqu'à 60 m, en vue").with(&[carac(Cha, "CHA alliés").unit(" alliés")])],
     ),
     (
         Voie::Invocation,
         5,
-        &[d(
-            "mur invisible indestructible ou dôme de 3 m pendant CHA min",
-        )],
+        &[d("mur invisible indestructible ou dôme de 3 m pendant {}").with(&[carac(Cha, "CHA min").unit(" min")])],
     ),
     // Voie des artefacts.
     (
@@ -1810,18 +1816,14 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Artefacts,
         2,
         &[
-            d(
-                "ouvre une porte fermée (attaque magique contre la serrure) ou la scelle INT min (+5 solidité et RD)",
-            ),
+            d("ouvre une porte fermée (attaque magique contre la serrure) ou la scelle {} (+5 solidité et RD)").with(&[carac(Int, "INT min").unit(" min")]),
             d("au rang 4 : scellé permanent avec une gemme de 100 pa"),
         ],
     ),
     (
         Voie::Artefacts,
         3,
-        &[d(
-            "sac de 50 kg par rang ; 1/heure, des objets temporaires d'au plus 25 pa",
-        )],
+        &[d("sac de {} ; 1/heure, des objets temporaires d'au plus 25 pa").with(&[rank("50 kg par rang").times(50).unit(" kg")])],
     ),
     (
         Voie::Artefacts,
@@ -1863,9 +1865,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Elixirs,
         4,
-        &[d(
-            "apprend INT élixirs (max. 4) : Forme gazeuse, Maîtrise des éléments, Chute ralentie, Masque mortuaire",
-        )],
+        &[d("apprend {} : Forme gazeuse, Maîtrise des éléments, Chute ralentie, Masque mortuaire").with(&[carac(Int, "INT élixirs (max. 4)").at_most(4).unit(" élixirs")])],
     ),
     (
         Voie::Elixirs,
@@ -1879,7 +1879,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Metal,
         1,
         &[
-            d("bâton ou marteau enflammé INT min : +2 DM de feu (+1/rang 4 de forgesort)"),
+            d("bâton ou marteau enflammé {} : +2 DM de feu ({})").with(&[carac(Int, "INT min").unit(" min"), voies("cof.profil.forgesort", 4, "+1/rang 4 de forgesort").signed()]),
             t(1, "rang + 2 forge"),
         ],
     ),
@@ -1893,9 +1893,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Metal,
         3,
-        &[d(
-            "INT min : +2 DEF contre les armes de métal ; DM des projectiles à pointe de métal ÷ 2",
-        )],
+        &[d("{} : +2 DEF contre les armes de métal ; DM des projectiles à pointe de métal ÷ 2").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     (
         Voie::Metal,
@@ -1927,9 +1925,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Golem,
         2,
-        &[d(
-            "golem serviteur : DEF 10 + rang, PV niveau × 5, Init et attaque magique du forgesort, DM 1d4° + 1",
-        )],
+        &[d("golem serviteur : DEF {}, PV {}, Init et attaque magique du forgesort, DM 1d4° + 1").with(&[rank("10 + rang").plus(10), level("niveau × 5").times(5)])],
     ),
     (
         Voie::Golem,
@@ -1949,7 +1945,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Golem,
         5,
         &[
-            d("une amélioration du golem, +1/rang 5 de forgesort"),
+            d("une amélioration du golem, {}").with(&[voies("cof.profil.forgesort", 5, "+1/rang 5 de forgesort").signed()]),
             d(
                 "au choix : armure, félin, baliste, taille, vol, cerveau, puissance, arme à deux mains",
             ),
@@ -2003,9 +1999,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::MagieDesArcanes,
         2,
-        &[d(
-            "INT min : par action de mouvement, monte de 5 m ou descend de 10 m",
-        )],
+        &[d("{} : par action de mouvement, monte de 5 m ou descend de 10 m").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     (
         Voie::MagieDesArcanes,
@@ -2068,52 +2062,38 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::MagieElementaire,
         1,
-        &[d(
-            "attaque magique opposée : 1d4° DM/round pendant INT rounds (pas contre qui ne respire pas)",
-        )],
+        &[d("attaque magique opposée : 1d4° DM/round pendant {} (pas contre qui ne respire pas)").with(&[carac(Int, "INT rounds").unit(" rounds")])],
     ),
     (
         Voie::MagieElementaire,
         2,
-        &[d(
-            "INT min : DM élémentaires subis − (rang + 2) ; peut changer l'élément d'un sort",
-        )],
+        &[d("{} : DM élémentaires subis − {} ; peut changer l'élément d'un sort").with(&[carac(Int, "INT min").unit(" min"), rank("(rang + 2)").plus(2)])],
     ),
     (
         Voie::MagieElementaire,
         3,
-        &[d(
-            "INT min : arme +1d4° DM élémentaires ; les sorts de cet élément coûtent 1 PM de moins",
-        )],
+        &[d("{} : arme +1d4° DM élémentaires ; les sorts de cet élément coûtent 1 PM de moins").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     (
         Voie::MagieElementaire,
         4,
-        &[d(
-            "respire sous l'eau 10 min, avec un compagnon de plus par point d'INT",
-        )],
+        &[d("respire sous l'eau 10 min, avec {}").with(&[carac(Int, "un compagnon de plus par point d'INT").unit(" compagnon(s) de plus")])],
     ),
     (
         Voie::MagieElementaire,
         5,
-        &[d(
-            "INT min : −5 à tous les DM subis, jusqu'à niveau × 3 DM absorbés",
-        )],
+        &[d("{} : −5 à tous les DM subis, jusqu'à {} absorbés").with(&[carac(Int, "INT min").unit(" min"), level("niveau × 3 DM").times(3).unit(" DM")])],
     ),
     // Voie de la magie protectrice.
     (
         Voie::MagieProtectrice,
         1,
-        &[d(
-            "INT min : +3 DEF (+4 au rang 3, +1/rang 5 de magicien ou de la voie du mage) ; compte comme une armure, jamais avec une",
-        )],
+        &[d("{} : +3 DEF (+4 au rang 3, +1/rang 5 de magicien ou de la voie du mage) ; compte comme une armure, jamais avec une").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     (
         Voie::MagieProtectrice,
         2,
-        &[d(
-            "jusqu'à INT cibles à 10 m chutent sans DM, même hors de son tour",
-        )],
+        &[d("jusqu'à {} à 10 m chutent sans DM, même hors de son tour").with(&[carac(Int, "INT cibles").unit(" cibles")])],
     ),
     (
         Voie::MagieProtectrice,
@@ -2123,23 +2103,19 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::MagieProtectrice,
         4,
-        &[d(
-            "cercle de 2 m pour INT personnes : test opposé pour annuler un sort ; invoqués et morts-vivants : dé malus en attaque",
-        )],
+        &[d("cercle de 2 m pour {} : test opposé pour annuler un sort ; invoqués et morts-vivants : dé malus en attaque").with(&[carac(Int, "INT personnes").unit(" personnes")])],
     ),
     (
         Voie::MagieProtectrice,
         5,
-        &[d(
-            "INT rounds hors du temps pour utiliser sorts et objets sur lui-même",
-        )],
+        &[d("{} hors du temps pour utiliser sorts et objets sur lui-même").with(&[carac(Int, "INT rounds").unit(" rounds")])],
     ),
     // Voie de la magie universelle.
     (
         Voie::MagieUniverselle,
         1,
         &[
-            d("un objet éclaire à 10 m pendant INT h"),
+            d("un objet éclaire à 10 m pendant {}").with(&[carac(Int, "INT h").unit(" h")]),
             d("1/combat : aveugle 1 round une créature de faible NC"),
         ],
     ),
@@ -2180,9 +2156,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Demon,
         2,
-        &[d(
-            "INT min : dé bonus aux tests de CHA ; toucher qui draine [1d4° + INT] PV et le soigne d'autant",
-        )],
+        &[d("{} : dé bonus aux tests de CHA ; toucher qui draine [1d4° + INT] PV et le soigne d'autant").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     (
         Voie::Demon,
@@ -2195,16 +2169,12 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Demon,
         4,
-        &[d(
-            "forme de démon ailé INT min : dé bonus en attaque au contact, +5 DEF et tests physiques, 2 griffes [1d4° + INT], vol",
-        )],
+        &[d("forme de démon ailé {} : dé bonus en attaque au contact, +5 DEF et tests physiques, 2 griffes [1d4° + INT], vol").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     (
         Voie::Demon,
         5,
-        &[d(
-            "sacrifie 1d4° PV : invoque un démon ailé (DEF 18, PV niveau × 5, DM 2d4° + 5) pendant INT min",
-        )],
+        &[d("sacrifie 1d4° PV : invoque un démon ailé (DEF 18, PV {}, DM 2d4° + 5) pendant {}").with(&[level("niveau × 5").times(5), carac(Int, "INT min").unit(" min")])],
     ),
     // Voie de la mort.
     (
@@ -2217,9 +2187,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Mort,
         2,
-        &[d(
-            "INT min : compte comme non-vivant (ignoré des morts-vivants, DM de froid ÷ 2, ne peut être soigné)",
-        )],
+        &[d("{} : compte comme non-vivant (ignoré des morts-vivants, DM de froid ÷ 2, ne peut être soigné)").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     (
         Voie::Mort,
@@ -2231,9 +2199,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Mort,
         4,
-        &[d(
-            "attaque magique opposée : la cible fuit INT rounds ; en L, toutes les créatures au contact",
-        )],
+        &[d("attaque magique opposée : la cible fuit {} ; en L, toutes les créatures au contact").with(&[carac(Int, "INT rounds").unit(" rounds")])],
     ),
     (
         Voie::Mort,
@@ -2253,16 +2219,12 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::OutreTombe,
         2,
-        &[d(
-            "armure d'os qu'il fabrique : +3 DEF (+1/rang 4 de sorcier), compatible avec les capacités de sorcier",
-        )],
+        &[d("armure d'os qu'il fabrique : +3 DEF ({}), compatible avec les capacités de sorcier").with(&[voies("cof.profil.sorcier", 4, "+1/rang 4 de sorcier").signed()])],
     ),
     (
         Voie::OutreTombe,
         3,
-        &[d(
-            "anime le cadavre récent d'un humanoïde en zombie ; un de plus par rang 5 de sorcier",
-        )],
+        &[d("anime le cadavre récent d'un humanoïde en zombie ; {}").with(&[voies("cof.profil.sorcier", 5, "un de plus par rang 5 de sorcier").unit(" de plus")])],
     ),
     (
         Voie::OutreTombe,
@@ -2274,24 +2236,18 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::OutreTombe,
         5,
-        &[d(
-            "1/jour, niveau rounds : des squelettes infligent 2d4° DM/round aux ennemis à 10 m ; déplacement ÷ 2",
-        )],
+        &[d("1/jour, {} : des squelettes infligent 2d4° DM/round aux ennemis à 10 m ; déplacement ÷ 2").with(&[level("niveau rounds").unit(" rounds")])],
     ),
     // Voie du sang.
     (
         Voie::Sang,
         1,
-        &[d(
-            "attaque magique contre [10 + CON] à 10 m : 1d4° DM/round pendant INT rounds",
-        )],
+        &[d("attaque magique contre [10 + CON] à 10 m : 1d4° DM/round pendant {}").with(&[carac(Int, "INT rounds").unit(" rounds")])],
     ),
     (
         Voie::Sang,
         2,
-        &[d(
-            "INT min : un ennemi au contact qui le blesse subit 1d4° DM d'acide",
-        )],
+        &[d("{} : un ennemi au contact qui le blesse subit 1d4° DM d'acide").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     (
         Voie::Sang,
@@ -2304,32 +2260,26 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Sang,
         4,
-        &[d(
-            "sacrifie 1d4° PV : INT rounds, DM tranchants et perforants contre la cible +1d4°",
-        )],
+        &[d("sacrifie 1d4° PV : {}, DM tranchants et perforants contre la cible +1d4°").with(&[carac(Int, "INT rounds").unit(" rounds")])],
     ),
     (
         Voie::Sang,
         5,
-        &[d(
-            "attaque magique opposée : INT min, la moitié des DM qu'il subit touche aussi la cible",
-        )],
+        &[d("attaque magique opposée : {}, la moitié des DM qu'il subit touche aussi la cible").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     // Voie de la sombre magie.
     (
         Voie::SombreMagie,
         1,
         &[
-            d("zone de ténèbres magiques de 10 m pendant INT min"),
+            d("zone de ténèbres magiques de 10 m pendant {}").with(&[carac(Int, "INT min").unit(" min")]),
             t(1, "rang + 2 savoirs des ténèbres"),
         ],
     ),
     (
         Voie::SombreMagie,
         2,
-        &[d(
-            "INT min : rampe sur les murs et plafonds, 5 m par action de mouvement",
-        )],
+        &[d("{} : rampe sur les murs et plafonds, 5 m par action de mouvement").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     (
         Voie::SombreMagie,
@@ -2341,9 +2291,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::SombreMagie,
         4,
-        &[d(
-            "INT min : dé bonus en discrétion, dé malus aux attaques à distance contre lui ; s'échappe à 0 PV",
-        )],
+        &[d("{} : dé bonus en discrétion, dé malus aux attaques à distance contre lui ; s'échappe à 0 PV").with(&[carac(Int, "INT min").unit(" min")])],
     ),
     (
         Voie::SombreMagie,
@@ -2360,7 +2308,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Animaux,
         1,
         &[
-            d("parle aux mammifères ; une catégorie d'animaux de plus par rang 4 de druide"),
+            d("parle aux mammifères ; {}").with(&[voies("cof.profil.druide", 4, "une catégorie d'animaux de plus par rang 4 de druide").unit(" catégorie(s) d'animaux de plus")]),
             t(1, "rang + 2 influencer les animaux"),
         ],
     ),
@@ -2368,30 +2316,24 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Animaux,
         2,
         &[
-            d("compagnon non magique qui partage ses sens : DEF 13 + rang, PV niveau × 2"),
+            d("compagnon non magique qui partage ses sens : DEF {}, PV {}").with(&[rank("13 + rang").plus(13), level("niveau × 2").times(2)]),
             d("en vue : +2 DEF (non cumulable avec Familier)"),
         ],
     ),
     (
         Voie::Animaux,
         3,
-        &[d(
-            "attaque magique à 20 m : la nuée inflige 1 DM/round et −2 à tous les tests pendant [3 + PER] rounds",
-        )],
+        &[d("attaque magique à 20 m : la nuée inflige 1 DM/round et −2 à tous les tests pendant {}").with(&[carac(Per, "[3 + PER] rounds").plus(3).unit(" rounds")])],
     ),
     (
         Voie::Animaux,
         4,
-        &[d(
-            "PER min : +2 Init, DEF, attaque au contact et DM ; vision nocturne",
-        )],
+        &[d("{} : +2 Init, DEF, attaque au contact et DM ; vision nocturne").with(&[carac(Per, "PER min").unit(" min")])],
     ),
     (
         Voie::Animaux,
         5,
-        &[d(
-            "PER min : forme d'un animal connu de taille moyenne ou moins ; garde ses PV, son INT et sa VOL",
-        )],
+        &[d("{} : forme d'un animal connu de taille moyenne ou moins ; garde ses PV, son INT et sa VOL").with(&[carac(Per, "PER min").unit(" min")])],
     ),
     // Voie du fauve.
     (
@@ -2406,9 +2348,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Fauve,
         2,
-        &[d(
-            "panthère fidèle : DEF 13 + rang, PV niveau × 4, Init et attaque magique du druide, DM 1d4 + 2",
-        )],
+        &[d("panthère fidèle : DEF {}, PV {}, Init et attaque magique du druide, DM 1d4 + 2").with(&[rank("13 + rang").plus(13), level("niveau × 4").times(4)])],
     ),
     (
         Voie::Fauve,
@@ -2421,7 +2361,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Fauve,
         4,
         &[
-            d("la panthère devient un grand félin : DEF 15 + rang, PV niveau × 5, DM 1d4° + 5"),
+            d("la panthère devient un grand félin : DEF {}, PV {}, DM 1d4° + 5").with(&[rank("15 + rang").plus(15), level("niveau × 5").times(5)]),
             d("monture, télépathie ; soignée avec les PV du druide"),
         ],
     ),
@@ -2472,16 +2412,14 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Protecteur,
         1,
         &[
-            d("PER fruits, chacun un repas qui soigne [1d4° + rang] PV, 1/jour"),
+            d("{}, chacun un repas qui soigne [1d4° + rang] PV, 1/jour").with(&[carac(Per, "PER fruits").unit(" fruits")]),
             t(1, "en extérieur : rang + 2 vigilance et discrétion"),
         ],
     ),
     (
         Voie::Protecteur,
         2,
-        &[d(
-            "rituel de 30 min : la forêt à 1 km par rang gêne ses ennemis 24 h (déplacement ÷ 2, dé malus)",
-        )],
+        &[d("rituel de 30 min : la forêt à {} gêne ses ennemis 24 h (déplacement ÷ 2, dé malus)").with(&[rank("1 km par rang").unit(" km")])],
     ),
     (
         Voie::Protecteur,
@@ -2502,27 +2440,21 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Protecteur,
         5,
-        &[d(
-            "PER min : arbre animé ; garde INT, PER, VOL et ses sorts de protecteur et de végétaux",
-        )],
+        &[d("{} : arbre animé ; garde INT, PER, VOL et ses sorts de protecteur et de végétaux").with(&[carac(Per, "PER min").unit(" min")])],
     ),
     // Voie des végétaux.
     (
         Voie::Vegetaux,
         1,
         &[
-            d(
-                "PER min : +2 DEF (+1 aux rangs 3 et 5), ni en armure de métal ni avec un autre sort de DEF (sauf Masque du prédateur)",
-            ),
+            d("{} : +2 DEF (+1 aux rangs 3 et 5), ni en armure de métal ni avec un autre sort de DEF (sauf Masque du prédateur)").with(&[carac(Per, "PER min").unit(" min")]),
             t(1, "rang + 2 connaissance des plantes"),
         ],
     ),
     (
         Voie::Vegetaux,
         2,
-        &[d(
-            "zone de 10 m à 20 m : ennemis immobilisés PER min (test de FOR pour se libérer)",
-        )],
+        &[d("zone de 10 m à 20 m : ennemis immobilisés {} (test de FOR pour se libérer)").with(&[carac(Per, "PER min").unit(" min")])],
     ),
     (
         Voie::Vegetaux,
@@ -2534,16 +2466,12 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Vegetaux,
         4,
-        &[d(
-            "anime un arbre qui combat niveau rounds : DEF 10 + rang, PV niveau × 5, DM 1d4° + 3",
-        )],
+        &[d("anime un arbre qui combat {} : DEF {}, PV {}, DM 1d4° + 3").with(&[level("niveau rounds").unit(" rounds"), rank("10 + rang").plus(10), level("niveau × 5").times(5)])],
     ),
     (
         Voie::Vegetaux,
         5,
-        &[d(
-            "1/jour : entre dans un arbre et sort d'un autre de la même forêt, jusqu'à PER × 10 km",
-        )],
+        &[d("1/jour : entre dans un arbre et sort d'un autre de la même forêt, jusqu'à {}").with(&[carac(Per, "PER × 10 km").times(10).unit(" km")])],
     ),
     // Voie de l'énergie vitale.
     (
@@ -2579,7 +2507,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::EnergieVitale,
         5,
         &[
-            d("vit sans manger, boire ni dormir pendant [5 + VOL] jours"),
+            d("vit sans manger, boire ni dormir pendant {}").with(&[carac(Vol, "[5 + VOL] jours").plus(5).unit(" jours")]),
             c("CON +1"),
             die("dé bonus aux tests de CON"),
         ],
@@ -2725,7 +2653,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Vent,
         5,
         &[
-            d("1/combat : traverse un mur d'au plus VOL mètres d'épaisseur"),
+            d("1/combat : traverse un mur d'au plus {} d'épaisseur").with(&[carac(Vol, "VOL mètres").unit(" mètres")]),
             ch("caractéristique la plus basse +1"),
         ],
     ),
@@ -2748,14 +2676,12 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Foi,
         3,
-        &[d(
-            "CHA min : arme lumineuse ; contre démons et morts-vivants, dé bonus et +1d4° DM (+2d4° ou arme d'un allié au rang 5)",
-        )],
+        &[d("{} : arme lumineuse ; contre démons et morts-vivants, dé bonus et +1d4° DM (+2d4° ou arme d'un allié au rang 5)").with(&[carac(Cha, "CHA min").unit(" min")])],
     ),
     (
         Voie::Foi,
         4,
-        &[d("vole à sa vitesse normale pendant CHA min")],
+        &[d("vole à sa vitesse normale pendant {}").with(&[carac(Cha, "CHA min").unit(" min")])],
     ),
     (
         Voie::Foi,
@@ -2799,18 +2725,14 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Priere,
         1,
         &[
-            d(
-                "CHA min : lui et ses alliés en vue, +1 aux tests de caractéristique et d'attaque (+2 au rang 5)",
-            ),
+            d("{} : lui et ses alliés en vue, +1 aux tests de caractéristique et d'attaque (+2 au rang 5)").with(&[carac(Cha, "CHA min").unit(" min")]),
             t(1, "rang + 2 théologie"),
         ],
     ),
     (
         Voie::Priere,
         2,
-        &[d(
-            "1 min : pour l'attaquer, INT [10 + CHA] ; prend fin s'il attaque",
-        )],
+        &[d("1 min : pour l'attaquer, INT {} ; prend fin s'il attaque").with(&[carac(Cha, "[10 + CHA]").plus(10)])],
     ),
     (
         Voie::Priere,
@@ -2836,9 +2758,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Soins,
         1,
         &[
-            d(
-                "toucher : soigne [1d4° + CHA] PV, rang fois/jour (+1/rang 3 d'une autre voie de prêtre)",
-            ),
+            d("toucher : soigne [1d4° + CHA] PV, {} (+1/rang 3 d'une autre voie de prêtre)").with(&[rank("rang fois/jour").unit(" fois/jour")]),
             t(1, "rang + 2 médecine"),
         ],
     ),
@@ -2865,9 +2785,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Soins,
         5,
-        &[d(
-            "1/jour, rituel de 10 min : Récupération majeure sur CHA patients, sans concentration",
-        )],
+        &[d("1/jour, rituel de 10 min : Récupération majeure sur {}, sans concentration").with(&[carac(Cha, "CHA patients").unit(" patients")])],
     ),
     // Voie de la spiritualité.
     (
@@ -2901,9 +2819,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Spiritualite,
         5,
-        &[d(
-            "1/jour : voyage entre les plans jusqu'à CHA rounds, 10 km par round, sortie imprécise",
-        )],
+        &[d("1/jour : voyage entre les plans jusqu'à {}, 10 km par round, sortie imprécise").with(&[carac(Cha, "CHA rounds").unit(" rounds")])],
     ),
 ];
 
@@ -3108,6 +3024,64 @@ mod tests {
             raises
                 .iter()
                 .all(|(voie, rank)| character.ability_option_required(*voie, *rank))
+        );
+    }
+
+    #[test]
+    fn every_slot_has_its_term() {
+        let wrong: Vec<_> = EFFECTS
+            .iter()
+            .flat_map(|(_, _, effects)| effects.iter())
+            .filter(|e| {
+                e.template().matches("{}").count() != e.terms().len() || e.text().contains("{}")
+            })
+            .map(|e| e.template())
+            .collect();
+        assert_eq!(wrong, Vec::<&str>::new());
+    }
+
+    #[test]
+    fn formulas_are_written_for_the_character() {
+        let values = |parts: &[EffectPart]| -> Vec<(String, &str)> {
+            parts
+                .iter()
+                .filter_map(|part| match part {
+                    EffectPart::Value { value, formula } => Some((value.clone(), *formula)),
+                    EffectPart::Text(_) => None,
+                })
+                .collect()
+        };
+        let illusionist = ranks(Voie::Illusions, 1, false);
+        let mirage = illusionist.ability_effects(Voie::Illusions, 1);
+        assert_eq!(
+            values(&mirage[0]),
+            [
+                ("2 m de côté".to_owned(), "2 m de côté par rang"),
+                ("1 min".to_owned(), "CHA min")
+            ]
+        );
+        // A capacité not held yet reads at its own rank.
+        let imitation = illusionist.ability_effects(Voie::Illusions, 4);
+        assert_eq!(values(&imitation[0]), [("1 min".to_owned(), "CHA min")]);
+        let druid = ranks(Voie::Animaux, 2, false);
+        let familiar = druid.ability_effects(Voie::Animaux, 2);
+        assert_eq!(
+            values(&familiar[0]),
+            [
+                ("15".to_owned(), "13 + rang"),
+                ("2".to_owned(), "niveau × 2")
+            ]
+        );
+        let smith = ranks(Voie::Golem, 5, false);
+        let upgrade = smith.ability_effects(Voie::Golem, 5);
+        // The voie du golem is itself a forgesort voie.
+        assert_eq!(
+            values(&upgrade[0]),
+            [("+1".to_owned(), "+1/rang 5 de forgesort")]
+        );
+        assert_eq!(
+            Voie::Illusions.ability_effects(Rank::new(1))[0].text(),
+            "illusion fixe visuelle et sonore (2 m de côté par rang, 50 m) pendant CHA min ; animée au rang 4"
         );
     }
 

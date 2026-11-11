@@ -155,7 +155,14 @@ else. When a change implements a described effect, it marks it
 computed. Every capacité of both engines has its effects, a test
 holding it. A characteristic raise to choose (COF2's raises without a
 default, COC2's rank 5 offering a choice) is `chosen`, a test holding
-the two lists equal. A COC2 rank 5 is tested with the characteristic it raises chosen,
+the two lists equal. A described effect's quantities the player applies are
+terms (ADR KER-ABILITY-EFFECTS): durations and counts on a
+characteristic (CHA min, INT cibles, [5 + VOL] jours), companions' DEF
+and PV on the rank and the level, "+ rang", and "+1/rang n" of a
+profil's voies; `Character::ability_effects(voie, rank)` writes them for
+the character, the rank reached at least `rank` so a capacité offered
+reads as it would once acquired. Steps ("+2 au rang 5"), halves and
+products of two measures stay text, as do dice. A COC2 rank 5 is tested with the characteristic it raises chosen,
 and a "+2 becomes +5" is described on the capacité giving it, the sheet
 showing the raised amount on the bonus it raises.
 
