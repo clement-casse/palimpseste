@@ -5,8 +5,8 @@ use co_kernel::{AbilityEffect, Bonus, Rank};
 
 use crate::Voie;
 
-/// The effects of the capacité at `rank` in `voie`, empty when not written
-/// yet or outside ranks 1 to 5.
+/// The effects of the capacité at `rank` in `voie`, empty outside ranks 1
+/// to 5.
 pub(crate) fn of(voie: Voie, rank: Rank) -> &'static [AbilityEffect] {
     EFFECTS
         .iter()
@@ -2620,6 +2620,286 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
             c("caractéristique la plus basse +1"),
         ],
     ),
+    // Voie de la méditation.
+    (
+        Voie::Meditation,
+        1,
+        &[
+            d("tant qu'il n'agit pas offensivement : +5 DEF, DM subis ÷ 2"),
+            t(1, "rang + 2 empathie et apaiser"),
+        ],
+    ),
+    (
+        Voie::Meditation,
+        2,
+        &[d(
+            "3/jour, méditation de 10 min : soigne [1d4° + VOL] PV (+1d4°/rang 4 de moine)",
+        )],
+    ),
+    (
+        Voie::Meditation,
+        3,
+        &[c("+VOL à l'Init et aux PV"), c("+2 DEF (+3 au rang 5)")],
+    ),
+    (
+        Voie::Meditation,
+        4,
+        &[c("VOL +1"), die("dé bonus aux tests de VOL")],
+    ),
+    (
+        Voie::Meditation,
+        5,
+        &[
+            d("1/jour (+1/rang 5 d'une autre voie de moine) : projection astrale [1d4° + VOL] min"),
+            c("caractéristique la plus basse +1"),
+        ],
+    ),
+    // Voie du poing.
+    (
+        Voie::Poing,
+        1,
+        &[d(
+            "mains nues : AGI possible pour toucher ; DM létaux [1d6 + FOR], dé 1d8 au rang 2, 1d10 au 3, 1d12 au 4, 2d6 au 5",
+        )],
+    ),
+    (
+        Voie::Poing,
+        2,
+        &[c("+2 DEF (+3 au rang 5)"), d("DM temporaires subis ÷ 2")],
+    ),
+    (
+        Voie::Poing,
+        3,
+        &[d(
+            "1/round : dévie un projectile (pas un critique ni une arme à poudre)",
+        )],
+    ),
+    (
+        Voie::Poing,
+        4,
+        &[d("deux attaques au contact sur des cibles choisies")],
+    ),
+    (
+        Voie::Poing,
+        5,
+        &[d(
+            "accepte un dé malus pour +2d4° DM, aussi avec Projection du ki",
+        )],
+    ),
+    // Voie du vent.
+    (
+        Voie::Vent,
+        1,
+        &[
+            d("partage son déplacement avant et après son attaque"),
+            c("+3 Init"),
+            t(1, "rang + 2 saut, course, escalade"),
+        ],
+    ),
+    (
+        Voie::Vent,
+        2,
+        &[
+            c("+1 DEF (+2 au rang 5)"),
+            d("15 m par action de mouvement (20 m au rang 5)"),
+        ],
+    ),
+    (
+        Voie::Vent,
+        3,
+        &[d(
+            "court sur l'eau, la neige, les feuillages, les murs ; ignore le terrain difficile ; immunité à immobilisé",
+        )],
+    ),
+    (
+        Voie::Vent,
+        4,
+        &[c("AGI +1"), die("dé bonus aux tests d'AGI")],
+    ),
+    (
+        Voie::Vent,
+        5,
+        &[
+            d("1/combat : traverse un mur d'au plus VOL mètres d'épaisseur"),
+            c("caractéristique la plus basse +1"),
+        ],
+    ),
+    // Voie de la foi.
+    (
+        Voie::Foi,
+        1,
+        &[
+            t(1, "rang + 2 convaincre, convertir"),
+            d("1/jour : regagne 1 PC sur une conversion"),
+        ],
+    ),
+    (
+        Voie::Foi,
+        2,
+        &[d(
+            "petit miracle (purifier, apaiser une douleur, guérir un mal bénin) ou 1d4° PV à une créature à 0 PV",
+        )],
+    ),
+    (
+        Voie::Foi,
+        3,
+        &[d(
+            "CHA min : arme lumineuse ; contre démons et morts-vivants, dé bonus et +1d4° DM (+2d4° ou arme d'un allié au rang 5)",
+        )],
+    ),
+    (
+        Voie::Foi,
+        4,
+        &[d("vole à sa vitesse normale pendant CHA min")],
+    ),
+    (
+        Voie::Foi,
+        5,
+        &[d(
+            "[2d4° + CHA] DM sans test d'attaque aux créatures choisies à 10 m ; +1 PM à chaque usage jusqu'au repos court",
+        )],
+    ),
+    // Voie de la guerre sainte.
+    (
+        Voie::GuerreSainte,
+        1,
+        &[d("arme bénie 24 h : relance les 1 aux DM ; DM magiques")],
+    ),
+    (
+        Voie::GuerreSainte,
+        2,
+        &[c("avec son bouclier : +1 DEF (+2 au rang 5)")],
+    ),
+    (
+        Voie::GuerreSainte,
+        3,
+        &[d(
+            "attaque au contact avec dé bonus, +CHA aux DM ; 1 PM : +1d4° (2 PM : +2d4° au rang 5)",
+        )],
+    ),
+    (
+        Voie::GuerreSainte,
+        4,
+        &[d(
+            "attaque magique à 30 m : [2d4° + CHA] DM (+ bonus d'arme magique ; +1/rang 4 d'une autre voie de prêtre)",
+        )],
+    ),
+    (
+        Voie::GuerreSainte,
+        5,
+        &[d("1/jour : étourdit 1 round tous les ennemis à 10 m")],
+    ),
+    // Voie de la prière.
+    (
+        Voie::Priere,
+        1,
+        &[
+            d(
+                "CHA min : lui et ses alliés en vue, +1 aux tests de caractéristique et d'attaque (+2 au rang 5)",
+            ),
+            t(1, "rang + 2 théologie"),
+        ],
+    ),
+    (
+        Voie::Priere,
+        2,
+        &[d(
+            "1 min : pour l'attaquer, INT [10 + CHA] ; prend fin s'il attaque",
+        )],
+    ),
+    (
+        Voie::Priere,
+        3,
+        &[d(
+            "morts-vivants et démons à 10 m : [2d4° + CHA] DM automatiques (3d4° au rang 5)",
+        )],
+    ),
+    (
+        Voie::Priere,
+        4,
+        &[c("VOL +1"), die("dé bonus aux tests de VOL")],
+    ),
+    (
+        Voie::Priere,
+        5,
+        &[d(
+            "1/combat : change un test en réussite ou en échec (pas d'un NC supérieur à son niveau)",
+        )],
+    ),
+    // Voie des soins.
+    (
+        Voie::Soins,
+        1,
+        &[
+            d(
+                "toucher : soigne [1d4° + CHA] PV, rang fois/jour (+1/rang 3 d'une autre voie de prêtre)",
+            ),
+            t(1, "rang + 2 médecine"),
+        ],
+    ),
+    (
+        Voie::Soins,
+        2,
+        &[
+            d("toucher : guérit un poison ou une maladie"),
+            t(1, "rang + 2 pour résister aux poisons et maladies"),
+        ],
+    ),
+    (
+        Voie::Soins,
+        3,
+        &[d("soigne [3d4° + CHA] PV à 20 m (+1d4°/rang 5 de prêtre)")],
+    ),
+    (
+        Voie::Soins,
+        4,
+        &[d(
+            "1/jour à 0 PV : se relève ; alliés à 20 m soignés de [2d4° + CHA] PV, lui du double",
+        )],
+    ),
+    (
+        Voie::Soins,
+        5,
+        &[d(
+            "1/jour, rituel de 10 min : Récupération majeure sur CHA patients, sans concentration",
+        )],
+    ),
+    // Voie de la spiritualité.
+    (
+        Voie::Spiritualite,
+        1,
+        &[
+            c("sans armure (bouclier permis) : +2 DEF (+3 au rang 3, +4 au rang 5)"),
+            die("sans armure : dé bonus contre le contrôle mental"),
+            d("option dieu guerrier : cotte de mailles permise avec les capacités de prêtre"),
+        ],
+    ),
+    (
+        Voie::Spiritualite,
+        2,
+        &[d(
+            "test de CHA 10 : l'au-delà juge une action bénéfique, incertaine, risquée ou néfaste",
+        )],
+    ),
+    (
+        Voie::Spiritualite,
+        3,
+        &[d(
+            "toucher : retire les pénalités de sorts, malédictions et états (pas les mutilations)",
+        )],
+    ),
+    (
+        Voie::Spiritualite,
+        4,
+        &[c("CHA +1"), die("dé bonus aux tests de CHA")],
+    ),
+    (
+        Voie::Spiritualite,
+        5,
+        &[d(
+            "1/jour : voyage entre les plans jusqu'à CHA rounds, 10 km par round, sortie imprécise",
+        )],
+    ),
 ];
 
 #[cfg(test)]
@@ -2795,6 +3075,17 @@ mod tests {
         assert_eq!(keys.len(), unique.len());
         assert_eq!(Voie::Nain.ability_effects(Rank::new(1)).len(), 2);
         assert_eq!(Voie::Nain.ability_effects(Rank::new(6)), []);
+    }
+
+    #[test]
+    fn every_capacite_has_its_effects() {
+        let missing: Vec<_> = Voie::ALL
+            .into_iter()
+            .flat_map(|voie| (1..=5).map(move |rank| (voie, rank)))
+            .filter(|(voie, rank)| voie.ability_effects(Rank::new(*rank)).is_empty())
+            .collect();
+        assert_eq!(missing, []);
+        assert_eq!(EFFECTS.len(), Voie::ALL.len() * 5);
     }
 
     #[test]
