@@ -19,6 +19,11 @@ const fn c(text: &'static str) -> AbilityEffect {
     AbilityEffect::computed(text)
 }
 
+/// A computed effect depending on the choice recorded for its capacité.
+const fn ch(text: &'static str) -> AbilityEffect {
+    AbilityEffect::chosen(text)
+}
+
 /// An effect the engine only describes.
 const fn d(text: &'static str) -> AbilityEffect {
     AbilityEffect::described(text)
@@ -184,7 +189,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
             d("immunité aux poisons et maladies"),
         ],
     ),
-    (Voie::ElfeHaut, 5, &[c("VOL +1 ; INT ou CHA +1")]),
+    (Voie::ElfeHaut, 5, &[ch("VOL +1 ; INT ou CHA +1")]),
     // Voie de l'elfe sylvain.
     (
         Voie::ElfeSylvain,
@@ -310,7 +315,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Humain,
         5,
-        &[c("caractéristique la plus basse +1 ; VOL +1")],
+        &[ch("caractéristique la plus basse +1 ; VOL +1")],
     ),
     // Voie du nain.
     (
@@ -835,7 +840,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::CombatADeuxArmes,
         4,
         &[
-            c("au choix : AGI +1 ou FOR +1"),
+            ch("au choix : AGI +1 ou FOR +1"),
             die("avec AGI +1 : dé bonus aux tests d'AGI"),
             d("avec FOR +1 : la même arme dans chaque main sans dé malus"),
         ],
@@ -2617,7 +2622,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
             d(
                 "1/jour (+1/rang 5 d'une autre voie de moine) : un round de coups et d'esquives automatiques",
             ),
-            c("caractéristique la plus basse +1"),
+            ch("caractéristique la plus basse +1"),
         ],
     ),
     // Voie de la méditation.
@@ -2651,7 +2656,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         5,
         &[
             d("1/jour (+1/rang 5 d'une autre voie de moine) : projection astrale [1d4° + VOL] min"),
-            c("caractéristique la plus basse +1"),
+            ch("caractéristique la plus basse +1"),
         ],
     ),
     // Voie du poing.
@@ -2721,7 +2726,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         5,
         &[
             d("1/combat : traverse un mur d'au plus VOL mètres d'épaisseur"),
-            c("caractéristique la plus basse +1"),
+            ch("caractéristique la plus basse +1"),
         ],
     ),
     // Voie de la foi.
@@ -3075,6 +3080,35 @@ mod tests {
         assert_eq!(keys.len(), unique.len());
         assert_eq!(Voie::Nain.ability_effects(Rank::new(1)).len(), 2);
         assert_eq!(Voie::Nain.ability_effects(Rank::new(6)), []);
+    }
+
+    #[test]
+    fn effects_depending_on_a_choice_are_those_of_the_raises_to_choose() {
+        // The characteristic raises with no default (ADR ENG-COF-OPTIONS).
+        let raises = [
+            (Voie::ElfeHaut, 5),
+            (Voie::CombatADeuxArmes, 4),
+            (Voie::Humain, 5),
+            (Voie::Maitrise, 5),
+            (Voie::Meditation, 5),
+            (Voie::Vent, 5),
+        ];
+        let chosen: Vec<_> = EFFECTS
+            .iter()
+            .filter(|(_, _, effects)| effects.iter().any(|e| e.choice()))
+            .map(|(voie, rank, _)| (*voie, *rank))
+            .collect();
+        let mut sorted = chosen.clone();
+        sorted.sort();
+        let mut expected = raises.to_vec();
+        expected.sort();
+        assert_eq!(sorted, expected);
+        let character = Character::new();
+        assert!(
+            raises
+                .iter()
+                .all(|(voie, rank)| character.ability_option_required(*voie, *rank))
+        );
     }
 
     #[test]

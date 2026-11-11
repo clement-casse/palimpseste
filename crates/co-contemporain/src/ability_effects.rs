@@ -19,6 +19,11 @@ const fn c(text: &'static str) -> AbilityEffect {
     AbilityEffect::computed(text)
 }
 
+/// A computed effect depending on the choice recorded for its capacité.
+const fn ch(text: &'static str) -> AbilityEffect {
+    AbilityEffect::chosen(text)
+}
+
 /// An effect the engine only describes.
 const fn d(text: &'static str) -> AbilityEffect {
     AbilityEffect::described(text)
@@ -80,7 +85,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         &[
             d("dé bonus avec l'arme de prédilection"),
             d("ignore une condition défavorable"),
-            c("FOR ou AGI +1"),
+            ch("FOR ou AGI +1"),
         ],
     ),
     // Voie des armes à distance.
@@ -125,7 +130,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         &[
             d("dé bonus avec l'arme de prédilection"),
             d("ignore une deuxième condition défavorable"),
-            c("AGI ou PER +1"),
+            ch("AGI ou PER +1"),
         ],
     ),
     // Voie des armes lourdes.
@@ -171,7 +176,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         &[
             d("dé bonus avec l'arme de prédilection"),
             d("ignore une deuxième condition défavorable"),
-            c("FOR ou PER +1"),
+            ch("FOR ou PER +1"),
         ],
     ),
     // Voie des arts et artisanats.
@@ -255,7 +260,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         &[
             die("dé bonus dans une discipline sportive choisie"),
             d("le +2 du rang 3 passe à +5"),
-            c("FOR, AGI ou CON +1"),
+            ch("FOR, AGI ou CON +1"),
         ],
     ),
     // Voie du combat à mains nues.
@@ -302,7 +307,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         &[
             d("dé bonus avec son art martial"),
             d("ignore une condition défavorable"),
-            c("FOR ou AGI +1"),
+            ch("FOR ou AGI +1"),
         ],
     ),
     // Voie des corporations.
@@ -390,7 +395,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         &[
             die("dé bonus à un test des rangs 1, 3 ou 4"),
             d("PER 10 : repère une personne louche ou une faille exploitable"),
-            c("PER ou CHA +1"),
+            ch("PER ou CHA +1"),
         ],
     ),
     // Voie du discours.
@@ -422,7 +427,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         &[
             die("dé bonus dans une approche"),
             d("CHA 15 : captive (+5 au prochain test social ou attitude améliorée d'un cran)"),
-            c("CHA ou INT +1"),
+            ch("CHA ou INT +1"),
         ],
     ),
     // Voie de la furtivité.
@@ -466,7 +471,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         &[
             die("dé bonus à un test des rangs 1 à 4"),
             d("une planque secrète (5 semaines d'autonomie)"),
-            c("PER ou AGI +1"),
+            ch("PER ou AGI +1"),
         ],
     ),
     // Voie de l'investigation.
@@ -502,7 +507,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
     (
         Voie::Investigation,
         5,
-        &[d("durée de fouille réduite d'un cran"), c("INT ou PER +1")],
+        &[d("durée de fouille réduite d'un cran"), ch("INT ou PER +1")],
     ),
     // Voie des langues.
     (
@@ -629,7 +634,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         5,
         &[
             die("dé bonus aux tests de PER de psychologie"),
-            c("PER ou VOL +1"),
+            ch("PER ou VOL +1"),
         ],
     ),
     // Voie de la technologie.
@@ -924,6 +929,21 @@ mod tests {
         assert_eq!(keys.len(), unique.len());
         assert_eq!(Voie::Crime.ability_effects(Rank::new(2)).len(), 3);
         assert_eq!(Voie::Crime.ability_effects(Rank::new(6)), []);
+    }
+
+    #[test]
+    fn effects_depending_on_a_choice_are_those_of_the_rank_five_choices() {
+        let chosen: Vec<_> = EFFECTS
+            .iter()
+            .filter(|(_, _, effects)| effects.iter().any(|e| e.choice()))
+            .map(|(voie, rank, _)| (*voie, *rank))
+            .collect();
+        let expected: Vec<_> = Voie::ALL
+            .into_iter()
+            .filter(|voie| !voie.rank_five_choice().is_empty())
+            .map(|voie| (voie, 5))
+            .collect();
+        assert_eq!(chosen, expected);
     }
 
     #[test]
