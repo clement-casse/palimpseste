@@ -318,6 +318,9 @@ pub struct HeldAbility {
     /// The speciality written for it, when it asks for one (ADR
     /// ENG-SPECIALITIES).
     pub speciality: Option<String>,
+    /// The option chosen for it, such as `VOL` for the characteristic a
+    /// raise picks, when one is recorded.
+    pub choice: Option<String>,
     /// Its permanent bonuses to tests (ADR ENG-TEST-BONUSES).
     pub test_bonuses: Vec<TestBonusLine>,
     /// Its dé bonus to tests, `None` without one.
@@ -794,7 +797,7 @@ fn fantasy(
         evolutive_die: format!("d{}", character.level().evolutive_die().faces()),
         levels: fantasy_levels(&character),
         ability_options: fantasy_options(&character),
-        abilities_held: fantasy_held(&character, &document.specialities, &bonus_dice, &line),
+        abilities_held: fantasy_held(&character, document, &bonus_dice, &line),
     });
     let in_play = played.as_ref().map(co_fantasy::InPlay::report);
     Ok(common.sheet(
@@ -892,7 +895,7 @@ fn contemporain(
         disadvantages: character.disadvantages(),
         spendings: contemporain_spendings(&character, spendings),
         rank_five: contemporain_rank_five(&character),
-        abilities_held: contemporain_held(&character, &document.specialities, &line),
+        abilities_held: contemporain_held(&character, document, &line),
     });
     Ok(common.sheet(
         |c| character.characteristic(c),
@@ -909,11 +912,11 @@ fn count(number: usize) -> u32 {
 }
 
 /// Every COF2 capacité held, with the level-up that acquired it, its
-/// speciality among `specialities`, its test bonuses and its dé bonus among
-/// `dice`.
+/// speciality and its option from `document`, its test bonuses and its dé
+/// bonus among `dice`.
 fn fantasy_held(
     character: &co_fantasy::Character,
-    specialities: &[SpecialityEntry],
+    document: &FantasyDocument,
     dice: &[co_fantasy::BonusDie],
     line: &dyn Fn(co_fantasy::Value) -> ValueLine,
 ) -> Vec<HeldAbility> {
@@ -923,7 +926,13 @@ fn fantasy_held(
         .into_iter()
         .map(|(voie, rank)| HeldAbility {
             ability: voie.ability(rank).as_str().to_owned(),
-            speciality: speciality_of(specialities, voie.ability(rank).as_str()),
+            speciality: speciality_of(&document.specialities, voie.ability(rank).as_str()),
+            choice: document
+                .ability_options
+                .iter()
+                .find(|entry| entry.ability == voie.ability(rank).as_str())
+                .and_then(|entry| co_fantasy::AbilityOption::from_id(&entry.option))
+                .map(|option| option.name().to_owned()),
             progression: character
                 .acquired_at(voie, rank)
                 .map(|level| u32::from(level.get())),
@@ -950,10 +959,11 @@ fn fantasy_held(
 }
 
 /// Every COC2 capacité held, with the spending that bought it, its
-/// speciality among `specialities`, its test bonuses and its dé bonus.
+/// speciality and the characteristic its rank 5 raises from `document`, its
+/// test bonuses and its dé bonus.
 fn contemporain_held(
     character: &co_contemporain::Character,
-    specialities: &[SpecialityEntry],
+    document: &ContemporainDocument,
     line: &dyn Fn(co_contemporain::Value) -> ValueLine,
 ) -> Vec<HeldAbility> {
     let bonuses = character.test_bonuses();
@@ -963,7 +973,16 @@ fn contemporain_held(
         .into_iter()
         .map(|(voie, rank)| HeldAbility {
             ability: voie.ability(rank).as_str().to_owned(),
-            speciality: speciality_of(specialities, voie.ability(rank).as_str()),
+            speciality: speciality_of(&document.specialities, voie.ability(rank).as_str()),
+            choice: document
+                .raised_characteristics
+                .iter()
+                .find(|entry| rank.get() == 5 && entry.voie == voie.id().as_str())
+                .map(|entry| {
+                    co_kernel::Characteristic::from(entry.characteristic)
+                        .abbreviation()
+                        .to_owned()
+                }),
             progression: character.bought_in(voie, rank).map(count),
             test_bonuses: bonuses
                 .iter()

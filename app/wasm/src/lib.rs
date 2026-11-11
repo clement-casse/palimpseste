@@ -76,8 +76,9 @@ pub fn evaluate_in_play_js(
 #[cfg(test)]
 mod tests {
     use palimpseste_document::{
-        AdjustmentEntry, Characteristic, ContemporainDocument, FantasyDocument, ItemEntry,
-        LevelUpEntry, SpecialityEntry, Subject, Target, VoieEntry, WaiverEntry, XpSpendingEntry,
+        AbilityOptionEntry, AdjustmentEntry, Characteristic, ContemporainDocument, FantasyDocument,
+        ItemEntry, LevelUpEntry, SpecialityEntry, Subject, Target, VoieEntry, WaiverEntry,
+        XpSpendingEntry,
     };
 
     use super::*;
@@ -872,6 +873,58 @@ mod tests {
             (note.situation.as_str(), note.amount),
             ("à la place du CHA pour contraindre", None)
         );
+    }
+
+    #[test]
+    fn held_capacites_carry_the_choice_made() {
+        let mut document = ContemporainDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "coc.crime".into(),
+            ranks: vec![1, 2, 3, 4, 5],
+        }];
+        document.raised_characteristics = vec![palimpseste_document::RaisedCharacteristicEntry {
+            voie: "coc.crime".into(),
+            characteristic: Characteristic::Cha,
+        }];
+        let Details::Contemporain(details) = contemporain(document).details else {
+            panic!("contemporain details expected");
+        };
+        let choice = |held: &[sheet::HeldAbility], id: &str| {
+            held.iter()
+                .find(|h| h.ability == id)
+                .and_then(|h| h.choice.clone())
+        };
+        assert_eq!(
+            choice(&details.abilities_held, "coc.crime.5").as_deref(),
+            Some("CHA")
+        );
+        assert_eq!(choice(&details.abilities_held, "coc.crime.4"), None);
+
+        let mut document = FantasyDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "cof.combat-a-deux-armes".into(),
+            ranks: vec![1, 2, 3, 4],
+        }];
+        document.ability_options = vec![AbilityOptionEntry {
+            ability: "cof.combat-a-deux-armes.4".into(),
+            option: "cof.option.for".into(),
+        }];
+        let Details::Fantasy(details) = fantasy(document).details else {
+            panic!("fantasy details expected");
+        };
+        assert_eq!(
+            choice(&details.abilities_held, "cof.combat-a-deux-armes.4").as_deref(),
+            Some("FOR")
+        );
+        let Catalog::Fantasy(content) = catalog(Engine::Fantasy) else {
+            panic!("fantasy catalog expected");
+        };
+        let heroic = content
+            .abilities
+            .iter()
+            .find(|a| a.id == "cof.combat-a-deux-armes.4")
+            .unwrap();
+        assert!(heroic.effects[0].choice);
     }
 
     #[test]
