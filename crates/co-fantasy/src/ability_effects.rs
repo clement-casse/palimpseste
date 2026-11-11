@@ -2237,6 +2237,389 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
             "attaque magique opposée à 20 m : [5d4° + INT] DM (÷ 2 si ratée) ; 1/combat par cible",
         )],
     ),
+    // Voie de l'outre-tombe.
+    (
+        Voie::OutreTombe,
+        1,
+        &[d(
+            "attaque magique opposée à 10 m : [1d4° + INT] DM, ralenti 1 round sauf CON 10",
+        )],
+    ),
+    (
+        Voie::OutreTombe,
+        2,
+        &[d(
+            "armure d'os qu'il fabrique : +3 DEF (+1/rang 4 de sorcier), compatible avec les capacités de sorcier",
+        )],
+    ),
+    (
+        Voie::OutreTombe,
+        3,
+        &[d(
+            "anime le cadavre récent d'un humanoïde en zombie ; un de plus par rang 5 de sorcier",
+        )],
+    ),
+    (
+        Voie::OutreTombe,
+        4,
+        &[d(
+            "1/combat : enterre vivante une cible moyenne, 2d4° DM/round jusqu'à ce qu'elle s'échappe (FOR ou AGI 15)",
+        )],
+    ),
+    (
+        Voie::OutreTombe,
+        5,
+        &[d(
+            "1/jour, niveau rounds : des squelettes infligent 2d4° DM/round aux ennemis à 10 m ; déplacement ÷ 2",
+        )],
+    ),
+    // Voie du sang.
+    (
+        Voie::Sang,
+        1,
+        &[d(
+            "attaque magique contre [10 + CON] à 10 m : 1d4° DM/round pendant INT rounds",
+        )],
+    ),
+    (
+        Voie::Sang,
+        2,
+        &[d(
+            "INT min : un ennemi au contact qui le blesse subit 1d4° DM d'acide",
+        )],
+    ),
+    (
+        Voie::Sang,
+        3,
+        &[
+            c("+2 DEF (+3 au rang 5 ; −1 dans une armure autre qu'en os)"),
+            d("continue d'agir à 0 PV, avec un dé malus"),
+        ],
+    ),
+    (
+        Voie::Sang,
+        4,
+        &[d(
+            "sacrifie 1d4° PV : INT rounds, DM tranchants et perforants contre la cible +1d4°",
+        )],
+    ),
+    (
+        Voie::Sang,
+        5,
+        &[d(
+            "attaque magique opposée : INT min, la moitié des DM qu'il subit touche aussi la cible",
+        )],
+    ),
+    // Voie de la sombre magie.
+    (
+        Voie::SombreMagie,
+        1,
+        &[
+            d("zone de ténèbres magiques de 10 m pendant INT min"),
+            t(1, "rang + 2 savoirs des ténèbres"),
+        ],
+    ),
+    (
+        Voie::SombreMagie,
+        2,
+        &[d(
+            "INT min : rampe sur les murs et plafonds, 5 m par action de mouvement",
+        )],
+    ),
+    (
+        Voie::SombreMagie,
+        3,
+        &[d(
+            "attaque magique opposée : dé malus et [1d4° + INT] DM/round tant qu'il maintient (M et 1 PM par round)",
+        )],
+    ),
+    (
+        Voie::SombreMagie,
+        4,
+        &[d(
+            "INT min : dé bonus en discrétion, dé malus aux attaques à distance contre lui ; s'échappe à 0 PV",
+        )],
+    ),
+    (
+        Voie::SombreMagie,
+        5,
+        &[
+            c("CON +1"),
+            die("dé bonus aux tests de CON"),
+            d("voit dans les ténèbres"),
+            d("sacrifie 1d4° PV : +2d4° DM à un sort"),
+        ],
+    ),
+    // Voie des animaux.
+    (
+        Voie::Animaux,
+        1,
+        &[
+            d("parle aux mammifères ; une catégorie d'animaux de plus par rang 4 de druide"),
+            t(1, "rang + 2 influencer les animaux"),
+        ],
+    ),
+    (
+        Voie::Animaux,
+        2,
+        &[
+            d("compagnon non magique qui partage ses sens : DEF 13 + rang, PV niveau × 2"),
+            d("en vue : +2 DEF (non cumulable avec Familier)"),
+        ],
+    ),
+    (
+        Voie::Animaux,
+        3,
+        &[d(
+            "attaque magique à 20 m : la nuée inflige 1 DM/round et −2 à tous les tests pendant [3 + PER] rounds",
+        )],
+    ),
+    (
+        Voie::Animaux,
+        4,
+        &[d(
+            "PER min : +2 Init, DEF, attaque au contact et DM ; vision nocturne",
+        )],
+    ),
+    (
+        Voie::Animaux,
+        5,
+        &[d(
+            "PER min : forme d'un animal connu de taille moyenne ou moins ; garde ses PV, son INT et sa VOL",
+        )],
+    ),
+    // Voie du fauve.
+    (
+        Voie::Fauve,
+        1,
+        &[
+            t(1, "rang + 2 course, escalade, saut"),
+            c("+3 Init"),
+            c("+1 DEF (+2 au rang 3, +3 au rang 5)"),
+        ],
+    ),
+    (
+        Voie::Fauve,
+        2,
+        &[d(
+            "panthère fidèle : DEF 13 + rang, PV niveau × 4, Init et attaque magique du druide, DM 1d4 + 2",
+        )],
+    ),
+    (
+        Voie::Fauve,
+        3,
+        &[d(
+            "le druide ou le félin bondit de 5 à 10 m et attaque : dé bonus, +1d4° DM",
+        )],
+    ),
+    (
+        Voie::Fauve,
+        4,
+        &[
+            d("la panthère devient un grand félin : DEF 15 + rang, PV niveau × 5, DM 1d4° + 5"),
+            d("monture, télépathie ; soignée avec les PV du druide"),
+        ],
+    ),
+    (
+        Voie::Fauve,
+        5,
+        &[d(
+            "6 fois, au plus 1/niveau : ignore ce qui l'aurait tué ou mis hors de combat",
+        )],
+    ),
+    // Voie de la nature.
+    (
+        Voie::Nature,
+        1,
+        &[
+            t(1, "en extérieur : rang + 2 survie (récupération comprise)"),
+            d("dépense un DR en extérieur : +1d4° PV"),
+        ],
+    ),
+    (
+        Voie::Nature,
+        2,
+        &[d(
+            "en terrain difficile : sans pénalité ; +3 Init, +1 attaque et DEF",
+        )],
+    ),
+    (
+        Voie::Nature,
+        3,
+        &[d(
+            "deux attaques au bâton ou à l'épieu (AGI possible pour toucher), [1d4° + FOR ou AGI] DM chacune ; +2 DEF 1 round",
+        )],
+    ),
+    (
+        Voie::Nature,
+        4,
+        &[c("CON +1"), die("dé bonus aux tests de CON")],
+    ),
+    (
+        Voie::Nature,
+        5,
+        &[d(
+            "DM naturels non magiques ÷ 2 (froid, feu, chute, poison, animaux), aussi pour ses compagnons animaux",
+        )],
+    ),
+    // Voie du protecteur.
+    (
+        Voie::Protecteur,
+        1,
+        &[
+            d("PER fruits, chacun un repas qui soigne [1d4° + rang] PV, 1/jour"),
+            t(1, "en extérieur : rang + 2 vigilance et discrétion"),
+        ],
+    ),
+    (
+        Voie::Protecteur,
+        2,
+        &[d(
+            "rituel de 30 min : la forêt à 1 km par rang gêne ses ennemis 24 h (déplacement ÷ 2, dé malus)",
+        )],
+    ),
+    (
+        Voie::Protecteur,
+        3,
+        &[d(
+            "rituel de 10 min : soigne [3d4° + PER] PV ; membres repoussés au rang 5 ; 1/jour par cible",
+        )],
+    ),
+    (
+        Voie::Protecteur,
+        4,
+        &[
+            c("PER +1"),
+            die("dé bonus aux tests de PER"),
+            c("+PER aux PM (en plus de la VOL)"),
+        ],
+    ),
+    (
+        Voie::Protecteur,
+        5,
+        &[d(
+            "PER min : arbre animé ; garde INT, PER, VOL et ses sorts de protecteur et de végétaux",
+        )],
+    ),
+    // Voie des végétaux.
+    (
+        Voie::Vegetaux,
+        1,
+        &[
+            d(
+                "PER min : +2 DEF (+1 aux rangs 3 et 5), ni en armure de métal ni avec un autre sort de DEF (sauf Masque du prédateur)",
+            ),
+            t(1, "rang + 2 connaissance des plantes"),
+        ],
+    ),
+    (
+        Voie::Vegetaux,
+        2,
+        &[d(
+            "zone de 10 m à 20 m : ennemis immobilisés PER min (test de FOR pour se libérer)",
+        )],
+    ),
+    (
+        Voie::Vegetaux,
+        3,
+        &[d(
+            "flèche enchantée : DM normaux, puis 3d4° au round suivant",
+        )],
+    ),
+    (
+        Voie::Vegetaux,
+        4,
+        &[d(
+            "anime un arbre qui combat niveau rounds : DEF 10 + rang, PV niveau × 5, DM 1d4° + 3",
+        )],
+    ),
+    (
+        Voie::Vegetaux,
+        5,
+        &[d(
+            "1/jour : entre dans un arbre et sort d'un autre de la même forêt, jusqu'à PER × 10 km",
+        )],
+    ),
+    // Voie de l'énergie vitale.
+    (
+        Voie::EnergieVitale,
+        1,
+        &[
+            d("attaque à mains nues à + (rang + 2)"),
+            d("mains nues toujours magiques ; peut utiliser la VOL au lieu de la FOR aux DM"),
+        ],
+    ),
+    (
+        Voie::EnergieVitale,
+        2,
+        &[d(
+            "projection à 20 m, attaque magique : DM [1d4° + VOL], puis [2d4° + VOL] au rang 4",
+        )],
+    ),
+    (
+        Voie::EnergieVitale,
+        3,
+        &[d(
+            "DM élémentaires, de poison et de maladie ÷ 2 ; immunité aux poisons et maladies au rang 5",
+        )],
+    ),
+    (
+        Voie::EnergieVitale,
+        4,
+        &[d(
+            "accumule les DM à mains nues (+1d4° chacun) et les libère d'un toucher (attaque magique au niveau 10)",
+        )],
+    ),
+    (
+        Voie::EnergieVitale,
+        5,
+        &[
+            d("vit sans manger, boire ni dormir pendant [5 + VOL] jours"),
+            c("CON +1"),
+            die("dé bonus aux tests de CON"),
+        ],
+    ),
+    // Voie de la maîtrise.
+    (
+        Voie::Maitrise,
+        1,
+        &[
+            t(1, "rang + 2 acrobaties et esquive"),
+            c("+2 DEF (+3 au rang 4)"),
+            d("se relève par une action gratuite"),
+        ],
+    ),
+    (
+        Voie::Maitrise,
+        2,
+        &[d(
+            "mains nues : un 1 au dé de DM compte comme le maximum ; DM tranchants ou perforants au choix",
+        )],
+    ),
+    (
+        Voie::Maitrise,
+        3,
+        &[d(
+            "mains nues : critique +1 ; un critique laisse la cible affaiblie 1 round",
+        )],
+    ),
+    (
+        Voie::Maitrise,
+        4,
+        &[d(
+            "1/combat : [3d4° + FOR] DM automatiques aux ennemis au contact ; FOR 10 ou renversés",
+        )],
+    ),
+    (
+        Voie::Maitrise,
+        5,
+        &[
+            d(
+                "1/jour (+1/rang 5 d'une autre voie de moine) : un round de coups et d'esquives automatiques",
+            ),
+            c("caractéristique la plus basse +1"),
+        ],
+    ),
 ];
 
 #[cfg(test)]
