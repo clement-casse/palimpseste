@@ -85,6 +85,12 @@ impl TestBonus {
         }
     }
 
+    /// The bonus's number within its capacité, from 1.
+    #[cfg(test)]
+    pub(crate) const fn index(self) -> u8 {
+        self.index
+    }
+
     /// Every bonus of the catalogue, in voie and rank order.
     pub(crate) fn all() -> impl Iterator<Item = Self> {
         BONUSES.iter().enumerate().map(|(position, row)| Self {
@@ -587,6 +593,14 @@ pub(crate) fn held(character: &Character) -> Vec<TestBonus> {
     TestBonus::all()
         .filter(|bonus| character.has_rank(bonus.voie, bonus.rank))
         .collect()
+}
+
+/// Whether the capacité at `rank` in `voie` gives a dé bonus to tests.
+#[cfg(test)]
+pub(crate) fn gives_bonus_die(voie: Voie, rank: u8) -> bool {
+    BONUS_DICE
+        .iter()
+        .any(|(other, other_rank, ..)| (*other, *other_rank) == (voie, rank))
 }
 
 /// The dé bonus of the capacités the character holds now, in voie and rank

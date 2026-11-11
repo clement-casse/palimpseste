@@ -43,6 +43,7 @@
 //! assert!(character.report().is_clean());
 //! ```
 
+mod ability_effects;
 mod age;
 mod character;
 mod characteristics;

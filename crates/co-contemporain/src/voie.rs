@@ -5,7 +5,7 @@ use co_kernel::{
 };
 
 use crate::{
-    AttackMode, Character, Value,
+    AttackMode, Character, Value, ability_effects,
     rules::{CAPACITY_POINTS, CONTENT_VOIES, MAX_VOIES, VOIE_MECHANIC},
 };
 
@@ -195,6 +195,14 @@ impl Voie {
         let (voie, rank) = id.rsplit_once('.')?;
         let rank: u8 = rank.parse().ok()?;
         Some((Self::from_id(voie)?, Rank::new(rank)))
+    }
+
+    /// The effects of the capacité at `rank`, in our own words, each computed
+    /// by the engine or only described (ADR ENG-ABILITY-EFFECTS); empty
+    /// outside ranks 1 to 5.
+    #[must_use]
+    pub fn ability_effects(self, rank: Rank) -> &'static [co_kernel::AbilityEffect] {
+        ability_effects::of(self, rank)
     }
 
     /// The French display name of the capacité at `rank` in this voie
