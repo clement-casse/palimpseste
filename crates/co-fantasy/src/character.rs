@@ -532,6 +532,20 @@ impl Character {
         ability::options(self, voie, rank.into())
     }
 
+    /// Returns the effects of the capacité at `rank` in `voie`
+    /// ([`Voie::ability_effects`]) written for this character: each formula
+    /// with its value, the rank reached in `voie` at least `rank`, so a
+    /// capacité not held yet reads as it would once acquired (ADR
+    /// ENG-ABILITY-EFFECTS).
+    #[must_use]
+    pub fn ability_effects(
+        &self,
+        voie: Voie,
+        rank: impl Into<Rank>,
+    ) -> Vec<Vec<co_kernel::EffectPart>> {
+        crate::ability_effects::written(self, voie, rank.into())
+    }
+
     /// Whether the capacité at `rank` in `voie` has no effect until one of its
     /// [`ability_options_offered`](Self::ability_options_offered) is chosen;
     /// a capacité offering options with a default keeps it.
