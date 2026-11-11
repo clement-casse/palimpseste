@@ -147,7 +147,8 @@ weapon size and situational modifiers are `Described`. A described
 effect giving a test bonus or a dé bonus names it (`Bonus`), so the sheet
 shows its amount. Two tests hold the table to the engine: a capacité has
 a computed effect exactly when it is named by a characteristic or a
-value, or changes a weapon's attack, DM or dice, with its default or its
+value, or changes a value's total or a weapon's attack, DM or dice, with
+its default or its
 option (a spell's 1 PM, D-23, is the rule's); and its effects name each
 of its test bonuses (0 for all of them) and its dé bonus, and nothing
 else. When a change implements a described effect, it marks it
