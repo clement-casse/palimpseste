@@ -18,7 +18,7 @@ depends on it.
 | `voie.rs` | `Rank`, `VoieId`, `AbilityId`, `VOIE_STRUCTURE`, `VOIE_ORDER`, `voie_rank_violations` | KER-VOIE |
 | `item.rs` | `ItemName`, `Quantity` | KER-ITEMS |
 | `speciality.rs` | `Speciality` (free text) | KER-SPECIALITY |
-| `ability_effect.rs` | `AbilityEffect`, `Application` (computed or described), `Bonus` (the test bonus or dé bonus a described effect gives) | KER-ABILITY-EFFECTS |
+| `ability_effect.rs` | `AbilityEffect`, `Application` (computed or described), `Bonus` (the test bonus or dé bonus a described effect gives), `Term`, `Measure`, `EffectPart` (values computed from formulas) | KER-ABILITY-EFFECTS |
 | `derived.rs` | `DerivedValue`, `Contribution`, `Source` | KER-SOURCES, KER-TOTAL |
 | `adjustment.rs` | `Adjustment`, `Author` | KER-ADJUSTMENTS |
 | `violation.rs` | `Violation`, `RuleId`, `Mechanic`, `ValueId`, `Subject`, `Category`, `Severity`, `Parameter`, `ADJUSTMENT_RULE`, `adjustment_notice` | KER-IDS, KER-SUBJECT, KER-SEVERITY |

@@ -46,7 +46,15 @@ so the sheet shows the amount ("+4 escalade") in place of the text
 ("rang + 2 escalade"). A computed effect may depend on a choice
 recorded for its capacité (`chosen`, such as "PER ou VOL +1"), so the
 sheet shows the option taken beside the text, or that it is still to
-choose. *Why a list with a state:* the sheet shows the
+choose. An effect's text may hold `{}` slots, each filled by a `Term`:
+a `Measure` (the rank reached, a characteristic, the level, the voies of
+a group holding a rank) times a factor, plus an amount, at most a
+maximum, with a unit and the formula as written (`CHA min`). `text()`
+writes the formulas; `parts(value_of)` writes the values for a character
+the engine describes, as `EffectPart`s, each value with its formula.
+Dice are never terms: a formula rolling dice stays text. *Why typed
+terms:* a formula is code, never a string the application parses
+(principle 6). *Why a list with a state:* the sheet shows the
 computed ones quietly and the described ones prominently, and a
 described effect becomes computed when a later change implements its
 mechanic, without rewriting the others. Which capacités have which effects stays in the

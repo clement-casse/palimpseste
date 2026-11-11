@@ -71,7 +71,7 @@ mod violation;
 mod voie;
 mod waiver;
 
-pub use ability_effect::{AbilityEffect, Application, Bonus};
+pub use ability_effect::{AbilityEffect, Application, Bonus, EffectPart, Measure, Term};
 pub use adjustment::{Adjustment, Author};
 pub use characteristic::{Characteristic, CharacteristicValue, Characteristics};
 pub use derived::{Contribution, DerivedValue, Source};

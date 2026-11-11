@@ -126,7 +126,7 @@ pub enum EffectBonus {
 impl From<co_kernel::AbilityEffect> for AbilityEffectEntry {
     fn from(effect: co_kernel::AbilityEffect) -> Self {
         Self {
-            text: effect.text().to_owned(),
+            text: effect.text(),
             computed: effect.application() == co_kernel::Application::Computed,
             bonus: effect.bonus().map(|bonus| match bonus {
                 co_kernel::Bonus::Test(index) => EffectBonus::Test { index },
