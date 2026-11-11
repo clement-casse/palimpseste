@@ -121,16 +121,22 @@ impl Term {
         self.formula
     }
 
-    /// The value written for `quantity`, its unit included.
+    /// The value written for `quantity`, its unit included, a negative one
+    /// with a minus sign (`−2`) as the texts write it.
     #[must_use]
     pub fn write(self, quantity: i32) -> String {
-        let value = quantity * self.times + self.plus;
+        let value = quantity
+            .saturating_mul(self.times)
+            .saturating_add(self.plus);
         let value = self.max.map_or(value, |max| value.min(max));
-        if self.signed && value >= 0 {
-            format!("+{value}{}", self.unit)
+        let sign = if value < 0 {
+            "−"
+        } else if self.signed {
+            "+"
         } else {
-            format!("{value}{}", self.unit)
-        }
+            ""
+        };
+        format!("{sign}{}{}", value.unsigned_abs(), self.unit)
     }
 }
 
@@ -247,6 +253,12 @@ impl AbilityEffect {
     /// gives: each slot a value, or its formula when `value_of` has none.
     #[must_use]
     pub fn parts(self, value_of: impl Fn(Measure) -> Option<i32>) -> Vec<EffectPart> {
+        debug_assert_eq!(
+            self.text.matches("{}").count(),
+            self.terms.len(),
+            "each slot of {:?} has its term",
+            self.text
+        );
         let mut parts = Vec::new();
         let mut text = String::new();
         let mut terms = self.terms.iter();
@@ -335,6 +347,11 @@ mod tests {
         assert_eq!(capped.write(6), "4");
         let bonus = Term::new(Measure::Rank, "+1/rang 5").signed().plus(5);
         assert_eq!(bonus.write(2), "+7");
+        let malus = Term::new(Measure::Rank, "− rang").times(-1);
+        assert_eq!(malus.write(2), "−2");
+        assert_eq!(malus.signed().write(0), "+0");
+        let huge = Term::new(Measure::Level, "niveau × 3").times(3);
+        assert_eq!(huge.write(i32::MAX), i32::MAX.to_string());
         assert_eq!(effect.template(), "illusion ({} de côté) pendant {}");
     }
 
