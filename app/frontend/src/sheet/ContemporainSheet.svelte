@@ -242,6 +242,7 @@
         {notes}
         {catalog}
         held={details.abilitiesHeld}
+        written={sheet.writtenEffects}
       />
       <p class="mt-2 text-sm">
         XP restante : {line("coc.experience")?.total ?? "—"}

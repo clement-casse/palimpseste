@@ -8,6 +8,12 @@ import { type Sent, amelia, character, lhagva, stubBackend } from "../test/backe
 import CharacterSheet from "../sheet/CharacterSheet.svelte";
 import { type Document, emptyDocument } from "../wasm/palimpseste_wasm";
 
+/** Matches the innermost list item by its whole text, styled values included. */
+const line = (pattern: RegExp) => (_: string, element: Element | null) =>
+  element?.tagName === "LI" &&
+  pattern.test(element.textContent ?? "") &&
+  ![...element.querySelectorAll("li")].some((inner) => pattern.test(inner.textContent ?? ""));
+
 function storing() {
   let version = 1;
   return (request: Sent) => {
@@ -102,7 +108,7 @@ describe("the sheet", () => {
     expect(screen.getByText("2 (d4° : d4)")).toBeTruthy();
     expect(screen.getByText("2. Défier la mort")).toBeTruthy();
     // Réflexes éclair: rank + 2 to AGI dodge tests, at pourfendeur rank 2.
-    expect(screen.getByText(/\+4\s*esquiver\s*\(AGI\)/)).toBeTruthy();
+    expect(screen.getByText(line(/\+4\s*esquiver\s*\(AGI\)/))).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Attaque" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Monter au niveau 3" })).toBeTruthy();
   });

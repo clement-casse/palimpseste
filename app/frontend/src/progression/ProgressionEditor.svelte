@@ -292,9 +292,9 @@
           <Heading tag="h4" class="text-lg">Ce qui change sur la fiche</Heading>
           <Differences differences={changes} />
         {:else if choices.engine === "fantasy" && content.engine === "fantasy" && sheet.details.engine === "fantasy"}
-          <FantasyLevelForm bind:choices catalog={content} details={sheet.details} number={entry} {step} />
+          <FantasyLevelForm bind:choices catalog={content} details={sheet.details} number={entry} {step} written={sheet.writtenEffects} />
         {:else if choices.engine === "contemporain" && content.engine === "contemporain" && sheet.details.engine === "contemporain"}
-          <ContemporainSpendingForm bind:choices catalog={content} details={sheet.details} number={entry} {step} />
+          <ContemporainSpendingForm bind:choices catalog={content} details={sheet.details} number={entry} {step} written={sheet.writtenEffects} />
         {/if}
 
         <Heading tag="h4" class="text-lg">À régler</Heading>

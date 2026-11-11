@@ -143,7 +143,7 @@
         {#if step === PROGRESSION}
           <ProgressionSection bind:choices catalog={content} {sheet} characterId={initial.id} />
         {:else if choices.engine === "fantasy" && content.engine === "fantasy" && sheet.details.engine === "fantasy"}
-          <FantasyEditor bind:choices catalog={content} details={sheet.details} {step} characterId={initial.id} />
+          <FantasyEditor bind:choices catalog={content} details={sheet.details} {step} characterId={initial.id} written={sheet.writtenEffects} />
         {:else if choices.engine === "contemporain" && content.engine === "contemporain" && sheet.details.engine === "contemporain"}
           <ContemporainEditor bind:choices catalog={content} {sheet} details={sheet.details} {step} characterId={initial.id} />
         {/if}

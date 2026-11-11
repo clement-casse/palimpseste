@@ -28,6 +28,7 @@
     FantasyDetails,
     FantasyDocument,
     ItemEntry,
+    WrittenEffects,
   } from "../wasm/palimpseste_wasm";
   import {
     CHARACTERISTICS,
@@ -53,12 +54,15 @@
     details,
     step,
     characterId,
+    written = [],
   }: {
     choices: FantasyDocument;
     catalog: FantasyCatalog;
     details: FantasyDetails;
     step: string;
     characterId: number;
+    /** The effects with a formula written for the character. */
+    written?: WrittenEffects[];
   } = $props();
 
   const voieNames = $derived(namesOf(catalog.voies));
@@ -324,7 +328,7 @@
   {#snippet voieRow(id: string)}
     <ListgroupItem class="flex-col items-start gap-2 text-gray-900 dark:text-white">
       <span class="font-semibold">{voieNames.get(id) ?? id}</span>
-      <RankPicker {catalog} voie={id} ranks={ranksOf(choices.voies, id)} onchange={(r) => setVoie(id, r)} />
+      <RankPicker {catalog} voie={id} ranks={ranksOf(choices.voies, id)} onchange={(r) => setVoie(id, r)} {written} />
       <span class="inline-flex flex-wrap items-center gap-2 empty:hidden">
         <LaterRanks {catalog} held={details.abilitiesHeld} voie={id} {characterId} levels />
       </span>

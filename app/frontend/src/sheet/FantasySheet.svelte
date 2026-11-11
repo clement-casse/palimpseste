@@ -214,6 +214,7 @@
         {notes}
         {catalog}
         held={details.abilitiesHeld}
+        written={sheet.writtenEffects}
         levels
       />
     </Block>

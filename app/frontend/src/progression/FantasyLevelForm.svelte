@@ -19,6 +19,7 @@
     FantasyDetails,
     FantasyDocument,
     LevelUpEntry,
+    WrittenEffects,
   } from "../wasm/palimpseste_wasm";
   import Ability from "./Ability.svelte";
   import AbilityEffects from "./AbilityEffects.svelte";
@@ -32,6 +33,7 @@
     details,
     number,
     step,
+    written = [],
   }: {
     choices: FantasyDocument;
     catalog: FantasyCatalog;
@@ -39,6 +41,8 @@
     /** The level the level-up reaches. */
     number: number;
     step: string;
+    /** The effects with a formula written for the character. */
+    written?: WrittenEffects[];
   } = $props();
 
   const index = $derived(number - 2);
@@ -99,7 +103,7 @@
         <ListgroupItem class="justify-between gap-2 text-gray-900 dark:text-white">
           <span class="flex flex-col gap-1">
             <Ability {catalog} id={entry.ability} />
-            <AbilityEffects {catalog} id={entry.ability} />
+            <AbilityEffects {catalog} id={entry.ability} {written} />
           </span>
           <Button size="xs" onclick={() => acquire(entry.ability)}>
             Acquérir ({entry.cost} pt{entry.cost > 1 ? "s" : ""})

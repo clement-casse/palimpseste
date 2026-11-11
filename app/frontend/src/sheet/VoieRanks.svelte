@@ -7,7 +7,7 @@
   import Ability from "../progression/Ability.svelte";
   import AbilityEffects from "../progression/AbilityEffects.svelte";
   import { type Abilities, scopeLabel } from "../progression/progression";
-  import type { HeldAbility, VoieEntry } from "../wasm/palimpseste_wasm";
+  import type { HeldAbility, VoieEntry, WrittenEffects } from "../wasm/palimpseste_wasm";
   import Marks from "./Marks.svelte";
   import { type Note, marksAt } from "./notes";
 
@@ -18,6 +18,7 @@
     catalog,
     held = [],
     levels = false,
+    written = [],
   }: {
     voies: VoieEntry[];
     names: Map<string, string>;
@@ -28,6 +29,8 @@
     held?: HeldAbility[];
     /** Whether they were gained at COF2 levels, else COC2 spendings of XP. */
     levels?: boolean;
+    /** The effects with a formula written for the character. */
+    written?: WrittenEffects[];
   } = $props();
 
   /** The catalog entry of the capacité `id`. */
@@ -68,7 +71,7 @@
             {#each heldIn(voie.id) as h (h.ability)}
               {@const entry = entryOf(h.ability)}
               <!-- With its effects written, a capacité shows its bonuses in them. -->
-              {@const written = (entry?.effects.length ?? 0) > 0}
+              {@const inEffects = (entry?.effects.length ?? 0) > 0}
               {@const spoken = [...h.testBonuses, ...(h.bonusDie ? [h.bonusDie] : [])].some((b) => b.onSpeciality)}
               <li>
                 <Ability {catalog} id={h.ability} short />{#if h.speciality && !spoken}
@@ -82,17 +85,17 @@
                 {/if}
                 {#if h.progression != null}
                   · {levels ? `niveau ${h.progression}` : `dépense d’XP ${h.progression}`}{/if}
-                {#each written ? [] : h.testBonuses as bonus (bonus.value.id)}
+                {#each inEffects ? [] : h.testBonuses as bonus (bonus.value.id)}
                   · {bonus.value.total == null ? "—" : signed(bonus.value.total)}
                   {scopeLabel(bonus, h.speciality)}{#if bonus.characteristics.length > 0}
                     {` (${bonus.characteristics.join(", ")})`}{/if}<Marks
                     notes={marksAt(notes, { kind: "value", id: bonus.value.id })}
                   />
                 {/each}
-                {#if h.bonusDie && !written}
+                {#if h.bonusDie && !inEffects}
                   · dé bonus : {scopeLabel(h.bonusDie, h.speciality)}{#if h.bonusDie.characteristics.length > 0}{` (${h.bonusDie.characteristics.join(", ")})`}{/if}
                 {/if}
-                <AbilityEffects {catalog} id={h.ability} held={h} {notes} />
+                <AbilityEffects {catalog} id={h.ability} held={h} {notes} {written} />
               </li>
             {/each}
           </ul>

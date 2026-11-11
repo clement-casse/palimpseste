@@ -175,7 +175,10 @@ the others in full, an effect giving a test bonus or a dé bonus showing
 its computed amount on the sheet in place of its text, and in place of
 the capacité's separate bonus line, an effect depending on a choice keeping
 its text with the option taken beside it ("choisi : VOL"), or "à
-choisir" in full while none is recorded, the COC2 XP left and sequels acquired;
+choisir" in full while none is recorded, and each formula's value written for the
+character (`writtenEffects`) in italics, the primary colour and a
+dotted underline, its formula in a tooltip and for screen readers, as a
+linked bonus's amount carries its effect's text, the COC2 XP left and sequels acquired;
 each COF2 weapon with its attack and the dice the engine gives): a resource bar kept in
 reach (COF2 PV, PM for a character who knows a spell, PC and DR; COC2 the
 échelle de santé, its states from the catalogue, ADR ENG-HEALTH-STATES),
