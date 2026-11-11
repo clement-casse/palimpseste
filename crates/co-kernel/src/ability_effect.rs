@@ -19,9 +19,11 @@ pub enum Application {
 /// sheet can show its amount in place of the text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Bonus {
-    /// The capacité's test bonus numbered `n` from 1, or all of them for 0
-    /// (one per characteristic chosen, such as Tatouages).
+    /// The capacité's test bonus numbered `n`, from 1.
     Test(u8),
+    /// All of the capacité's test bonuses, which it gives one at a time (one
+    /// per characteristic chosen, such as Tatouages).
+    AllTests,
     /// The capacité's dé bonus to tests.
     Die,
 }

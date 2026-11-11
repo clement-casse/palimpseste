@@ -105,6 +105,15 @@ describe("the COF sheet", () => {
     expect(screen.getByText(/dé bonus : tous les tests \(INT\)/)).toBeTruthy();
   });
 
+  it("shows the test bonus of the characteristic chosen for Tatouages", () => {
+    const document = lhagva();
+    if (document.engine !== "fantasy") throw new Error("fantasy expected");
+    document.voies = [...(document.voies ?? []), { id: "cof.pagne", ranks: [1, 2, 3] }];
+    document.abilityOptions = [{ ability: "cof.pagne.3", option: "cof.option.for" }];
+    open(document);
+    expect(screen.getByText(line(/^\s*\+3\s+tous les tests \(FOR\)/))).toBeTruthy();
+  });
+
   it("shows a formula's value, the formula in its tooltip", () => {
     const document = lhagva();
     if (document.engine !== "fantasy") throw new Error("fantasy expected");

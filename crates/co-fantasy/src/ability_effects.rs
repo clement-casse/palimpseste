@@ -81,10 +81,15 @@ const fn d(text: &'static str) -> AbilityEffect {
     AbilityEffect::described(text)
 }
 
-/// A described effect giving the capacité's test bonus numbered `n`, 0 for
-/// all of them.
+/// A described effect giving the capacité's test bonus numbered `n`.
 const fn t(n: u8, text: &'static str) -> AbilityEffect {
     AbilityEffect::giving(Bonus::Test(n), text)
+}
+
+/// A described effect giving all of the capacité's test bonuses, one at a
+/// time.
+const fn all_tests(text: &'static str) -> AbilityEffect {
+    AbilityEffect::giving(Bonus::AllTests, text)
 }
 
 /// A described effect giving the capacité's dé bonus.
@@ -1139,10 +1144,7 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
         Voie::Pagne,
         3,
         &[
-            t(
-                0,
-                "+3 aux tests d'une caractéristique choisie (bonus magique)",
-            ),
+            all_tests("+3 aux tests d'une caractéristique choisie (bonus magique)"),
             d("étourdi devient ralenti"),
         ],
     ),
@@ -3158,7 +3160,7 @@ mod tests {
                     .map(TestBonus::index)
                     .collect();
                 bonuses.dedup();
-                if linked == [0] {
+                if effects.iter().any(|e| e.bonus() == Some(Bonus::AllTests)) {
                     linked.clone_from(&bonuses);
                 }
                 linked.sort_unstable();

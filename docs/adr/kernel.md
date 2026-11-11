@@ -41,7 +41,8 @@ included), so the player need not read it; `Described` otherwise: a
 bonus to some tests, a dé bonus, a mastery, a limit the engine checks, a
 situational modifier (ADR ENG-SITUATIONAL), what the engine does not
 compute. A described effect may give a `Bonus` the engine computes (a
-test bonus by its number, 0 for all of the capacité's, or its dé bonus),
+test bonus by its number, all of the capacité's (`AllTests`), or its dé
+bonus),
 so the sheet shows the amount ("+4 escalade") in place of the text
 ("rang + 2 escalade"). A computed effect may depend on a choice
 recorded for its capacité (`chosen`, such as "PER ou VOL +1"), so the
