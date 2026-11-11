@@ -91,6 +91,46 @@ pub struct AbilityEntry {
     /// What it asks the player to choose, in French (`discipline`), `None`
     /// when it asks for nothing (ADR ENG-SPECIALITIES).
     pub speciality: Option<String>,
+    /// Its effects in our own words, empty while not written (ADR
+    /// ENG-ABILITY-EFFECTS).
+    pub effects: Vec<AbilityEffectEntry>,
+}
+
+/// One effect of a capacité.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+pub struct AbilityEffectEntry {
+    /// The text, such as `+3 intimidation`.
+    pub text: String,
+    /// Whether the engine counts it in a total of the sheet.
+    pub computed: bool,
+    /// The bonus it gives, whose amount the sheet shows in its place.
+    pub bonus: Option<EffectBonus>,
+}
+
+/// The bonus a described effect gives.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum EffectBonus {
+    /// The capacité's test bonus numbered `index`, all of them for 0.
+    Test {
+        /// The bonus's number within the capacité, 0 for all.
+        index: u8,
+    },
+    /// The capacité's dé bonus.
+    Die,
+}
+
+impl From<co_kernel::AbilityEffect> for AbilityEffectEntry {
+    fn from(effect: co_kernel::AbilityEffect) -> Self {
+        Self {
+            text: effect.text().to_owned(),
+            computed: effect.application() == co_kernel::Application::Computed,
+            bonus: effect.bonus().map(|bonus| match bonus {
+                co_kernel::Bonus::Test(index) => EffectBonus::Test { index },
+                co_kernel::Bonus::Die => EffectBonus::Die,
+            }),
+        }
+    }
 }
 
 /// An action a COF2 capacité takes to use.
@@ -492,6 +532,11 @@ fn fantasy_abilities() -> Vec<AbilityEntry> {
                         .collect(),
                     spell_cost: voie.spell_cost(ability),
                     speciality: voie.speciality(ability).map(str::to_owned),
+                    effects: voie
+                        .ability_effects(ability)
+                        .iter()
+                        .map(|effect| (*effect).into())
+                        .collect(),
                     ..ability_entry(
                         voie.ability(ability).as_str(),
                         voie.id().as_str(),
@@ -523,6 +568,7 @@ fn ability_entry(
         actions: Vec::new(),
         spell_cost: None,
         speciality: None,
+        effects: Vec::new(),
     }
 }
 
