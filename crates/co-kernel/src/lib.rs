@@ -59,6 +59,7 @@
 //! assert!(report.unused_waivers().is_empty());
 //! ```
 
+mod ability_effect;
 mod adjustment;
 mod characteristic;
 mod derived;
@@ -70,6 +71,7 @@ mod violation;
 mod voie;
 mod waiver;
 
+pub use ability_effect::{AbilityEffect, Application, Bonus};
 pub use adjustment::{Adjustment, Author};
 pub use characteristic::{Characteristic, CharacteristicValue, Characteristics};
 pub use derived::{Contribution, DerivedValue, Source};
