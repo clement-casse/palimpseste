@@ -17,6 +17,12 @@ import { equipmentOf } from "./equipment";
 import HealthTrack from "./HealthTrack.svelte";
 import SheetPage from "./SheetPage.svelte";
 
+/** Matches the innermost list item by its whole text, styled values included. */
+const line = (pattern: RegExp) => (_: string, element: Element | null) =>
+  element?.tagName === "LI" &&
+  pattern.test(element.textContent ?? "") &&
+  ![...element.querySelectorAll("li")].some((inner) => pattern.test(inner.textContent ?? ""));
+
 function open(document: Document, name = "Lhagva") {
   return render(CharacterSheet, { character: character(document, name) });
 }
@@ -59,8 +65,8 @@ describe("the COF sheet", () => {
     document.voies = [...(document.voies ?? []), { id: "cof.air", ranks: [1] }];
     open(document);
     // Réflexes éclair: rank + 2 to dodge; Diversité to its origin.
-    expect(screen.getByText(/\+3\s*esquiver\s*\(AGI\)/)).toBeTruthy();
-    expect(screen.getByText(/\+3\s*invented — domaines de l’origine/)).toBeTruthy();
+    expect(screen.getByText(line(/\+3\s*esquiver\s*\(AGI\)/))).toBeTruthy();
+    expect(screen.getByText(line(/\+3\s*invented — domaines de l’origine/))).toBeTruthy();
     // Cri de guerre and Murmures dans le vent are free actions, the latter a spell.
     expect(screen.getAllByTitle("Action gratuite")).toHaveLength(2);
     expect(screen.getByText("Sort · 1 PM")).toBeTruthy();
@@ -95,8 +101,20 @@ describe("the COF sheet", () => {
     expect(stone[0].textContent).toMatch(/^\s*\+3\s+pierre/);
     expect(stone[0].closest("ul")?.getAttribute("aria-label")).toBe("Effets");
     // Occultisme at mage rank 4: rang + 2 is +6.
-    expect(screen.getByText(/\+6\s+connaissances magiques/)).toBeTruthy();
+    expect(screen.getByText(line(/\+6\s+connaissances magiques/))).toBeTruthy();
     expect(screen.getByText(/dé bonus : tous les tests \(INT\)/)).toBeTruthy();
+  });
+
+  it("shows a formula's value, the formula in its tooltip", () => {
+    const document = lhagva();
+    if (document.engine !== "fantasy") throw new Error("fantasy expected");
+    document.voies = [...(document.voies ?? []), { id: "cof.illusions", ranks: [1, 2] }];
+    open(document);
+    const side = screen.getByTitle("2 m de côté par rang");
+    expect(side.textContent).toMatch(/^4 m de côté/);
+    expect(side.textContent).toContain("(2 m de côté par rang)");
+    // A linked bonus's amount carries its formula too.
+    expect(screen.getByTitle("rang + 2 aux tests d'AGI pour esquiver").textContent).toBe("+3");
   });
 
   it("lists the modifiers that hold only in a situation, out of the totals", () => {
@@ -204,7 +222,7 @@ describe("the COC sheet", () => {
   it("lists a COC capacité's effects, its bonus with its amount", () => {
     open(amelia(), "Amelia");
     expect(screen.getByText("membre d'une corporation")).toBeTruthy();
-    const member = screen.getByText(/\+1\s+invented — relations avec les membres/);
+    const member = screen.getByText(line(/\+1\s+invented — relations avec les membres/));
     expect(member.closest("ul")?.getAttribute("aria-label")).toBe("Effets");
   });
 
@@ -231,9 +249,9 @@ describe("the COC sheet", () => {
   it("names a bonus by the speciality written for its capacité", () => {
     open(amelia(), "Amelia");
     // Chauffeur's +2 becomes +5 with Conducteur expérimenté's.
-    expect(screen.getByText(/\+5\s*invented — conduite du véhicule/)).toBeTruthy();
-    expect(screen.getByText(/\+2\s*invented — conduite du véhicule/)).toBeTruthy();
-    expect(screen.getByText(/\+5\s*invented — discipline scientifique\s*\(INT\)/)).toBeTruthy();
+    expect(screen.getByText(line(/\+5\s*invented — conduite du véhicule/))).toBeTruthy();
+    expect(screen.getByText(line(/\+2\s*invented — conduite du véhicule/))).toBeTruthy();
+    expect(screen.getByText(line(/\+5\s*invented — discipline scientifique\s*\(INT\)/))).toBeTruthy();
   });
 
   it("fills the échelle de santé, kept on the device", async () => {

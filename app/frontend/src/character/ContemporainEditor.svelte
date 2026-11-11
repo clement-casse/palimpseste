@@ -173,6 +173,7 @@
           voie={voie.id}
           ranks={ranksOf(choices.voies, voie.id)}
           onchange={(ranks) => setRanks(choices, voie.id, ranks)}
+          written={sheet.writtenEffects}
         />
         <span class="inline-flex flex-wrap items-center gap-2 empty:hidden">
           <LaterRanks {catalog} held={details.abilitiesHeld} voie={voie.id} {characterId} />

@@ -5,18 +5,22 @@
 
   import AbilityEffects from "../progression/AbilityEffects.svelte";
   import type { Abilities } from "../progression/progression";
+  import type { WrittenEffects } from "../wasm/palimpseste_wasm";
 
   let {
     catalog,
     voie,
     ranks,
     onchange,
+    written = [],
   }: {
     /** Names each capacité of the voie. */
     catalog: Abilities;
     voie: string;
     ranks: number[];
     onchange: (ranks: number[]) => void;
+    /** The effects with a formula written for the character. */
+    written?: WrittenEffects[];
   } = $props();
 
   const shown = $derived([...new Set([1, 2, 3, 4, 5, ...ranks])].sort((a, b) => a - b));
@@ -38,7 +42,7 @@
       <Checkbox title="Rang {rank}" checked={ranks.includes(rank)} onchange={() => toggle(rank)}>
         {rank}. {names.get(rank) ?? `Rang ${rank}`}
       </Checkbox>
-      <AbilityEffects {catalog} id="{voie}.{rank}" />
+      <AbilityEffects {catalog} id="{voie}.{rank}" {written} />
     </span>
   {/each}
 </span>

@@ -20,6 +20,7 @@
     ContemporainDocument,
     TraitChangeEntry,
     XpSpendingEntry,
+    WrittenEffects,
   } from "../wasm/palimpseste_wasm";
   import Ability from "./Ability.svelte";
   import AbilityEffects from "./AbilityEffects.svelte";
@@ -33,6 +34,7 @@
     details,
     number,
     step,
+    written = [],
   }: {
     choices: ContemporainDocument;
     catalog: ContemporainCatalog;
@@ -40,6 +42,8 @@
     /** The spending's number, from 1. */
     number: number;
     step: string;
+    /** The effects with a formula written for the character. */
+    written?: WrittenEffects[];
   } = $props();
 
   const index = $derived(number - 1);
@@ -111,7 +115,7 @@
         <ListgroupItem class="justify-between gap-2 text-gray-900 dark:text-white">
           <span class="flex flex-col gap-1">
             <Ability {catalog} id={entry.ability} />
-            <AbilityEffects {catalog} id={entry.ability} />
+            <AbilityEffects {catalog} id={entry.ability} {written} />
           </span>
           <Button size="xs" onclick={() => buy(entry.ability)}>Acheter ({entry.cost} XP)</Button>
         </ListgroupItem>
