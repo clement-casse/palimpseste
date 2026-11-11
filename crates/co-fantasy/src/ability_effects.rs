@@ -1869,6 +1869,374 @@ const EFFECTS: &[(Voie, u8, &[AbilityEffect])] = &[
             "apprend INT élixirs (max. 4, chacun en vaut deux) : Invisibilité, Vol, Accélération, Masque du prédateur",
         )],
     ),
+    // Voie du métal.
+    (
+        Voie::Metal,
+        1,
+        &[
+            d("bâton ou marteau enflammé INT min : +2 DM de feu (+1/rang 4 de forgesort)"),
+            t(1, "rang + 2 forge"),
+        ],
+    ),
+    (
+        Voie::Metal,
+        2,
+        &[d(
+            "attaque magique opposée : chauffe un objet de métal porté ; arme : −2 en attaque et 1 DM/round ; armure : 1d4° DM/round",
+        )],
+    ),
+    (
+        Voie::Metal,
+        3,
+        &[d(
+            "INT min : +2 DEF contre les armes de métal ; DM des projectiles à pointe de métal ÷ 2",
+        )],
+    ),
+    (
+        Voie::Metal,
+        4,
+        &[d(
+            "attaque magique opposée : tord un objet de métal (arme hors d'usage, armure : dé malus) ; 3d4° DM à une structure",
+        )],
+    ),
+    (
+        Voie::Metal,
+        5,
+        &[
+            d("DM de feu ÷ 2"),
+            c("CON +1"),
+            die("dé bonus aux tests de CON"),
+            c("option : +CON aux PM"),
+        ],
+    ),
+    // Voie du golem.
+    (
+        Voie::Golem,
+        1,
+        &[
+            d("tests d'INT à la place des tests de FOR"),
+            c("option : INT au lieu de CON pour les PV du niveau 1"),
+            t(1, "rang + 2 bricolage et sciences"),
+        ],
+    ),
+    (
+        Voie::Golem,
+        2,
+        &[d(
+            "golem serviteur : DEF 10 + rang, PV niveau × 5, Init et attaque magique du forgesort, DM 1d4° + 1",
+        )],
+    ),
+    (
+        Voie::Golem,
+        3,
+        &[d(
+            "1/round : le golem subit une attaque à la place d'un personnage au contact",
+        )],
+    ),
+    (
+        Voie::Golem,
+        4,
+        &[d(
+            "change le golem en figurine (RD 10) ; il revient par une action de mouvement",
+        )],
+    ),
+    (
+        Voie::Golem,
+        5,
+        &[
+            d("une amélioration du golem, +1/rang 5 de forgesort"),
+            d(
+                "au choix : armure, félin, baliste, taille, vol, cerveau, puissance, arme à deux mains",
+            ),
+        ],
+    ),
+    // Voie des runes.
+    (
+        Voie::Runes,
+        1,
+        &[
+            c("+2 DEF (+1 au rang 3 et au rang 5)"),
+            d("peut être placée sur le golem"),
+        ],
+    ),
+    (
+        Voie::Runes,
+        2,
+        &[d(
+            "arme enchantée 24 h : 1/combat, DM maximaux (hors dés bonus)",
+        )],
+    ),
+    (
+        Voie::Runes,
+        3,
+        &[d(
+            "armure enchantée 24 h : 1/jour, ignore les DM d'une attaque (un critique inflige ses DM)",
+        )],
+    ),
+    (
+        Voie::Runes,
+        4,
+        &[d(
+            "bijou enchanté 24 h : 1/combat, un d20 de plus pour une attaque ou un test de caractéristique",
+        )],
+    ),
+    (
+        Voie::Runes,
+        5,
+        &[d(
+            "rituel de 10 min (3 PM, concentration) : zone de 10 m gardée 12 h, alarme ou [3d4° + INT] DM élémentaires",
+        )],
+    ),
+    // Voie de la magie des arcanes.
+    (
+        Voie::MagieDesArcanes,
+        1,
+        &[d(
+            "1d4° DM automatiques à 30 m, le dé explose une fois ; +1 DM/rang 4 de magicien (max. INT)",
+        )],
+    ),
+    (
+        Voie::MagieDesArcanes,
+        2,
+        &[d(
+            "INT min : par action de mouvement, monte de 5 m ou descend de 10 m",
+        )],
+    ),
+    (
+        Voie::MagieDesArcanes,
+        3,
+        &[d(
+            "gazeux 1 min : passe par les fissures, immunité aux armes ordinaires",
+        )],
+    ),
+    (
+        Voie::MagieDesArcanes,
+        4,
+        &[d(
+            "[1d4° + INT] rounds : une action de mouvement de plus par round, ou à la place +3 DEF ou −1 PM",
+        )],
+    ),
+    (
+        Voie::MagieDesArcanes,
+        5,
+        &[d(
+            "rayon à 20 m : [5d4° + INT] DM ; une créature à 0 PV est désintégrée",
+        )],
+    ),
+    // Voie de la magie destructrice.
+    (
+        Voie::MagieDestructrice,
+        1,
+        &[d(
+            "jusqu'à 3 cibles adjacentes : [1d4° + INT] DM (2d4° au rang 4) ; AGI : ÷ 2",
+        )],
+    ),
+    (
+        Voie::MagieDestructrice,
+        2,
+        &[d(
+            "attaque magique opposée : −2 aux tests de FOR, à l'attaque au contact et aux DM jusqu'à la fin du combat",
+        )],
+    ),
+    (
+        Voie::MagieDestructrice,
+        3,
+        &[d(
+            "attaque magique à 30 m : [3d4° + INT] DM, puis 1d6 par round jusqu'à un 1 ou un 2",
+        )],
+    ),
+    (
+        Voie::MagieDestructrice,
+        4,
+        &[d(
+            "explosion à 30 m, rayon 5 m : [4d4° + INT] DM ; AGI : ÷ 2",
+        )],
+    ),
+    (
+        Voie::MagieDestructrice,
+        5,
+        &[d(
+            "une attaque magique contre chaque cible choisie à 10 m : [2d4° + INT] DM",
+        )],
+    ),
+    // Voie de la magie élémentaire.
+    (
+        Voie::MagieElementaire,
+        1,
+        &[d(
+            "attaque magique opposée : 1d4° DM/round pendant INT rounds (pas contre qui ne respire pas)",
+        )],
+    ),
+    (
+        Voie::MagieElementaire,
+        2,
+        &[d(
+            "INT min : DM élémentaires subis − (rang + 2) ; peut changer l'élément d'un sort",
+        )],
+    ),
+    (
+        Voie::MagieElementaire,
+        3,
+        &[d(
+            "INT min : arme +1d4° DM élémentaires ; les sorts de cet élément coûtent 1 PM de moins",
+        )],
+    ),
+    (
+        Voie::MagieElementaire,
+        4,
+        &[d(
+            "respire sous l'eau 10 min, avec un compagnon de plus par point d'INT",
+        )],
+    ),
+    (
+        Voie::MagieElementaire,
+        5,
+        &[d(
+            "INT min : −5 à tous les DM subis, jusqu'à niveau × 3 DM absorbés",
+        )],
+    ),
+    // Voie de la magie protectrice.
+    (
+        Voie::MagieProtectrice,
+        1,
+        &[d(
+            "INT min : +3 DEF (+4 au rang 3, +1/rang 5 de magicien ou de la voie du mage) ; compte comme une armure, jamais avec une",
+        )],
+    ),
+    (
+        Voie::MagieProtectrice,
+        2,
+        &[d(
+            "jusqu'à INT cibles à 10 m chutent sans DM, même hors de son tour",
+        )],
+    ),
+    (
+        Voie::MagieProtectrice,
+        3,
+        &[d("[1d4° + INT] rounds : DM d'armes subis et infligés ÷ 2")],
+    ),
+    (
+        Voie::MagieProtectrice,
+        4,
+        &[d(
+            "cercle de 2 m pour INT personnes : test opposé pour annuler un sort ; invoqués et morts-vivants : dé malus en attaque",
+        )],
+    ),
+    (
+        Voie::MagieProtectrice,
+        5,
+        &[d(
+            "INT rounds hors du temps pour utiliser sorts et objets sur lui-même",
+        )],
+    ),
+    // Voie de la magie universelle.
+    (
+        Voie::MagieUniverselle,
+        1,
+        &[
+            d("un objet éclaire à 10 m pendant INT h"),
+            d("1/combat : aveugle 1 round une créature de faible NC"),
+        ],
+    ),
+    (
+        Voie::MagieUniverselle,
+        2,
+        &[d(
+            "familier (petit animal) qui partage ses sens ; en vue : +2 Init et DEF ; s'il tombe : 1d4° PV de contrecoup",
+        )],
+    ),
+    (
+        Voie::MagieUniverselle,
+        3,
+        &[d(
+            "invisible [1d4° + INT] min, jusqu'à ce qu'il attaque ; sur un allié au rang 5 (L)",
+        )],
+    ),
+    (
+        Voie::MagieUniverselle,
+        4,
+        &[d("vole [2d4° + INT] min à sa vitesse au sol")],
+    ),
+    (
+        Voie::MagieUniverselle,
+        5,
+        &[d(
+            "1/jour : se téléporte jusqu'à niveau × INT km ; avec des alliés au niveau 10",
+        )],
+    ),
+    // Voie du démon.
+    (
+        Voie::Demon,
+        1,
+        &[d(
+            "attaque magique opposée : dé malus au prochain test de la cible (3 tests en L) ; 1/combat par cible",
+        )],
+    ),
+    (
+        Voie::Demon,
+        2,
+        &[d(
+            "INT min : dé bonus aux tests de CHA ; toucher qui draine [1d4° + INT] PV et le soigne d'autant",
+        )],
+    ),
+    (
+        Voie::Demon,
+        3,
+        &[
+            d("sacrifie 1d4° PV : + INT à un d20 ou à la DEF"),
+            d("ajoute la VOL à ses DR"),
+        ],
+    ),
+    (
+        Voie::Demon,
+        4,
+        &[d(
+            "forme de démon ailé INT min : dé bonus en attaque au contact, +5 DEF et tests physiques, 2 griffes [1d4° + INT], vol",
+        )],
+    ),
+    (
+        Voie::Demon,
+        5,
+        &[d(
+            "sacrifie 1d4° PV : invoque un démon ailé (DEF 18, PV niveau × 5, DM 2d4° + 5) pendant INT min",
+        )],
+    ),
+    // Voie de la mort.
+    (
+        Voie::Mort,
+        1,
+        &[d(
+            "1/round : un humanoïde qui meurt à 20 m le soigne de NC PV (ou 1 PM au rang 3 si NC > 4)",
+        )],
+    ),
+    (
+        Voie::Mort,
+        2,
+        &[d(
+            "INT min : compte comme non-vivant (ignoré des morts-vivants, DM de froid ÷ 2, ne peut être soigné)",
+        )],
+    ),
+    (
+        Voie::Mort,
+        3,
+        &[d(
+            "attaque magique opposée à 30 m : [2d4° + INT] DM, dont il se soigne",
+        )],
+    ),
+    (
+        Voie::Mort,
+        4,
+        &[d(
+            "attaque magique opposée : la cible fuit INT rounds ; en L, toutes les créatures au contact",
+        )],
+    ),
+    (
+        Voie::Mort,
+        5,
+        &[d(
+            "attaque magique opposée à 20 m : [5d4° + INT] DM (÷ 2 si ratée) ; 1/combat par cible",
+        )],
+    ),
 ];
 
 #[cfg(test)]
@@ -1974,7 +2342,8 @@ mod tests {
     /// Whether the engine counts the capacité at `rank` in `voie` in a total,
     /// with its default or its option: named by a characteristic or a value,
     /// without armour or in plate with a shield, at level 1 or 10; or
-    /// changing a weapon's attack, DM or dice from the ranks below it.
+    /// changing a value (a characteristic in place of another) or a weapon's
+    /// attack, DM or dice from the ranks below it.
     fn computed(voie: Voie, rank: u8) -> bool {
         [false, true]
             .into_iter()
@@ -1988,25 +2357,34 @@ mod tests {
         let below = ranks(voie, rank - 1, optional);
         // A total without the other capacités' terms: a lower rank reaching
         // a higher amount (Doigts agiles at rank 5) is not this capacité.
+        // A spell's 1 PM is the rule's, not the capacité's.
         let total = |c: &Character, value| {
             c.value(value).map(|line| {
                 line.contributions()
                     .iter()
-                    .filter(
-                        |t| !matches!(t.source(), Source::Ability(other) if other.as_str() != id),
-                    )
+                    .filter(|t| match t.source() {
+                        Source::Ability(_) => ability(value, t).as_deref() == Some(id.as_str()),
+                        _ => true,
+                    })
                     .map(Contribution::amount)
                     .sum::<i32>()
             })
         };
-        let differs = WEAPONS.iter().any(|w| {
-            WeaponUse::ALL.iter().any(|u| {
-                held.damage_dice(*w, *u) != below.damage_dice(*w, *u)
-                    || [Value::WeaponAttack(*w, *u), Value::Damage(*w, *u)]
-                        .into_iter()
-                        .any(|value| total(&held, value) != total(&below, value))
-            })
-        });
+        // PM appear with the first spell (ADR ENG-COF-PM): only a total on
+        // both sides compares.
+        let changed = |value| match (total(&held, value), total(&below, value)) {
+            (Some(held), Some(below)) => held != below,
+            _ => false,
+        };
+        let differs = Value::FIXED.into_iter().any(changed)
+            || WEAPONS.iter().any(|w| {
+                WeaponUse::ALL.iter().any(|u| {
+                    held.damage_dice(*w, *u) != below.damage_dice(*w, *u)
+                        || [Value::WeaponAttack(*w, *u), Value::Damage(*w, *u)]
+                            .into_iter()
+                            .any(changed)
+                })
+            });
         let plated = |c: &Character| {
             c.clone()
                 .with_armour(Armour::PlaqueComplete)
