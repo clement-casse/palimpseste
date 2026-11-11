@@ -159,8 +159,8 @@ the two lists equal. A described effect's quantities the player applies are
 terms (ADR KER-ABILITY-EFFECTS): durations and counts on a
 characteristic (CHA min, INT cibles, [5 + VOL] jours), companions' DEF
 and PV on the rank and the level, "+ rang", and "+1/rang n" of a
-profil's voies; `Character::ability_effects(voie, rank)` writes them for
-the character, the rank reached at least `rank` so a capacité offered
+profil's voies; `Character::written_effects(voie, rank)` pairs each effect
+with its parts written for the character, the rank reached at least `rank` so a capacité offered
 reads as it would once acquired. Steps ("+2 au rang 5"), halves and
 products of two measures stay text, as do dice. A COC2 rank 5 is tested with the characteristic it raises chosen,
 and a "+2 becomes +5" is described on the capacité giving it, the sheet

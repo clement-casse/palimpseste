@@ -38,7 +38,11 @@ const fn voies(group: &'static str, rank: u8, formula: &'static str) -> Term {
 
 /// The effects of the capacité at `rank` in `voie` written for
 /// `character`: each formula's value, the rank reached at least `rank`.
-pub(crate) fn written(character: &Character, voie: Voie, rank: Rank) -> Vec<Vec<EffectPart>> {
+pub(crate) fn written(
+    character: &Character,
+    voie: Voie,
+    rank: Rank,
+) -> Vec<(AbilityEffect, Vec<EffectPart>)> {
     let reached = character
         .highest_rank(voie)
         .map_or(0, Rank::get)
@@ -58,7 +62,7 @@ pub(crate) fn written(character: &Character, voie: Voie, rank: Rank) -> Vec<Vec<
     };
     of(voie, rank)
         .iter()
-        .map(|effect| effect.parts(value_of))
+        .map(|effect| (*effect, effect.parts(value_of)))
         .collect()
 }
 
@@ -3028,6 +3032,20 @@ mod tests {
     }
 
     #[test]
+    fn every_group_of_a_term_is_a_profil() {
+        let unknown: Vec<_> = EFFECTS
+            .iter()
+            .flat_map(|(_, _, effects)| effects.iter())
+            .flat_map(|effect| effect.terms().iter())
+            .filter_map(|term| match term.measure() {
+                Measure::VoiesAt { group, .. } if Profil::from_id(group).is_none() => Some(group),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(unknown, Vec::<&str>::new());
+    }
+
+    #[test]
     fn every_slot_has_its_term() {
         let wrong: Vec<_> = EFFECTS
             .iter()
@@ -3052,31 +3070,31 @@ mod tests {
                 .collect()
         };
         let illusionist = ranks(Voie::Illusions, 1, false);
-        let mirage = illusionist.ability_effects(Voie::Illusions, 1);
+        let mirage = illusionist.written_effects(Voie::Illusions, 1);
         assert_eq!(
-            values(&mirage[0]),
+            values(&mirage[0].1),
             [
                 ("2 m de côté".to_owned(), "2 m de côté par rang"),
                 ("1 min".to_owned(), "CHA min")
             ]
         );
         // A capacité not held yet reads at its own rank.
-        let imitation = illusionist.ability_effects(Voie::Illusions, 4);
-        assert_eq!(values(&imitation[0]), [("1 min".to_owned(), "CHA min")]);
+        let imitation = illusionist.written_effects(Voie::Illusions, 4);
+        assert_eq!(values(&imitation[0].1), [("1 min".to_owned(), "CHA min")]);
         let druid = ranks(Voie::Animaux, 2, false);
-        let familiar = druid.ability_effects(Voie::Animaux, 2);
+        let familiar = druid.written_effects(Voie::Animaux, 2);
         assert_eq!(
-            values(&familiar[0]),
+            values(&familiar[0].1),
             [
                 ("15".to_owned(), "13 + rang"),
                 ("2".to_owned(), "niveau × 2")
             ]
         );
         let smith = ranks(Voie::Golem, 5, false);
-        let upgrade = smith.ability_effects(Voie::Golem, 5);
+        let upgrade = smith.written_effects(Voie::Golem, 5);
         // The voie du golem is itself a forgesort voie.
         assert_eq!(
-            values(&upgrade[0]),
+            values(&upgrade[0].1),
             [("+1".to_owned(), "+1/rang 5 de forgesort")]
         );
         assert_eq!(
@@ -3117,7 +3135,7 @@ mod tests {
                 .collect();
             handles
                 .into_iter()
-                .flat_map(|handle| handle.join().unwrap_or_default())
+                .flat_map(|handle| handle.join().unwrap())
                 .collect()
         });
         assert_eq!(wrong, []);

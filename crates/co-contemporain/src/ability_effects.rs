@@ -28,7 +28,11 @@ const fn carac(characteristic: Characteristic, formula: &'static str) -> Term {
 /// The effects of the capacité at `rank` in `voie` written for
 /// `character`: each formula's value, the rank reached at least `rank`.
 /// COC2 has no level, nor counts of voies.
-pub(crate) fn written(character: &Character, voie: Voie, rank: Rank) -> Vec<Vec<EffectPart>> {
+pub(crate) fn written(
+    character: &Character,
+    voie: Voie,
+    rank: Rank,
+) -> Vec<(AbilityEffect, Vec<EffectPart>)> {
     let reached = character
         .highest_rank(voie)
         .map_or(0, Rank::get)
@@ -40,7 +44,7 @@ pub(crate) fn written(character: &Character, voie: Voie, rank: Rank) -> Vec<Vec<
     };
     of(voie, rank)
         .iter()
-        .map(|effect| effect.parts(value_of))
+        .map(|effect| (*effect, effect.parts(value_of)))
         .collect()
 }
 
@@ -975,6 +979,20 @@ mod tests {
     }
 
     #[test]
+    fn every_term_is_one_coc2_writes() {
+        // COC2 has no level, nor counts of voies: such a term would never be
+        // written.
+        let unwritten: Vec<_> = EFFECTS
+            .iter()
+            .flat_map(|(_, _, effects)| effects.iter())
+            .flat_map(|effect| effect.terms().iter())
+            .filter(|term| matches!(term.measure(), Measure::Level | Measure::VoiesAt { .. }))
+            .map(|term| term.formula())
+            .collect();
+        assert_eq!(unwritten, Vec::<&str>::new());
+    }
+
+    #[test]
     fn every_slot_has_its_term() {
         let wrong: Vec<_> = EFFECTS
             .iter()
@@ -990,9 +1008,9 @@ mod tests {
     #[test]
     fn formulas_are_written_for_the_character() {
         let linguist = ranks(Voie::Langues, 3);
-        let bilingual = linguist.ability_effects(Voie::Langues, 1);
+        let bilingual = linguist.written_effects(Voie::Langues, 1);
         assert_eq!(
-            bilingual[0],
+            bilingual[0].1,
             [
                 EffectPart::Text("parle, lit et écrit ".to_owned()),
                 EffectPart::Value {
@@ -1001,8 +1019,10 @@ mod tests {
                 }
             ]
         );
-        let guide = ranks(Voie::Survie, 4).ability_effects(Voie::Survie, 4);
-        assert!(matches!(&guide[0][1], EffectPart::Value { value, .. } if value == "6 compagnons"));
+        let guide = ranks(Voie::Survie, 4).written_effects(Voie::Survie, 4);
+        assert!(
+            matches!(&guide[0].1[1], EffectPart::Value { value, .. } if value == "6 compagnons")
+        );
     }
 
     #[test]

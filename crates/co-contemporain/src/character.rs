@@ -545,16 +545,16 @@ impl Character {
     }
 
     /// Returns the effects of the capacité at `rank` in `voie`
-    /// ([`Voie::ability_effects`]) written for this character: each formula
-    /// with its value, the rank reached in `voie` at least `rank`, so a
-    /// capacité not held yet reads as it would once acquired (ADR
-    /// ENG-ABILITY-EFFECTS).
+    /// ([`Voie::ability_effects`]), each with its parts written for this
+    /// character: each formula with its value, the rank reached in `voie` at
+    /// least `rank`, so a capacité not held yet reads as it would once
+    /// acquired (ADR ENG-ABILITY-EFFECTS).
     #[must_use]
-    pub fn ability_effects(
+    pub fn written_effects(
         &self,
         voie: Voie,
         rank: impl Into<Rank>,
-    ) -> Vec<Vec<co_kernel::EffectPart>> {
+    ) -> Vec<(co_kernel::AbilityEffect, Vec<co_kernel::EffectPart>)> {
         crate::ability_effects::written(self, voie, rank.into())
     }
 
