@@ -17,7 +17,7 @@ names content by the engines' string identifiers instead
 | File | Holds |
 |---|---|
 | `lib.rs` | `Document` (tagged by `engine`), `Engine`, `VERSION`, `Error`, and the shared entries: `Characteristic`, `PerCharacteristic`, `VoieEntry`, `ItemEntry`, `Target`, `AdjustmentEntry`, `Subject`, `WaiverEntry` |
-| `contemporain.rs` | `ContemporainDocument`, `TraitEntry`, the experience (`XpSpendingEntry`, `TraitChangeEntry`, `RaisedCharacteristicEntry`), and `to_character()` → `co_contemporain::Character` |
+| `contemporain.rs` | `ContemporainDocument`, `TraitEntry`, the experience (`XpSpendingEntry`, `TraitChangeEntry`, `RaisedCharacteristicEntry`, `BonusDieTargetEntry`), and `to_character()` → `co_contemporain::Character` |
 | `fantasy.rs` | `FantasyDocument`, the progression (`LevelUpEntry`, `AbilityOptionEntry`), and `to_character()` → `co_fantasy::Character` |
 
 ## The shape
