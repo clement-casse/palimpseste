@@ -230,13 +230,9 @@ impl AbilityEffect {
     /// min`.
     #[must_use]
     pub fn text(self) -> String {
-        self.parts(|_| None)
-            .into_iter()
-            .map(|part| match part {
-                EffectPart::Text(text) => text,
-                EffectPart::Value { formula, .. } => formula.to_owned(),
-            })
-            .collect()
+        self.terms.iter().fold(self.text.to_owned(), |text, term| {
+            text.replacen("{}", term.formula, 1)
+        })
     }
 
     /// The text as written, with a `{}` slot per term.
@@ -255,12 +251,9 @@ impl AbilityEffect {
     /// gives: each slot a value, or its formula when `value_of` has none.
     #[must_use]
     pub fn parts(self, value_of: impl Fn(Measure) -> Option<i32>) -> Vec<EffectPart> {
-        debug_assert_eq!(
-            self.text.matches("{}").count(),
-            self.terms.len(),
-            "each slot of {:?} has its term",
-            self.text
-        );
+        let (template, slots) = (self.text, self.text.matches("{}").count());
+        let terms = self.terms.len();
+        debug_assert_eq!(slots, terms, "each slot of {template:?} has its term");
         let mut parts = Vec::new();
         let mut text = String::new();
         let mut terms = self.terms.iter();
@@ -270,12 +263,11 @@ impl AbilityEffect {
             if pieces.peek().is_none() {
                 break;
             }
-            let Some(term) = terms.next() else {
-                text.push_str("{}");
-                continue;
-            };
-            match value_of(term.measure) {
-                Some(quantity) => {
+            // A slot without a term stays `{}`, a term without a value its
+            // formula.
+            let term = terms.next();
+            match term.and_then(|term| value_of(term.measure).map(|quantity| (term, quantity))) {
+                Some((term, quantity)) => {
                     if !text.is_empty() {
                         parts.push(EffectPart::Text(std::mem::take(&mut text)));
                     }
@@ -284,7 +276,7 @@ impl AbilityEffect {
                         formula: term.formula,
                     });
                 }
-                None => text.push_str(term.formula),
+                None => text.push_str(term.map_or("{}", |term| term.formula)),
             }
         }
         if !text.is_empty() {
@@ -355,6 +347,20 @@ mod tests {
         let huge = Term::new(Measure::Level, "niveau × 3").times(3);
         assert_eq!(huge.write(i32::MAX), i32::MAX.to_string());
         assert_eq!(effect.template(), "illusion ({} de côté) pendant {}");
+        let minutes = Term::new(Measure::Characteristic(Characteristic::Cha), "CHA min");
+        assert_eq!(
+            (minutes.formula(), minutes.unit(" min").write(3)),
+            ("CHA min", "3 min".to_owned())
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "each slot of \"{} et {}\" has its term")]
+    fn a_slot_without_its_term_is_caught_in_debug_builds() {
+        const TERMS: [Term; 1] = [Term::new(Measure::Rank, "rang")];
+        let _ = AbilityEffect::described("{} et {}")
+            .with(&TERMS)
+            .parts(|_| Some(1));
     }
 
     #[test]
