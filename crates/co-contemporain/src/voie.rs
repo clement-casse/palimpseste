@@ -151,6 +151,21 @@ impl Voie {
         }
     }
 
+    /// The ranks of the voie whose test the rank 5's dé bonus may go to, one
+    /// to choose with [`Character::with_bonus_die_target`]; empty when the
+    /// rank 5 asks no such choice (COC.PRG.BONUS-DIE, D-55). As des as goes
+    /// to the vehicle of the rank chosen.
+    #[must_use]
+    pub const fn bonus_die_choice(self) -> &'static [u8] {
+        match self {
+            Self::Corporations => &[2, 3, 4],
+            Self::Crime => &[1, 3, 4],
+            Self::Furtivite => &[1, 2, 4],
+            Self::Vehicules => &[1, 2, 3, 4, 5],
+            _ => &[],
+        }
+    }
+
     /// What the capacité at `rank` asks the player to choose, in French
     /// (`discipline`, `approche`, `véhicule`), as a speciality written with
     /// [`Character::with_speciality`]; `None` when it asks for none

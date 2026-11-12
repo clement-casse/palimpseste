@@ -57,6 +57,8 @@ pub(crate) const PRG_LIMITS: RuleId = RuleId::from_static("COC.PRG.LIMITS");
 pub(crate) const XP_USE: RuleId = RuleId::from_static("COC.PRG.XP-USE");
 /// COC.PRG.CARAC: the characteristic a rank 5 raises (D-20).
 pub(crate) const CARAC_GROWTH: RuleId = RuleId::from_static("COC.PRG.CARAC");
+/// COC.PRG.BONUS-DIE: the capacité a rank 5's dé bonus goes to (D-55).
+pub(crate) const BONUS_DIE: RuleId = RuleId::from_static("COC.PRG.BONUS-DIE");
 
 /// Age and age bracket checks.
 pub(crate) const AGE_MECHANIC: Mechanic = Mechanic::new("coc.age");

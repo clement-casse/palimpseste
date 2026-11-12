@@ -229,6 +229,7 @@ pub struct Character {
     experience: Experience,
     spendings: Vec<XpSpending>,
     raised: BTreeMap<Voie, Characteristic>,
+    bonus_die_targets: BTreeMap<Voie, Rank>,
     specialities: BTreeMap<(Voie, Rank), Speciality>,
     acquired_sequels: BTreeSet<Sequel>,
     equipment: Equipment,
@@ -337,6 +338,22 @@ impl Character {
     #[must_use]
     pub fn without_raised_characteristic(mut self, voie: Voie) -> Self {
         self.raised.remove(&voie);
+        self
+    }
+
+    /// Chooses the capacité of `voie` at `rank` whose test the dé bonus of
+    /// the voie's rank 5 goes to, among [`Voie::bonus_die_choice`]
+    /// (COC.PRG.BONUS-DIE).
+    #[must_use]
+    pub fn with_bonus_die_target(mut self, voie: Voie, rank: impl Into<Rank>) -> Self {
+        self.bonus_die_targets.insert(voie, rank.into());
+        self
+    }
+
+    /// Gives up the capacité chosen for the dé bonus of the rank 5 of `voie`.
+    #[must_use]
+    pub fn without_bonus_die_target(mut self, voie: Voie) -> Self {
+        self.bonus_die_targets.remove(&voie);
         self
     }
 
@@ -565,6 +582,16 @@ impl Character {
         test_bonus::bonus_dice(self)
     }
 
+    /// Returns the test bonus `die` goes to, for a dé bonus going to a
+    /// capacité chosen ([`BonusDie::on_chosen_ability`]): the first bonus of
+    /// the capacité chosen with [`Self::with_bonus_die_target`], the
+    /// vehicle's for As des as; `None` when none is chosen, or the capacité
+    /// chosen gives no test bonus (COC.PRG.BONUS-DIE).
+    #[must_use]
+    pub fn bonus_die_test(&self, die: BonusDie) -> Option<TestBonus> {
+        test_bonus::bonus_die_test(self, die)
+    }
+
     /// Returns the dice rolled for the DM of `weapon`: the table's, 1d6
     /// unarmed with the combat à mains nues rank 2, 1d6 more with heavy
     /// weapons with the armes lourdes rank 4.
@@ -625,6 +652,7 @@ impl Character {
         voie::check(self, &mut violations);
         traits::check(self, &mut violations);
         characteristics::check(self, &mut violations);
+        test_bonus::check(self, &mut violations);
         equipment::check(self, &mut violations);
         experience::check(self, &mut violations);
         violations.extend(
@@ -725,6 +753,13 @@ impl Character {
     /// The speciality chosen for the capacité at `rank` in `voie`.
     pub(crate) fn speciality(&self, voie: Voie, rank: Rank) -> Option<&Speciality> {
         self.specialities.get(&(voie, rank))
+    }
+
+    /// The rank of the capacité of `voie` chosen for the dé bonus of its
+    /// rank 5 ([`Voie::bonus_die_choice`]).
+    #[must_use]
+    pub fn bonus_die_target(&self, voie: Voie) -> Option<Rank> {
+        self.bonus_die_targets.get(&voie).copied()
     }
 
     /// The characteristic chosen for the rank 5 of `voie`.

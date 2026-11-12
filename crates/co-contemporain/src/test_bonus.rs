@@ -7,9 +7,14 @@
 //! used once per session or scene, given to others, to attacks, or testing
 //! one characteristic in place of another are not test bonuses.
 
-use co_kernel::{AbilityId, Characteristic, DerivedValue, Rank, Source, ValueId};
+use co_kernel::{
+    AbilityId, Characteristic, DerivedValue, Rank, Severity, Source, Subject, ValueId, Violation,
+};
 
-use crate::{Character, Voie};
+use crate::{
+    Character, Voie,
+    rules::{BONUS_DIE, VOIE_MECHANIC},
+};
 
 /// One permanent bonus a capacité gives to some tests: the n-th of the
 /// capacité at its rank in its voie. [`Character::test_bonuses`] lists those
@@ -168,7 +173,18 @@ impl BonusDie {
     pub const fn on_speciality(self) -> bool {
         self.on_speciality
     }
+
+    /// Whether the dé bonus goes to the test of a capacité of its voie the
+    /// player chooses ([`Voie::bonus_die_choice`],
+    /// [`Character::bonus_die_test`]).
+    #[must_use]
+    pub const fn on_chosen_ability(self) -> bool {
+        self.rank.get() == FIVE_RANK && !self.voie.bonus_die_choice().is_empty()
+    }
 }
+
+/// The rank whose dé bonus may go to a capacité chosen.
+const FIVE_RANK: u8 = 5;
 
 /// How much a bonus gives.
 #[derive(Debug, Clone, Copy)]
@@ -621,6 +637,37 @@ pub(crate) fn bonus_dice(character: &Character) -> Vec<BonusDie> {
         .collect()
 }
 
+/// The test bonus `die` goes to: the first of the capacité chosen for it,
+/// held or not; `None` for a dé bonus asking no choice, or none made.
+pub(crate) fn bonus_die_test(character: &Character, die: BonusDie) -> Option<TestBonus> {
+    if !die.on_chosen_ability() {
+        return None;
+    }
+    let rank = character.bonus_die_target(die.voie)?;
+    TestBonus::all().find(|bonus| bonus.voie == die.voie && bonus.rank == rank)
+}
+
+/// COC.PRG.BONUS-DIE: a rank 5 held whose dé bonus goes to a capacité
+/// chosen has it chosen among those offered (D-55).
+pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
+    for (voie, ranks) in character.voies() {
+        let offered = voie.bonus_die_choice();
+        if offered.is_empty() || !ranks.contains(&Rank::new(FIVE_RANK)) {
+            continue;
+        }
+        if let Some(rank) = character.bonus_die_target(voie)
+            && !offered.contains(&rank.get())
+        {
+            violations.push(Violation::deviation(
+                BONUS_DIE,
+                VOIE_MECHANIC,
+                Subject::Ability(voie.ability(Rank::new(FIVE_RANK))),
+                Severity::Standard,
+            ));
+        }
+    }
+}
+
 /// The value of `bonus`, the capacité as source, with the upgrades of the
 /// capacités held; `None` when the capacité is not held.
 pub(crate) fn value(character: &Character, bonus: TestBonus) -> Option<DerivedValue> {
@@ -652,7 +699,7 @@ pub(crate) fn value(character: &Character, bonus: TestBonus) -> Option<DerivedVa
 
 #[cfg(test)]
 mod tests {
-    use co_kernel::{Adjustment, Author, Category, Subject};
+    use co_kernel::{Adjustment, Author, Category};
 
     use super::*;
     use crate::{Step, Target, Value, XpSpending};
@@ -881,5 +928,133 @@ mod tests {
             .expect("the adjustment surfaces");
         assert_eq!(notice.category(), Category::Notice);
         assert_eq!(Step::of(&notice), Step::Voies);
+    }
+
+    fn bonus_die_findings(character: &Character) -> Vec<Category> {
+        character
+            .violations()
+            .iter()
+            .filter(|v| v.rule() == &BONUS_DIE)
+            .map(Violation::category)
+            .collect()
+    }
+
+    #[test]
+    fn four_rank_fives_send_their_die_to_a_capacite_chosen() {
+        let chosen: Vec<Voie> = Voie::ALL
+            .into_iter()
+            .filter(|voie| {
+                let character = ranks(Character::new(), *voie, 5);
+                character
+                    .bonus_dice()
+                    .iter()
+                    .any(|die| die.on_chosen_ability())
+            })
+            .collect();
+        assert_eq!(
+            chosen,
+            [
+                Voie::Corporations,
+                Voie::Crime,
+                Voie::Furtivite,
+                Voie::Vehicules
+            ]
+        );
+        // Each rank offered gives a test bonus, and no dé bonus goes both to
+        // a speciality and to a capacité.
+        for voie in chosen {
+            for rank in voie.bonus_die_choice() {
+                assert!(TestBonus::all().any(|b| b.voie == voie && b.rank.get() == *rank));
+            }
+            let character = ranks(Character::new(), voie, 5);
+            assert!(
+                character
+                    .bonus_dice()
+                    .iter()
+                    .all(|die| !die.on_speciality())
+            );
+        }
+    }
+
+    #[test]
+    fn the_die_goes_to_the_first_bonus_of_the_capacite_chosen() {
+        let brain = ranks(Character::new(), Voie::Crime, 5);
+        let die = brain.bonus_dice()[0];
+        assert_eq!(brain.bonus_die_test(die), None);
+        let brain = brain.with_bonus_die_target(Voie::Crime, 3);
+        assert_eq!(brain.bonus_die_test(die), Some(bonus(Voie::Crime, 3, 1)));
+        // As des as: the vehicle's bonus, never the maintenance.
+        let ace =
+            ranks(Character::new(), Voie::Vehicules, 5).with_bonus_die_target(Voie::Vehicules, 1);
+        let die = ace.bonus_dice()[0];
+        assert_eq!(ace.bonus_die_test(die), Some(bonus(Voie::Vehicules, 1, 1)));
+        // A dé bonus asking no choice goes to no capacité.
+        let genius = ranks(Character::new(), Voie::ArtsEtArtisanats, 5)
+            .with_bonus_die_target(Voie::ArtsEtArtisanats, 2);
+        assert_eq!(genius.bonus_die_test(genius.bonus_dice()[0]), None);
+        assert_eq!(
+            brain
+                .without_bonus_die_target(Voie::Crime)
+                .bonus_die_target(Voie::Crime),
+            None
+        );
+    }
+
+    #[test]
+    fn a_capacite_not_offered_deviates_and_takes_the_die() {
+        let ghost = ranks(Character::new(), Voie::Furtivite, 5);
+        assert_eq!(bonus_die_findings(&ghost), []);
+        assert_eq!(
+            bonus_die_findings(&ghost.clone().with_bonus_die_target(Voie::Furtivite, 4)),
+            []
+        );
+        // Passe-partout (rank 3) gives no test bonus: deviates, goes nowhere.
+        let off = ghost.with_bonus_die_target(Voie::Furtivite, 3);
+        assert_eq!(
+            bonus_die_findings(&off),
+            [Category::Deviation(Severity::Standard)]
+        );
+        assert_eq!(off.bonus_die_test(off.bonus_dice()[0]), None);
+        let boss = ranks(Character::new(), Voie::Corporations, 5)
+            .with_bonus_die_target(Voie::Corporations, 1);
+        assert_eq!(
+            boss.bonus_die_test(boss.bonus_dice()[0]),
+            Some(bonus(Voie::Corporations, 1, 1))
+        );
+        assert_eq!(
+            bonus_die_findings(&boss),
+            [Category::Deviation(Severity::Standard)]
+        );
+        // Without the rank 5, the choice is not checked.
+        let member = ranks(Character::new(), Voie::Corporations, 4)
+            .with_bonus_die_target(Voie::Corporations, 1);
+        assert_eq!(bonus_die_findings(&member), []);
+    }
+
+    #[test]
+    fn the_choice_is_settled_where_the_rank_five_was_bought() {
+        use crate::{Placement, SpendingStep};
+        let character = ranks(Character::new(), Voie::Crime, 4)
+            .with_xp_spending(XpSpending::new().with_rank(Voie::Crime, 5))
+            .with_bonus_die_target(Voie::Crime, 2);
+        let violation = character
+            .violations()
+            .into_iter()
+            .find(|v| v.rule() == &BONUS_DIE)
+            .expect("a deviation");
+        assert_eq!(
+            character.placement(&violation),
+            Placement::Spending(1, SpendingStep::Ranks)
+        );
+        let created = ranks(Character::new(), Voie::Crime, 5).with_bonus_die_target(Voie::Crime, 2);
+        let violation = created
+            .violations()
+            .into_iter()
+            .find(|v| v.rule() == &BONUS_DIE)
+            .expect("a deviation");
+        assert_eq!(
+            created.placement(&violation),
+            Placement::Creation(Step::Voies)
+        );
     }
 }
