@@ -945,6 +945,29 @@ mod tests {
             line.target_scope.as_deref(),
             Some("moto — conduite du véhicule")
         );
+
+        // Cerveau: the tests of the capacité chosen, without speciality.
+        let mut document = ContemporainDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "coc.crime".into(),
+            ranks: vec![1, 2, 3, 4, 5],
+        }];
+        document.bonus_die_targets = vec![palimpseste_document::BonusDieTargetEntry {
+            voie: "coc.crime".into(),
+            target: "coc.crime.3".into(),
+        }];
+        let Details::Contemporain(details) = contemporain(document).details else {
+            panic!("contemporain details expected");
+        };
+        let held = details
+            .abilities_held
+            .into_iter()
+            .find(|h| h.ability == "coc.crime.5");
+        let line = held.and_then(|h| h.bonus_die).unwrap();
+        assert_eq!(
+            line.target_scope.as_deref(),
+            Some("serrures, coffres, systèmes de sécurité")
+        );
     }
 
     #[test]
