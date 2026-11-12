@@ -737,6 +737,8 @@ mod tests {
         assert_eq!(built.characteristics, [Agi, Cha]);
         assert!(matches!(built.amount, Amount::Flat(5)));
         assert_eq!(built.scope, "vol");
+        assert!(!built.on_speciality);
+        assert!(built.on_speciality().on_speciality);
     }
 
     #[test]
