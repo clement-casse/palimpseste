@@ -27,8 +27,8 @@ mod fantasy;
 
 use co_kernel::{AbilityId, Adjustment, Author, RuleId, ValueId, VoieId, Waiver};
 pub use contemporain::{
-    ContemporainDocument, ContemporainEquipment, RaisedCharacteristicEntry, TraitChangeEntry,
-    TraitEntry, XpSpendingEntry,
+    BonusDieTargetEntry, ContemporainDocument, ContemporainEquipment, RaisedCharacteristicEntry,
+    TraitChangeEntry, TraitEntry, XpSpendingEntry,
 };
 pub use fantasy::{AbilityOptionEntry, FantasyDocument, FantasyEquipment, LevelUpEntry};
 use serde::{Deserialize, Serialize};

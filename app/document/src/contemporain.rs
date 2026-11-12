@@ -40,6 +40,9 @@ pub struct ContemporainDocument {
     /// The characteristic chosen for each rank 5 offering a choice.
     #[serde(default)]
     pub raised_characteristics: Vec<RaisedCharacteristicEntry>,
+    /// The capacité chosen for each rank 5 whose dé bonus goes to one.
+    #[serde(default)]
+    pub bonus_die_targets: Vec<BonusDieTargetEntry>,
     /// The speciality written for each capacité asking for one.
     #[serde(default)]
     pub specialities: Vec<SpecialityEntry>,
@@ -100,6 +103,17 @@ pub struct RaisedCharacteristicEntry {
     pub characteristic: Characteristic,
 }
 
+/// The capacité of a voie whose test the dé bonus of its rank 5 goes to.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(Tsify))]
+pub struct BonusDieTargetEntry {
+    /// The voie's identifier.
+    pub voie: String,
+    /// The identifier of the capacité chosen, of the same voie
+    /// (`coc.crime.3`).
+    pub target: String,
+}
+
 /// A trait distinctif taken, with its points.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(Tsify))]
@@ -122,6 +136,7 @@ impl ContemporainDocument {
             experience: 0,
             xp_spendings: Vec::new(),
             raised_characteristics: Vec::new(),
+            bonus_die_targets: Vec::new(),
             specialities: Vec::new(),
             acquired_sequels: Vec::new(),
             traits: Vec::new(),
@@ -170,6 +185,15 @@ impl ContemporainDocument {
         for entry in &self.raised_characteristics {
             let voie = content("voie", &entry.voie, Voie::from_id)?;
             character = character.with_raised_characteristic(voie, entry.characteristic.into());
+        }
+        for entry in &self.bonus_die_targets {
+            let voie = content("voie", &entry.voie, Voie::from_id)?;
+            let rank = content("bonus die target", &entry.target, |id| {
+                Voie::from_ability_id(id)
+                    .filter(|(target, _)| *target == voie)
+                    .map(|(_, rank)| rank)
+            })?;
+            character = character.with_bonus_die_target(voie, rank);
         }
         for entry in &self.specialities {
             let (voie, rank) = content("ability", &entry.ability, Voie::from_ability_id)?;

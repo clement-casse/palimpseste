@@ -5,7 +5,7 @@ use co_kernel::{
     Adjustment, Author, Characteristic as C, RuleId, Subject as KernelSubject, Waiver,
 };
 use palimpseste_document::{
-    AbilityOptionEntry, AdjustmentEntry, Characteristic, ContemporainDocument,
+    AbilityOptionEntry, AdjustmentEntry, BonusDieTargetEntry, Characteristic, ContemporainDocument,
     ContemporainEquipment, Document, Engine, Equipment, Error, FantasyDocument, FantasyEquipment,
     ItemEntry, LevelUpEntry, RaisedCharacteristicEntry, SpecialityEntry, Subject, Target,
     TraitChangeEntry, WaiverEntry, XpSpendingEntry,
@@ -412,6 +412,36 @@ fn specialities_convert_and_must_be_written() {
     let json = serde_json::to_value(Document::Fantasy(document)).unwrap();
     assert_eq!(json["specialities"][0]["ability"], "cof.humain.1");
     assert_eq!(json["specialities"][0]["speciality"], "montagnard");
+}
+
+#[test]
+fn bonus_die_targets_convert_within_their_voie() {
+    let mut document = ContemporainDocument::empty();
+    document.bonus_die_targets = vec![BonusDieTargetEntry {
+        voie: "coc.crime".into(),
+        target: "coc.crime.3".into(),
+    }];
+    let expected =
+        co_contemporain::Character::new().with_bonus_die_target(co_contemporain::Voie::Crime, 3);
+    assert_eq!(document.to_character(), Ok(expected));
+    let json = serde_json::to_value(Document::Contemporain(document.clone())).unwrap();
+    assert_eq!(json["bonusDieTargets"][0]["voie"], "coc.crime");
+    assert_eq!(json["bonusDieTargets"][0]["target"], "coc.crime.3");
+
+    // A capacité of another voie, or none, is unreadable.
+    let unknown = |target: &str| Error::UnknownContent {
+        kind: "bonus die target",
+        id: target.to_owned(),
+    };
+    for target in ["coc.furtivite.3", "coc.crime"] {
+        document.bonus_die_targets[0].target = target.into();
+        assert_eq!(document.to_character(), Err(unknown(target)));
+    }
+    document.bonus_die_targets[0].voie = "coc.unknown".into();
+    assert!(matches!(
+        document.to_character(),
+        Err(Error::UnknownContent { kind: "voie", .. })
+    ));
 }
 
 #[test]

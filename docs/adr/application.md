@@ -56,7 +56,9 @@ orphan exchange) and `abilityOptions`; COC2 `experience`, `xpSpendings`
 `acquiredSequels`. `specialities` (a capacité's identifier and the
 speciality written for it, ADR ENG-SPECIALITIES) came later within
 version 2, without a bump: an older build drops them (decided
-2026-10-25, with no stored document to protect). A capacité is named by its identifier (`cof.rage.2`,
+2026-10-25, with no stored document to protect). COC2 `bonusDieTargets` (a voie and
+the capacité its rank 5's dé bonus goes to, ADR ENG-COC-BONUS-DIE) came
+the same way (decided 2026-11-12). A capacité is named by its identifier (`cof.rage.2`,
 ADR ENG-VALUE-IDS), the key its name, description and effects will later
 attach to. Only the current version is read: a format change bumps the
 version and the backend migrates or deletes the stored documents (ADR
