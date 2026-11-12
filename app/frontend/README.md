@@ -152,9 +152,9 @@ and spending money are out of scope until their decisions land (Open in
 
 ## Testing
 
-Vitest with jsdom and Testing Library (ADR FE-TESTS). Tests sit next to
+Vitest with happy-dom and Testing Library (ADR FE-TESTS). Tests sit next to
 the code as `*.test.ts` and query what users see: roles, labels, text.
-Components run in their browser build inside jsdom. The real engines load
+Components run in their browser build inside happy-dom. The real engines load
 from the `.wasm` bytes (`src/test/setup.ts`). `fetch` is stubbed per test
 with `stubBackend()`, which also records the requests, so tests can assert
 what was saved. `lhagva()` and `amelia()` (`src/test/backend.ts`) are the

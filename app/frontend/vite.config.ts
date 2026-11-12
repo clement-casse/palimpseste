@@ -7,7 +7,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // The backend serves the built app and the API on the same origin. In
 // development, Vite serves the app and forwards `/api` to the backend.
-// Tests run the components' browser build in jsdom, without the PWA or
+// Tests run the components' browser build in happy-dom, without the PWA or
 // the styles.
 const testing = Boolean(process.env.VITEST);
 
@@ -62,7 +62,7 @@ export default defineConfig({
     proxy: { "/api": "http://127.0.0.1:3000" },
   },
   test: {
-    environment: "jsdom",
+    environment: "happy-dom",
     include: ["src/**/*.test.ts"],
     setupFiles: ["src/test/setup.ts"],
   },

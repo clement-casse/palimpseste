@@ -144,6 +144,8 @@ describe("a COC spending of XP", () => {
     if (!row) throw new Error("no row for survie 3");
     await fireEvent.click(within(row).getByRole("button", { name: "Acheter (3 XP)" }));
     expect(screen.getByText("XP restants : 0")).toBeTruthy();
+    // Baroudeur asks for a milieu.
+    await fireEvent.change(screen.getByPlaceholderText("milieu"), { target: { value: "jungle" } });
 
     navigate("/characters/1/progression/new#summary");
     const validate = await screen.findByRole("button", { name: "Valider la dépense" });
@@ -152,6 +154,7 @@ describe("a COC spending of XP", () => {
     expect(saves(sent)[0].body).toMatchObject({
       experience: 3,
       xpSpendings: [{ abilities: ["coc.survie.3"] }],
+      specialities: expect.arrayContaining([{ ability: "coc.survie.3", speciality: "jungle" }]),
     });
   });
 });
