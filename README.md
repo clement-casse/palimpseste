@@ -179,8 +179,8 @@ Plain Svelte, not SvelteKit. Users sign in and out, create their account,
 edit their profile and link identities, and list and create characters. A
 character is edited step by step on its own page (`/characters/{id}`),
 with waivers and adjustments, and the whole document is saved at once. The
-rules run locally through the WebAssembly bindings. Tests use Vitest, jsdom
-and Testing Library, and sit next to the code. Decisions:
+rules run locally through the WebAssembly bindings. Tests use Vitest,
+happy-dom and Testing Library, and sit next to the code. Decisions:
 [docs/adr/frontend.md](docs/adr/frontend.md).
 
 ## Dependencies between the crates

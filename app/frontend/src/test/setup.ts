@@ -8,7 +8,7 @@ import { initSync } from "../wasm/palimpseste_wasm";
 
 initSync({ module: readFileSync(join(import.meta.dirname, "../wasm/palimpseste_wasm_bg.wasm")) });
 
-// jsdom has no media queries, which Svelte's motion (and so Flowbite) reads
+// The test DOM (happy-dom) may lack media queries, which Svelte's motion (and so Flowbite) reads
 // on import: a device that prefers nothing.
 window.matchMedia ??= (query: string) =>
   ({
@@ -22,9 +22,10 @@ window.matchMedia ??= (query: string) =>
     dispatchEvent: () => false,
   }) satisfies MediaQueryList;
 
-// Nor the Web Animations API, which Svelte's transitions (Flowbite's modals
-// and accordions) play: an animation that ends at once.
-Element.prototype.animate ??= function () {
+// Svelte's transitions (Flowbite's modals and accordions) play the Web
+// Animations API: an animation that ends at once, in place of happy-dom's,
+// which rejects when it is cancelled.
+Element.prototype.animate = function () {
   const animation = {
     onfinish: null as (() => void) | null,
     cancel: () => {},
@@ -34,7 +35,7 @@ Element.prototype.animate ??= function () {
   return animation as unknown as Animation;
 };
 
-// Nor modal dialogs: one shown is open, one closed is not.
+// Modal dialogs, if missing: one shown is open, one closed is not.
 HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
   this.open = true;
 };
@@ -42,8 +43,8 @@ HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
   this.open = false;
 };
 
-// Nor the Popover API, which Flowbite's popovers show and hide through: a
-// popover shown is in the page as it is.
+// The Popover API, if missing, which Flowbite's popovers show and hide
+// through: a popover shown is in the page as it is.
 HTMLElement.prototype.showPopover ??= () => {};
 HTMLElement.prototype.hidePopover ??= () => {};
 HTMLElement.prototype.togglePopover ??= () => true;

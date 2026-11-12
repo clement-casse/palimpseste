@@ -251,11 +251,13 @@ on the previous build, and a reload must never interrupt an edit.
 
 ## Tests
 
-**FE-TESTS: Vitest, jsdom and Testing Library.** Components run in their
-browser build (`svelteTesting()`) inside jsdom; the engines load from the
-`.wasm` bytes (`src/test/setup.ts`), which also stands in for the
-browser APIs jsdom lacks and Svelte or Flowbite use (media queries, Web
-Animations, modal dialogs, popovers); `fetch` is stubbed per test
+**FE-TESTS: Vitest, happy-dom and Testing Library.** Components run in
+their browser build (`svelteTesting()`) inside happy-dom, faster than
+jsdom and, as a browser, ignoring clicks on a disabled button (decided
+2026-11-12); the engines load from the `.wasm` bytes
+(`src/test/setup.ts`), which also stands in for the browser APIs Svelte
+or Flowbite use when missing (media queries, modal dialogs, popovers) and
+plays every Web Animation to its end at once; `fetch` is stubbed per test
 (`src/test/backend.ts`). Tests sit next to the code as `*.test.ts` and
 query what users see (roles, labels, text). `@types/node` is referenced by
 test files only, so the app cannot use Node APIs. `mise run
