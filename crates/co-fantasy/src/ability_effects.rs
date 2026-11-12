@@ -2867,34 +2867,90 @@ mod tests {
         (!spell_pm).then(|| id.as_str().to_owned())
     }
 
-    /// Whether the capacité `id` is in a total of the character's sheet: a
-    /// characteristic or a value. Test bonuses, dé bonus and situational
-    /// modifiers are in none.
-    fn in_a_total(character: &Character, id: &str) -> bool {
-        let named = |value: Value, line: &co_kernel::DerivedValue| {
-            line.contributions()
-                .iter()
-                .any(|c| ability(value, c).as_deref() == Some(id))
-        };
-        if Characteristic::ALL
-            .iter()
-            .any(|c| named(Value::Initiative, &character.characteristic(*c)))
-        {
-            return true;
-        }
-        let mut values: Vec<Value> = Value::FIXED.to_vec();
-        for weapon in WEAPONS {
-            values.push(Value::CriticalRange(weapon));
-            for weapon_use in WeaponUse::ALL {
-                values.push(Value::WeaponAttack(weapon, weapon_use));
-                values.push(Value::Damage(weapon, weapon_use));
+    /// The totals of a character the test reads, computed once: each
+    /// characteristic, then each value (the fixed ones, and per weapon its
+    /// critical range, attack and DM), and each weapon's DM dice.
+    struct Totals {
+        characteristics: Vec<co_kernel::DerivedValue>,
+        values: Vec<(Value, Option<co_kernel::DerivedValue>)>,
+        dice: Vec<Option<co_kernel::Dice>>,
+    }
+
+    impl Totals {
+        fn of(character: &Character) -> Self {
+            let mut values: Vec<Value> = Value::FIXED.to_vec();
+            let mut dice = Vec::new();
+            for weapon in WEAPONS {
+                values.push(Value::CriticalRange(weapon));
+                for weapon_use in WeaponUse::ALL {
+                    values.push(Value::WeaponAttack(weapon, weapon_use));
+                    values.push(Value::Damage(weapon, weapon_use));
+                    dice.push(character.damage_dice(weapon, weapon_use));
+                }
+            }
+            Self {
+                characteristics: Characteristic::ALL
+                    .iter()
+                    .map(|c| character.characteristic(*c))
+                    .collect(),
+                values: values
+                    .into_iter()
+                    .map(|value| (value, character.value(value)))
+                    .collect(),
+                dice,
             }
         }
-        values.iter().any(|value| {
-            character
-                .value(*value)
-                .is_some_and(|line| named(*value, &line))
-        })
+
+        /// Whether the capacité `id` is in a total: a characteristic or a
+        /// value. Test bonuses, dé bonus and situational modifiers are in
+        /// none.
+        fn name(&self, id: &str) -> bool {
+            let named = |value: Value, line: &co_kernel::DerivedValue| {
+                line.contributions()
+                    .iter()
+                    .any(|c| ability(value, c).as_deref() == Some(id))
+            };
+            self.characteristics
+                .iter()
+                .any(|line| named(Value::Initiative, line))
+                || self
+                    .values
+                    .iter()
+                    .any(|(value, line)| line.as_ref().is_some_and(|line| named(*value, line)))
+        }
+
+        /// Whether the capacité `id` changes a value from `below`, the ranks
+        /// under it: a fixed value, a weapon's attack, DM or dice. A total
+        /// leaves out the other capacités' terms: a lower rank reaching a
+        /// higher amount (Doigts agiles at rank 5) is not this capacité. A
+        /// spell's 1 PM is the rule's, not the capacité's. PM appear with the
+        /// first spell (ADR ENG-COF-PM): only a total on both sides compares.
+        fn differs(&self, below: &Self, id: &str) -> bool {
+            let total = |value: Value, line: &Option<co_kernel::DerivedValue>| {
+                line.as_ref().map(|line| {
+                    line.contributions()
+                        .iter()
+                        .filter(|t| match t.source() {
+                            Source::Ability(_) => ability(value, t).as_deref() == Some(id),
+                            _ => true,
+                        })
+                        .map(Contribution::amount)
+                        .sum::<i32>()
+                })
+            };
+            self.dice != below.dice
+                || self
+                    .values
+                    .iter()
+                    .zip(&below.values)
+                    .any(|((value, held), (_, under))| {
+                        !matches!(value, Value::CriticalRange(_))
+                            && matches!(
+                                (total(*value, held), total(*value, under)),
+                                (Some(held), Some(under)) if held != under
+                            )
+                    })
+        }
     }
 
     /// The ranks 1 to `rank` of `voie`, each with its first option when it
@@ -2929,61 +2985,49 @@ mod tests {
         })
     }
 
-    /// Whether the engine counts the capacité at `rank` in `voie` in a total,
-    /// with its default or its option: named by a characteristic or a value,
-    /// without armour or in plate with a shield, at level 1 or 10; or
-    /// changing a value (a characteristic in place of another) or a weapon's
-    /// attack, DM or dice from the ranks below it.
-    fn computed(voie: Voie, rank: u8) -> bool {
-        [false, true]
-            .into_iter()
-            .any(|optional| computed_with(voie, rank, optional))
-    }
-
-    /// [`computed`], the optional options chosen or not.
-    fn computed_with(voie: Voie, rank: u8, optional: bool) -> bool {
-        let id = voie.ability(Rank::new(rank)).as_str().to_owned();
-        let held = ranks(voie, rank, optional);
-        let below = ranks(voie, rank - 1, optional);
-        // A total without the other capacités' terms: a lower rank reaching
-        // a higher amount (Doigts agiles at rank 5) is not this capacité.
-        // A spell's 1 PM is the rule's, not the capacité's.
-        let total = |c: &Character, value| {
-            c.value(value).map(|line| {
-                line.contributions()
-                    .iter()
-                    .filter(|t| match t.source() {
-                        Source::Ability(_) => ability(value, t).as_deref() == Some(id.as_str()),
-                        _ => true,
-                    })
-                    .map(Contribution::amount)
-                    .sum::<i32>()
-            })
-        };
-        // PM appear with the first spell (ADR ENG-COF-PM): only a total on
-        // both sides compares.
-        let changed = |value| match (total(&held, value), total(&below, value)) {
-            (Some(held), Some(below)) => held != below,
-            _ => false,
-        };
-        let differs = Value::FIXED.into_iter().any(changed)
-            || WEAPONS.iter().any(|w| {
-                WeaponUse::ALL.iter().any(|u| {
-                    held.damage_dice(*w, *u) != below.damage_dice(*w, *u)
-                        || [Value::WeaponAttack(*w, *u), Value::Damage(*w, *u)]
-                            .into_iter()
-                            .any(changed)
-                })
-            });
+    /// Which ranks of `voie` the engine counts in a total, with their
+    /// default or their option: named by a characteristic or a value, at
+    /// their rank without armour at level 1, or with the five ranks in plate
+    /// with a shield or at level 10; or changing a value (a characteristic
+    /// in place of another) or a weapon's attack, DM or dice from the ranks
+    /// below it. Each character's totals are computed once, those of a rank
+    /// serving the rank above.
+    fn computed_ranks(voie: Voie) -> [bool; 5] {
         let plated = |c: &Character| {
             c.clone()
                 .with_armour(Armour::PlaqueComplete)
                 .with_shield(Shield::GrandBouclier)
         };
-        differs || in_a_total(&held, &id) || in_a_total(&plated(&held), &id) || {
-            let senior = (0..9).fold(held.clone(), |c, _| c.with_level_up(LevelUp::new()));
-            in_a_total(&senior, &id) || in_a_total(&plated(&senior), &id)
+        let mut computed = [false; 5];
+        let plain: Vec<Character> = (0..=5).map(|rank| ranks(voie, rank, false)).collect();
+        for optional in [false, true] {
+            let characters: Vec<Character> =
+                (0..=5).map(|rank| ranks(voie, rank, optional)).collect();
+            if optional && characters == plain {
+                break;
+            }
+            let totals: Vec<Totals> = characters.iter().map(Totals::of).collect();
+            let id = |rank: u8| voie.ability(Rank::new(rank)).as_str().to_owned();
+            for rank in 1..=5_u8 {
+                let at = usize::from(rank);
+                computed[at - 1] = computed[at - 1]
+                    || totals[at].differs(&totals[at - 1], &id(rank))
+                    || totals[at].name(&id(rank));
+            }
+            if computed.iter().all(|c| *c) {
+                return computed;
+            }
+            let top = &characters[5];
+            let senior = (0..9).fold(top.clone(), |c, _| c.with_level_up(LevelUp::new()));
+            for variant in [plated(top), plated(&senior), senior] {
+                let totals = Totals::of(&variant);
+                for rank in 1..=5_u8 {
+                    let at = usize::from(rank) - 1;
+                    computed[at] = computed[at] || totals.name(&id(rank));
+                }
+            }
         }
+        computed
     }
 
     #[test]
@@ -3118,27 +3162,41 @@ mod tests {
 
     #[test]
     fn a_capacite_with_a_computed_effect_is_in_a_total() {
-        let wrong = |rows: &[(Voie, u8, &[AbilityEffect])]| -> Vec<(Voie, u8)> {
-            rows.iter()
-                .filter(|(voie, rank, effects)| {
-                    let claims = effects
-                        .iter()
-                        .any(|e| e.application() == Application::Computed);
-                    claims != computed(*voie, *rank)
+        // Slow in a debug build: the voies are checked in parallel, each
+        // thread taking the next voie.
+        let next = std::sync::atomic::AtomicUsize::new(0);
+        let threads = std::thread::available_parallelism().map_or(4, usize::from);
+        let wrong: Vec<(Voie, u8)> = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..threads)
+                .map(|_| {
+                    scope.spawn(|| {
+                        let mut wrong = Vec::new();
+                        while let Some(voie) =
+                            Voie::ALL.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+                        {
+                            let computed = computed_ranks(*voie);
+                            wrong.extend(
+                                EFFECTS
+                                    .iter()
+                                    .filter(|(v, rank, effects)| {
+                                        let claims = effects
+                                            .iter()
+                                            .any(|e| e.application() == Application::Computed);
+                                        v == voie && claims != computed[usize::from(*rank) - 1]
+                                    })
+                                    .map(|(voie, rank, _)| (*voie, *rank)),
+                            );
+                        }
+                        wrong
+                    })
                 })
-                .map(|(voie, rank, _)| (*voie, *rank))
-                .collect()
-        };
-        // Slow in a debug build: the rows are checked in parallel.
-        let wrong: Vec<_> = std::thread::scope(|scope| {
-            let handles: Vec<_> = EFFECTS
-                .chunks(EFFECTS.len().div_ceil(8))
-                .map(|rows| scope.spawn(move || wrong(rows)))
                 .collect();
-            handles
+            let mut wrong: Vec<_> = handles
                 .into_iter()
                 .flat_map(|handle| handle.join().unwrap())
-                .collect()
+                .collect();
+            wrong.sort_unstable();
+            wrong
         });
         assert_eq!(wrong, []);
     }
