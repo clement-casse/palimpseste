@@ -357,7 +357,8 @@ gives the ranks offered, `with_bonus_die_target` stores the one chosen, a
 capacité and not a speciality (corporations and véhicules already ask one
 at rank 5). `BonusDie::on_chosen_ability` marks those dé bonus and
 `Character::bonus_die_test` gives the test bonus they go to: the first of
-the capacité chosen, so the vehicle's for As des as. A capacité not
+the capacité chosen, so the vehicle's for As des as. A rank 5 held
+without its choice is `Incomplete` of COC.PRG.BONUS-DIE; a capacité not
 offered is a deviation of COC.PRG.BONUS-DIE with the rank 5 as subject,
 settled where the rank was bought, the dé bonus going to it anyway.
 

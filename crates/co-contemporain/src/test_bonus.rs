@@ -648,22 +648,23 @@ pub(crate) fn bonus_die_test(character: &Character, die: BonusDie) -> Option<Tes
 }
 
 /// COC.PRG.BONUS-DIE: a rank 5 held whose dé bonus goes to a capacité
-/// chosen has it chosen among those offered (D-55).
+/// chosen has it chosen, among those offered (D-55).
 pub(crate) fn check(character: &Character, violations: &mut Vec<Violation>) {
     for (voie, ranks) in character.voies() {
         let offered = voie.bonus_die_choice();
         if offered.is_empty() || !ranks.contains(&Rank::new(FIVE_RANK)) {
             continue;
         }
-        if let Some(rank) = character.bonus_die_target(voie)
-            && !offered.contains(&rank.get())
-        {
-            violations.push(Violation::deviation(
+        let subject = Subject::Ability(voie.ability(Rank::new(FIVE_RANK)));
+        match character.bonus_die_target(voie) {
+            None => violations.push(Violation::incomplete(BONUS_DIE, VOIE_MECHANIC, subject)),
+            Some(rank) if !offered.contains(&rank.get()) => violations.push(Violation::deviation(
                 BONUS_DIE,
                 VOIE_MECHANIC,
-                Subject::Ability(voie.ability(Rank::new(FIVE_RANK))),
+                subject,
                 Severity::Standard,
-            ));
+            )),
+            Some(_) => {}
         }
     }
 }
@@ -1001,9 +1002,9 @@ mod tests {
     }
 
     #[test]
-    fn a_capacite_not_offered_deviates_and_takes_the_die() {
+    fn a_missing_choice_is_incomplete_and_one_not_offered_deviates() {
         let ghost = ranks(Character::new(), Voie::Furtivite, 5);
-        assert_eq!(bonus_die_findings(&ghost), []);
+        assert_eq!(bonus_die_findings(&ghost), [Category::Incomplete]);
         assert_eq!(
             bonus_die_findings(&ghost.clone().with_bonus_die_target(Voie::Furtivite, 4)),
             []
