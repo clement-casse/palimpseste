@@ -37,10 +37,12 @@ pub(crate) fn written(
         .highest_rank(voie)
         .map_or(0, Rank::get)
         .max(rank.get());
-    let value_of = |measure: Measure| match measure {
-        Measure::Rank => Some(i32::from(reached)),
-        Measure::Characteristic(c) => Some(character.characteristic(c).total()),
-        Measure::Level | Measure::VoiesAt { .. } => None,
+    // COC2 counts the rank and the characteristics only: no level, no voies.
+    let value_of = |measure: Measure| {
+        if let Measure::Characteristic(c) = measure {
+            return Some(character.characteristic(c).total());
+        }
+        (measure == Measure::Rank).then_some(i32::from(reached))
     };
     of(voie, rank)
         .iter()
@@ -943,6 +945,21 @@ mod tests {
             .iter()
             .any(|w| held.damage_dice(*w) != below.damage_dice(*w));
         named(&held) || changed || dice
+    }
+
+    #[test]
+    fn the_helpers_build_what_the_kernel_builds() {
+        use co_kernel::{Bonus, Measure, Term};
+        assert_eq!(rank("rang"), Term::new(Measure::Rank, "rang"));
+        assert_eq!(
+            carac(Characteristic::Int, "INT"),
+            Term::new(Measure::Characteristic(Characteristic::Int), "INT")
+        );
+        assert_eq!(c("x"), AbilityEffect::computed("x"));
+        assert_eq!(ch("x"), AbilityEffect::chosen("x"));
+        assert_eq!(d("x"), AbilityEffect::described("x"));
+        assert_eq!(t(2, "x"), AbilityEffect::giving(Bonus::Test(2), "x"));
+        assert_eq!(die("x"), AbilityEffect::giving(Bonus::Die, "x"));
     }
 
     #[test]

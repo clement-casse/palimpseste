@@ -566,6 +566,20 @@ mod tests {
     }
 
     #[test]
+    fn a_resistance_is_the_rank_reached() {
+        let (index, characteristics, scope, effect) =
+            resisting(Voie::ElfeHaut, 2, "résister aux sorts");
+        assert_eq!(
+            (index, characteristics, scope),
+            (1, &[][..], "résister aux sorts")
+        );
+        assert_eq!(
+            format!("{effect:?}"),
+            format!("{:?}", Effect::new(Voie::ElfeHaut, 2, Amount::RankPlus(0)))
+        );
+    }
+
+    #[test]
     fn the_row_builders_make_the_rows_they_name() {
         for c in Characteristic::ALL {
             assert_eq!(alone(c), [c]);

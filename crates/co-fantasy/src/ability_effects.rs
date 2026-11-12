@@ -3031,6 +3031,32 @@ mod tests {
     }
 
     #[test]
+    fn the_helpers_build_what_the_kernel_builds() {
+        assert_eq!(rank("rang"), Term::new(Measure::Rank, "rang"));
+        assert_eq!(
+            carac(Int, "INT"),
+            Term::new(Measure::Characteristic(Int), "INT")
+        );
+        assert_eq!(level("niveau"), Term::new(Measure::Level, "niveau"));
+        assert_eq!(
+            voies("cof.profil.moine", 5, "voies"),
+            Term::new(
+                Measure::VoiesAt {
+                    group: "cof.profil.moine",
+                    rank: 5
+                },
+                "voies"
+            )
+        );
+        assert_eq!(c("x"), AbilityEffect::computed("x"));
+        assert_eq!(ch("x"), AbilityEffect::chosen("x"));
+        assert_eq!(d("x"), AbilityEffect::described("x"));
+        assert_eq!(t(2, "x"), AbilityEffect::giving(Bonus::Test(2), "x"));
+        assert_eq!(all_tests("x"), AbilityEffect::giving(Bonus::AllTests, "x"));
+        assert_eq!(die("x"), AbilityEffect::giving(Bonus::Die, "x"));
+    }
+
+    #[test]
     fn effects_are_short_and_in_voie_and_rank_order() {
         assert!(EFFECTS.iter().all(|(_, _, effects)| !effects.is_empty()));
         assert!(
