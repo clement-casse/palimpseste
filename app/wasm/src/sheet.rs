@@ -440,6 +440,15 @@ pub struct BonusDieLine {
     pub scope: String,
     /// Whether it applies to the speciality written for its capacité.
     pub on_speciality: bool,
+    /// Whether it goes to the test of a capacité of its voie the player
+    /// chooses (ADR ENG-COC-BONUS-DIE).
+    pub on_chosen_ability: bool,
+    /// The identifier of the capacité chosen, when one is.
+    pub target: Option<String>,
+    /// The tests of the capacité chosen, in a few French words, led by the
+    /// speciality written for it when the bonus applies to it (`moto —
+    /// conduite du véhicule`); `None` when it gives no test bonus.
+    pub target_scope: Option<String>,
 }
 
 /// The speciality `specialities` give the capacité `ability`.
@@ -512,6 +521,7 @@ pub struct ClassRise {
 
 /// A COC2 rank 5 held and the characteristic it raises.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
 pub struct RankFiveLine {
     /// The voie's identifier.
     pub voie: String,
@@ -519,6 +529,10 @@ pub struct RankFiveLine {
     pub raises: Vec<Characteristic>,
     /// The characteristics to choose from; empty when fixed.
     pub choice: Vec<Characteristic>,
+    /// The identifiers of the capacités of the voie its dé bonus may go to,
+    /// one to choose; empty when it asks no such choice (ADR
+    /// ENG-COC-BONUS-DIE).
+    pub bonus_die_choice: Vec<String>,
     /// The spending that bought the rank, `None` for creation.
     pub progression: Option<u32>,
 }
@@ -1049,6 +1063,9 @@ fn fantasy_held(
                     characteristics: named(die.characteristics()),
                     scope: die.scope().to_owned(),
                     on_speciality: die.on_speciality(),
+                    on_chosen_ability: false,
+                    target: None,
+                    target_scope: None,
                 }),
         })
         .collect()
@@ -1094,13 +1111,40 @@ fn contemporain_held(
             bonus_die: dice
                 .iter()
                 .find(|die| (die.voie(), die.rank()) == (voie, rank))
-                .map(|die| BonusDieLine {
-                    characteristics: named(die.characteristics()),
-                    scope: die.scope().to_owned(),
-                    on_speciality: die.on_speciality(),
-                }),
+                .map(|die| contemporain_bonus_die(character, document, *die)),
         })
         .collect()
+}
+
+/// The line of the COC2 dé bonus `die`, with the capacité it goes to.
+fn contemporain_bonus_die(
+    character: &co_contemporain::Character,
+    document: &ContemporainDocument,
+    die: co_contemporain::BonusDie,
+) -> BonusDieLine {
+    let target = die
+        .on_chosen_ability()
+        .then(|| character.bonus_die_target(die.voie()))
+        .flatten()
+        .map(|rank| die.voie().ability(rank).as_str().to_owned());
+    let target_scope = character.bonus_die_test(die).map(|bonus| {
+        let speciality = bonus
+            .on_speciality()
+            .then(|| speciality_of(&document.specialities, bonus.ability().as_str()))
+            .flatten();
+        match speciality {
+            Some(speciality) => format!("{speciality} — {}", bonus.scope()),
+            None => bonus.scope().to_owned(),
+        }
+    });
+    BonusDieLine {
+        characteristics: named(die.characteristics()),
+        scope: die.scope().to_owned(),
+        on_speciality: die.on_speciality(),
+        on_chosen_ability: die.on_chosen_ability(),
+        target,
+        target_scope,
+    }
 }
 
 /// What each COF2 level-up offers within the rules.
@@ -1210,6 +1254,15 @@ fn contemporain_rank_five(character: &co_contemporain::Character) -> Vec<RankFiv
                 .rank_five_choice()
                 .iter()
                 .map(|c| (*c).into())
+                .collect(),
+            bonus_die_choice: voie
+                .bonus_die_choice()
+                .iter()
+                .map(|rank| {
+                    voie.ability(co_kernel::Rank::new(*rank))
+                        .as_str()
+                        .to_owned()
+                })
                 .collect(),
             progression: character.bought_in(voie, rank).map(count),
         })
