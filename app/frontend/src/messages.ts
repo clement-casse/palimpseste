@@ -147,6 +147,10 @@ const MESSAGES: Record<string, Message> = {
     v.category.kind === "incomplete"
       ? `${s} : choisissez la caractéristique augmentée.`
       : `${s} : cette caractéristique n'est pas offerte par le rang 5.`,
+  "COC.PRG.BONUS-DIE": (s, _p, v) =>
+    v.category.kind === "incomplete"
+      ? `${s} : choisissez la capacité dont le test reçoit le dé bonus.`
+      : `${s} : le dé bonus ne va pas à une capacité offerte par le rang 5.`,
 };
 
 /** The French message of `violation`. */

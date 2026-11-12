@@ -4,6 +4,7 @@
 
 import type {
   AbilityEntry,
+  BonusDieLine,
   Document,
   HeldAbility,
   Sheet,
@@ -149,6 +150,21 @@ export function scopeLabel(
   speciality: string | null | undefined,
 ): string {
   return line.onSpeciality && speciality ? `${speciality} — ${line.scope}` : line.scope;
+}
+
+/**
+ * What a dé bonus covers: for one going to a capacité chosen (ADR
+ * ENG-COC-BONUS-DIE), that capacité's tests, or its name when it gives no
+ * test bonus, or "test à choisir"; else as {@link scopeLabel}.
+ */
+export function bonusDieLabel(
+  catalog: Abilities,
+  line: BonusDieLine,
+  speciality: string | null | undefined,
+): string {
+  if (!line.onChosenAbility) return scopeLabel(line, speciality);
+  if (line.targetScope) return line.targetScope;
+  return line.target ? abilityLabel(catalog, line.target) : "test à choisir";
 }
 
 /**

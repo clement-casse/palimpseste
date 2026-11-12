@@ -123,7 +123,10 @@ violations. Each step offers what the engine offers within the rules
 first (`levels`, `spendings`), anything else under "Hors règles". A
 capacité asking for a speciality gets a text field where it was acquired
 (the voies step at creation, Options of a level, Rangs of a spending,
-`SpecialityField`); clearing it gives the speciality up. "Valider
+`SpecialityField`); clearing it gives the speciality up. A COC2 rank 5
+whose dé bonus goes to a capacité chosen gets a select at the same places
+(`BonusDieTargetPicker`, ADR ENG-COC-BONUS-DIE): the capacités it offers,
+the voie's others under "Hors règles". "Valider
 le niveau" saves the copy once (`PUT` with `If-Match` at the draft's
 version, a `412` keeping the draft), only when the entry has nothing left
 to settle; "Abandonner le brouillon" forgets it; the last entry saved may
@@ -164,7 +167,8 @@ spending it came from, its COF2 actions as the book's letters and its PM
 when it is a spell (ADR ENG-COF-ACTIONS), its test bonuses and dé bonus
 with the tests they cover and their characteristics (ADR
 ENG-TEST-BONUSES), named first by the speciality written when they apply
-to it (ADR ENG-SPECIALITIES); the modifiers that hold only in a
+to it (ADR ENG-SPECIALITIES), a dé bonus going to a capacité chosen by
+that capacité's tests ("test à choisir" until it is); the modifiers that hold only in a
 situation (ADR ENG-SITUATIONAL) are never in a total: listed under the
 combat values and the characteristics ("Selon la situation", with their
 capacité), in each value's breakdown ("En situation"), and in a weapon's

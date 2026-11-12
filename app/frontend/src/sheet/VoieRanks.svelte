@@ -6,7 +6,7 @@
   import { signed } from "../character/edits";
   import Ability from "../progression/Ability.svelte";
   import AbilityEffects from "../progression/AbilityEffects.svelte";
-  import { type Abilities, scopeLabel } from "../progression/progression";
+  import { type Abilities, bonusDieLabel, scopeLabel } from "../progression/progression";
   import type { HeldAbility, VoieEntry, WrittenEffects } from "../wasm/palimpseste_wasm";
   import Marks from "./Marks.svelte";
   import { type Note, marksAt } from "./notes";
@@ -93,7 +93,7 @@
                   />
                 {/each}
                 {#if h.bonusDie && !inEffects}
-                  · dé bonus : {scopeLabel(h.bonusDie, h.speciality)}{#if h.bonusDie.characteristics.length > 0}{` (${h.bonusDie.characteristics.join(", ")})`}{/if}
+                  · dé bonus : {bonusDieLabel(catalog, h.bonusDie, h.speciality)}{#if h.bonusDie.characteristics.length > 0}{` (${h.bonusDie.characteristics.join(", ")})`}{/if}
                 {/if}
                 <AbilityEffects {catalog} id={h.ability} held={h} {notes} {written} />
               </li>
