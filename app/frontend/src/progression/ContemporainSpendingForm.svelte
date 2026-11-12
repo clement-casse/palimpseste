@@ -25,6 +25,7 @@
   import Ability from "./Ability.svelte";
   import AbilityEffects from "./AbilityEffects.svelte";
   import { askingSpeciality } from "./progression";
+  import BonusDieTargetPicker from "./BonusDieTargetPicker.svelte";
   import RankFivePicker from "./RankFivePicker.svelte";
   import SpecialityField from "./SpecialityField.svelte";
 
@@ -103,6 +104,9 @@
       {/each}
     </Listgroup>
   {/if}
+  {#each details.rankFive.filter((line) => line.progression === number && line.bonusDieChoice.length > 0) as line (line.voie)}
+    <BonusDieTargetPicker bind:choices {catalog} {line} />
+  {/each}
   {@const asking = askingSpeciality(catalog, details.abilitiesHeld, number)}
   {#if asking.length > 0}
     {#each asking as ability (ability)}

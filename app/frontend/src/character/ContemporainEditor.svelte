@@ -40,6 +40,7 @@
   } from "./edits";
   import LaterRanks from "../progression/LaterRanks.svelte";
   import { askingSpeciality } from "../progression/progression";
+  import BonusDieTargetPicker from "../progression/BonusDieTargetPicker.svelte";
   import RankFivePicker from "../progression/RankFivePicker.svelte";
   import SpecialityField from "../progression/SpecialityField.svelte";
   import Items from "./Items.svelte";
@@ -183,6 +184,9 @@
   </Listgroup>
   {#each details.rankFive.filter((line) => line.progression == null && line.choice.length > 0) as line (line.voie)}
     <RankFivePicker bind:choices {catalog} {line} />
+  {/each}
+  {#each details.rankFive.filter((line) => line.progression == null && line.bonusDieChoice.length > 0) as line (line.voie)}
+    <BonusDieTargetPicker bind:choices {catalog} {line} />
   {/each}
   {@const asking = askingSpeciality(catalog, details.abilitiesHeld, null)}
   {#if asking.length > 0}

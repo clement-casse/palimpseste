@@ -16,7 +16,7 @@
     TestBonusLine,
     WrittenEffects,
   } from "../wasm/palimpseste_wasm";
-  import { type Abilities, scopeLabel } from "./progression";
+  import { type Abilities, bonusDieLabel, scopeLabel } from "./progression";
 
   let {
     catalog,
@@ -88,7 +88,7 @@
         {/each}
       {:else if effect.bonus?.kind === "die" && held?.bonusDie}
         <li class="text-gray-900 dark:text-white">
-          dé bonus : {scopeLabel(held.bonusDie, held.speciality)}{characteristics(held.bonusDie.characteristics)}
+          dé bonus : {bonusDieLabel(catalog, held.bonusDie, held.speciality)}{characteristics(held.bonusDie.characteristics)}
         </li>
       {:else}
         <li class="text-gray-900 dark:text-white">{@render text(effect, i)}</li>

@@ -5,6 +5,7 @@ import { catalog, emptyDocument, evaluate } from "../wasm/palimpseste_wasm";
 import { clearDraft, loadDraft, saveDraft } from "./drafts";
 import {
   abilityLabel,
+  bonusDieLabel,
   currentVoies,
   differences,
   indexOf,
@@ -25,6 +26,25 @@ describe("the scope of a bonus", () => {
     expect(scopeLabel(bonus, "Peinture")).toBe("Peinture — discipline");
     expect(scopeLabel(bonus, undefined)).toBe("discipline");
     expect(scopeLabel({ scope: "esquiver", onSpeciality: false }, "Peinture")).toBe("esquiver");
+  });
+});
+
+describe("the tests a dé bonus goes to", () => {
+  const abilities = catalog("contemporain");
+  const die = { scope: "véhicule choisi", onSpeciality: false, characteristics: [] };
+
+  it("names the capacité chosen, its tests first", () => {
+    const line = { ...die, onChosenAbility: true, target: "coc.vehicules.2", targetScope: undefined };
+    expect(bonusDieLabel(abilities, line, undefined)).toBe(abilityLabel(abilities, "coc.vehicules.2"));
+    const scoped = { ...line, targetScope: "moto — conduite du véhicule" };
+    expect(bonusDieLabel(abilities, scoped, undefined)).toBe("moto — conduite du véhicule");
+    const none = { ...line, target: undefined };
+    expect(bonusDieLabel(abilities, none, undefined)).toBe("test à choisir");
+  });
+
+  it("reads as a scope for a dé bonus asking no choice", () => {
+    const line = { ...die, onChosenAbility: false, target: undefined, targetScope: undefined };
+    expect(bonusDieLabel(abilities, line, "moto")).toBe("véhicule choisi");
   });
 });
 
