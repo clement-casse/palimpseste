@@ -904,6 +904,50 @@ mod tests {
     }
 
     #[test]
+    fn a_bonus_die_names_the_capacite_it_goes_to() {
+        let mut document = ContemporainDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "coc.vehicules".into(),
+            ranks: vec![1, 2, 3, 4, 5],
+        }];
+        let die = |document: &ContemporainDocument| {
+            let Details::Contemporain(details) = contemporain(document.clone()).details else {
+                panic!("contemporain details expected");
+            };
+            let five = details
+                .rank_five
+                .iter()
+                .find(|l| l.voie == "coc.vehicules")
+                .cloned();
+            let held = details
+                .abilities_held
+                .into_iter()
+                .find(|h| h.ability == "coc.vehicules.5");
+            (five.unwrap(), held.and_then(|h| h.bonus_die).unwrap())
+        };
+        let (five, line) = die(&document);
+        assert_eq!(five.bonus_die_choice.len(), 5);
+        assert_eq!(five.bonus_die_choice[0], "coc.vehicules.1");
+        assert!(line.on_chosen_ability);
+        assert_eq!((line.target, line.target_scope), (None, None));
+
+        document.specialities = vec![SpecialityEntry {
+            ability: "coc.vehicules.2".into(),
+            speciality: "moto".into(),
+        }];
+        document.bonus_die_targets = vec![palimpseste_document::BonusDieTargetEntry {
+            voie: "coc.vehicules".into(),
+            target: "coc.vehicules.2".into(),
+        }];
+        let (_, line) = die(&document);
+        assert_eq!(line.target.as_deref(), Some("coc.vehicules.2"));
+        assert_eq!(
+            line.target_scope.as_deref(),
+            Some("moto — conduite du véhicule")
+        );
+    }
+
+    #[test]
     fn held_capacites_carry_the_choice_made() {
         let mut document = ContemporainDocument::empty();
         document.voies = vec![VoieEntry {
