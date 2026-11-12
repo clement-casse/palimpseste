@@ -350,6 +350,17 @@ offered a deviation of it with the capacité as subject, and raised anyway.
 The raise counts at creation too, a rank 5 there being a deviation of the
 maximum rank.
 
+**ENG-COC-BONUS-DIE: Four rank 5s send their dé bonus to a capacité chosen
+(D-55).** Boss, Cerveau, Fantôme and As des as give a dé bonus to one test
+of lower ranks of their voie, or to a vehicle. `Voie::bonus_die_choice`
+gives the ranks offered, `with_bonus_die_target` stores the one chosen, a
+capacité and not a speciality (corporations and véhicules already ask one
+at rank 5). `BonusDie::on_chosen_ability` marks those dé bonus and
+`Character::bonus_die_test` gives the test bonus they go to: the first of
+the capacité chosen, so the vehicle's for As des as. A capacité not
+offered is a deviation of COC.PRG.BONUS-DIE with the rank 5 as subject,
+settled where the rank was bought, the dé bonus going to it anyway.
+
 **ENG-COC-SEQUELS: Sequels acquired in play are apart from the trait.**
 `with_acquired_sequel` records a `Sequel` acquired in play (a critical hit
 at step 20, COC.CNT.SCALES), never counted in the trait balance and named

@@ -13,9 +13,9 @@ use co_kernel::{
 use crate::{
     Character, Value, Voie,
     rules::{
-        AGE_BRACKET, CAPACITY_POINTS, CARAC_GROWTH, CARAC_LIMITS, CARAC_LOWERED, CARAC_PHYSICAL,
-        CARAC_POINTS, CONTENT_VOIES, DOMAINE, DOMAINES, EQUIPMENT, MAX_VOIES, ONE_RANK, PRG_COST,
-        PRG_LIMITS, SOCIAL_CLASS, TRAIT_POINTS, TRAITS, VOIE_MECHANIC, XP_USE,
+        AGE_BRACKET, BONUS_DIE, CAPACITY_POINTS, CARAC_GROWTH, CARAC_LIMITS, CARAC_LOWERED,
+        CARAC_PHYSICAL, CARAC_POINTS, CONTENT_VOIES, DOMAINE, DOMAINES, EQUIPMENT, MAX_VOIES,
+        ONE_RANK, PRG_COST, PRG_LIMITS, SOCIAL_CLASS, TRAIT_POINTS, TRAITS, VOIE_MECHANIC, XP_USE,
     },
 };
 
@@ -43,7 +43,7 @@ pub enum Step {
 
 /// The step of each rule; the domaine and adjustment notices are refined in
 /// [`Step::of`].
-const RULE_STEPS: [(RuleId, Step); 21] = [
+const RULE_STEPS: [(RuleId, Step); 22] = [
     (AGE_BRACKET, Step::DomaineAndAge),
     (DOMAINE, Step::DomaineAndAge),
     (VOIE_STRUCTURE, Step::Voies),
@@ -55,6 +55,7 @@ const RULE_STEPS: [(RuleId, Step); 21] = [
     (PRG_LIMITS, Step::Voies),
     (XP_USE, Step::Traits),
     (CARAC_GROWTH, Step::Characteristics),
+    (BONUS_DIE, Step::Voies),
     (CONTENT_VOIES, Step::Voies),
     (DOMAINES, Step::Traits),
     (TRAITS, Step::Traits),
@@ -195,9 +196,9 @@ fn spending_parameter(violation: &Violation) -> Option<usize> {
 
 /// Where `violation` is settled (ADR ENG-COC-PLACEMENT): a spending's
 /// findings in a step of that spending, XP spent beyond the XP earned with
-/// the last spending, a rank 5's characteristic where the rank was bought, a
-/// voie's structure where it was last changed; anything else in its creation
-/// step.
+/// the last spending, a rank 5's characteristic and dé bonus where the rank
+/// was bought, a voie's structure where it was last changed; anything else in
+/// its creation step.
 pub(crate) fn placement(character: &Character, violation: &Violation) -> Placement {
     let rule = violation.rule();
     let spending = if *rule == PRG_COST
@@ -214,7 +215,7 @@ pub(crate) fn placement(character: &Character, violation: &Violation) -> Placeme
     } else if *rule == CARAC_GROWTH {
         bought_in(character, violation)
             .map(|number| Placement::Spending(number, SpendingStep::Characteristics))
-    } else if *rule == CONTENT_VOIES {
+    } else if *rule == CONTENT_VOIES || *rule == BONUS_DIE {
         bought_in(character, violation)
             .map(|number| Placement::Spending(number, SpendingStep::Ranks))
     } else if *rule == VOIE_ORDER || *rule == VOIE_STRUCTURE {

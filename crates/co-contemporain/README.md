@@ -18,13 +18,13 @@ builds a complete character. Read it first.
 | `ability_effects.rs` | the effects of each capacité in our own words, computed or described | ENG-ABILITY-EFFECTS |
 | `age.rs` | `Age`, `AgeBracket`, the limits of each bracket | COC.CRE.AGE-BRACKET |
 | `domaine.rs` | `Domaine` (18), its voie slots and social class requirements | COC.CRE.DOMAINE, COC.CNT.DOMAINES |
-| `voie.rs` | `Voie` (18), the names of its capacités, the characteristic each rank 5 raises, the speciality a capacité asks for, the checks on the ranks acquired and the specialities | CO.VOIE.* (the kernel's `voie_rank_violations`), COC.CRE.CAPACITY-POINTS, COC.CRE.MAX-VOIES, COC.CNT.VOIES |
+| `voie.rs` | `Voie` (18), the names of its capacités, the characteristic each rank 5 raises, the speciality a capacité asks for, the ranks a rank 5's dé bonus may go to, the checks on the ranks acquired and the specialities | CO.VOIE.* (the kernel's `voie_rank_violations`), COC.CRE.CAPACITY-POINTS, COC.CRE.MAX-VOIES, COC.CNT.VOIES |
 | `experience.rs` | `Experience`, `XpSpending`, the XP left and the checks on each spending | COC.PRG.COST, ONE-RANK, LIMITS, XP-USE |
 | `traits.rs` | `Trait`, `Sequel` (and its identifier once acquired in play), `TraitPoints`, `SocialClass` | COC.CRE.TRAITS, COC.CNT.TRAITS, COC.CRE.SOCIAL-CLASS |
 | `characteristics.rs` | the characteristic points allocated, `ALLOCATED_POINTS`, starting and current values, the rank-5 raises | COC.CRE.CARAC-*, COC.PRG.CARAC |
 | `secondary.rs` | Init, DEF, ATC/ATD, CG, health scale | COC.DER.* |
 | `situation.rs` | `Situation`, `Situational`: the capacités' modifiers and notes that hold only in a situation, listed beside the values | ENG-SITUATIONAL |
-| `test_bonus.rs` | `TestBonus` and `BonusDie`: the capacités' permanent test bonuses and dé bonus with the tests they cover (`scope`), and their upgrades | COC.CNT.VOIES, D-50 |
+| `test_bonus.rs` | `TestBonus` and `BonusDie`: the capacités' permanent test bonuses and dé bonus with the tests they cover (`scope`), their upgrades, and the capacité a rank 5's dé bonus goes to | COC.CNT.VOIES, COC.PRG.BONUS-DIE, D-50, D-55 |
 | `weapon.rs` | `Weapon` (one variant per table row, `MainsNues` included), damage dice and DM, bonus critique, critical range | COC.EQP.MELEE, COC.EQP.RANGED, COC.DER.DM-BONUS, COC.DER.CRIT-* |
 | `protection.rs` | `Protection`: RD and malus, never DEF | COC.EQP.PROTECTIONS |
 | `equipment.rs` | `Item` (a weapon, or free text named by the kernel's `ItemName`), the starting equipment of the voies | COC.CRE.EQUIPMENT |
