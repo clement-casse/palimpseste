@@ -8,7 +8,7 @@ backend = "cargo:cargo-llvm-cov"
 specifiers = ["latest"]
 
 [[tools."cargo:cargo-nextest"]]
-version = "0.9.148"
+version = "0.9.151"
 backend = "cargo:cargo-nextest"
 specifiers = ["latest"]
 
@@ -18,7 +18,7 @@ backend = "cargo:cargo-sort"
 specifiers = ["latest"]
 
 [[tools."cargo:cargo-tarpaulin"]]
-version = "0.37.5"
+version = "0.37.6"
 backend = "cargo:cargo-tarpaulin"
 specifiers = ["latest"]
 
@@ -28,47 +28,51 @@ backend = "cargo:wasm-bindgen-cli"
 specifiers = ["0.2.129"]
 
 [[tools.flyctl]]
-version = "0.4.118"
+version = "0.5.10"
 backend = "aqua:superfly/flyctl"
 specifiers = ["latest"]
 
 [tools.flyctl."platforms.linux-x64"]
-checksum = "sha256:0f2fabbb29904a7bac8bd96009314d26751084c33e098fcc393e2dac6c472f60"
-url = "https://github.com/superfly/flyctl/releases/download/v0.4.118/flyctl_0.4.118_Linux_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/superfly/flyctl/releases/assets/641378522"
+checksum = "sha256:2f96f16e9ccaf273acb17ef39bd018de4fea8bf4ee905e85de93ca2a723b03fb"
+checksum_source = "mise-versions"
+url = "https://github.com/superfly/flyctl/releases/download/v0.5.10/flyctl_0.5.10_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/superfly/flyctl/releases/assets/741010412"
 
 [tools.flyctl."platforms.macos-arm64"]
-checksum = "sha256:ce319226af327b69cd00ea1a05a9b90108278e17f89a54e8e3830c409e099287"
-url = "https://github.com/superfly/flyctl/releases/download/v0.4.118/flyctl_0.4.118_macOS_arm64.tar.gz"
-url_api = "https://api.github.com/repos/superfly/flyctl/releases/assets/641378520"
+checksum = "sha256:278d6f6f62145c310829e4721eb78ca11ca88e4fa4a235366bc6d0357cd05212"
+checksum_source = "mise-versions"
+url = "https://github.com/superfly/flyctl/releases/download/v0.5.10/flyctl_0.5.10_macOS_arm64.tar.gz"
+url_api = "https://api.github.com/repos/superfly/flyctl/releases/assets/741010408"
 
 [[tools.mr-boxington]]
-version = "1.24.1"
+version = "1.30.0"
 backend = "packslip:github.com/jdx/mr-boxington"
 specifiers = ["latest"]
 
 [tools.mr-boxington."platforms.linux-x64"]
-checksum = "sha256:d019fd3695d39549cd3eeb48b9518f0b43850d4d0bd9c49b955a8de9d30299fb"
-url = "https://github.com/jdx/mr-boxington/releases/download/v1.24.1/mbx-x86_64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:f4992b401fe65744b7c6e7400933d2106da205b499405621d088051a31a8f3f2"
+url = "https://github.com/jdx/mr-boxington/releases/download/v1.30.0/mbx-x86_64-unknown-linux-gnu.tar.gz"
 signer = "sigstore-oidc:https://github.com/jdx/mr-boxington/.github/workflows/release.yml"
+repository_ids = { repository = "1340721957" }
 
 [tools.mr-boxington."platforms.macos-arm64"]
-checksum = "sha256:3ddb7d86b644275db140c9ae76f57bf72c5a10b7657f930466aad5ff7e025a85"
-url = "https://github.com/jdx/mr-boxington/releases/download/v1.24.1/mbx-aarch64-apple-darwin.tar.gz"
+checksum = "sha256:d5b957216c8b61c2df91c9e7aaf5febd45ec74274a60d3714ebe316edc144543"
+url = "https://github.com/jdx/mr-boxington/releases/download/v1.30.0/mbx-aarch64-apple-darwin.tar.gz"
 signer = "sigstore-oidc:https://github.com/jdx/mr-boxington/.github/workflows/release.yml"
+repository_ids = { repository = "1340721957" }
 
 [[tools.node]]
-version = "24.22.0"
+version = "24.22.3"
 backend = "core:node"
 specifiers = ["24"]
 
 [tools.node."platforms.linux-x64"]
-checksum = "sha256:28ea0a438de9a13bd7891fd758eee6c7819ee8af5442dfd8d45bd65e56d4228c"
-url = "https://nodejs.org/dist/v24.22.0/node-v24.22.0-linux-x64.tar.gz"
+checksum = "sha256:061ec3e3062115705b56b51fa9cc330ab50d34b6969387d4e4b1a50c6809acc2"
+url = "https://nodejs.org/dist/v24.22.3/node-v24.22.3-linux-x64.tar.gz"
 
 [tools.node."platforms.macos-arm64"]
-checksum = "sha256:6a9724d9b50a5f22b4816cded441b5a8d9ddae546191a5e5b7efa5a5e2ee26d5"
-url = "https://nodejs.org/dist/v24.22.0/node-v24.22.0-darwin-arm64.tar.gz"
+checksum = "sha256:ff6e17d4874b76d272212b908cc020d6e815fba5a6c7eaaa06add725840307fd"
+url = "https://nodejs.org/dist/v24.22.3/node-v24.22.3-darwin-arm64.tar.gz"
 
 [[tools.pnpm]]
 version = "10.33.0"
@@ -86,9 +90,9 @@ url = "https://github.com/pnpm/pnpm/releases/download/v10.33.0/pnpm-macos-arm64"
 url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/380583277"
 
 [[tools.rust]]
-version = "1.99.0"
+version = "1.100.0"
 backend = "core:rust"
-specifiers = ["1.99.0"]
+specifiers = ["1.100"]
 
 [tools.rust.options]
 targets = "wasm32-unknown-unknown"
