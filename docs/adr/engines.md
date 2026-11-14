@@ -110,7 +110,11 @@ gives it up. A capacité held that asks for one without it is
 `Incomplete` (COC.CNT.VOIES; COF.CNT.VOIE, ADR ENG-COF-OPTIONS) with the
 capacité as subject and what it asks for as a `speciality` parameter,
 placed where the capacité was acquired. A speciality written for a
-capacité not held, or asking for none, is kept and checked by nothing. `TestBonus::on_speciality` and
+capacité not held, or asking for none, is kept and checked by nothing. The
+capacité Diversité kept through the voie du mage (COF.CRE.VOIE-DU-MAGE)
+is held without a rank recording it, so `Character::abilities_held()`
+lists it with the ranks, and the interface asks for its origin as for any
+other. `TestBonus::on_speciality` and
 `BonusDie::on_speciality` say which bonuses apply to it, so the sheet
 names them by the player's words. *Why free text:* the lists are open
 (any discipline, any vehicle), and no rule reads them.
