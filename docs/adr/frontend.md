@@ -98,7 +98,9 @@ identities of providers no longer offered.
 **FE-EDITOR: The character editor, split.** `DocumentSaver`
 (`saver.svelte.ts`) owns saving: the whole document shortly after each
 change, at the version it was loaded at, one save in flight, a conflict
-(`412`) stopping saves, and saving at once when the editor is left. A
+(`412`) stopping saves, a save the backend failed to take (unreachable,
+`5xx`) tried again every 5 seconds, and saving at once when the editor
+is left. A
 page reading characters waits for that last save (`settled`), so it
 never shows the document from before it.
 `EditorHeader.svelte` owns the name, the save status and deletion. Engine

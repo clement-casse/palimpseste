@@ -11,6 +11,9 @@ export type SaveStatus = "saved" | "pending" | "saving" | "conflict" | "error";
 /** How long saving waits for more changes, in milliseconds. */
 export const SAVE_DELAY = 600;
 
+/** How long a save the backend could not take waits before it is tried again, in milliseconds. */
+export const RETRY_DELAY = 5000;
+
 /** The saves of the editors left, until the backend answered each. */
 let leaving: Promise<void> = Promise.resolve();
 
@@ -102,6 +105,12 @@ export class DocumentSaver {
       (error: unknown) => {
         this.failure = error;
         this.status = error instanceof ApiError && error.status === 412 ? "conflict" : "error";
+        // A backend unreachable or failing may answer later; a refusal would
+        // be refused again.
+        const passing = !(error instanceof ApiError) || error.status >= 500;
+        if (passing && !this.#stopped) {
+          this.#timer = setTimeout(() => void this.#save(), RETRY_DELAY);
+        }
       },
     );
     return this.#inflight;
