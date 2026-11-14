@@ -20,14 +20,14 @@ use std::{
 
 use axum::{
     Json, Router,
-    extract::{FromRequestParts, Path as UrlPath, State},
+    extract::{FromRequestParts, Path as UrlPath, Request, State},
     http::{HeaderMap, StatusCode, header, request::Parts},
     response::{IntoResponse, Response},
     routing::{any, get, put},
 };
 use palimpseste_document::{Document, Engine};
 use serde::{Deserialize, Serialize};
-use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tower_http::trace::{DefaultOnResponse, TraceLayer};
 use tracing::Level;
 
 use self::sign_in::Cookies;
@@ -93,13 +93,27 @@ impl HttpApi {
             .fallback_service(frontend::router(&self.frontend_dir))
             .layer(
                 TraceLayer::new_for_http()
-                    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+                    .make_span_with(request_span)
                     .on_response(DefaultOnResponse::new().level(Level::INFO)),
             )
             // After the trace layer: probed every few seconds, it would
             // flood the logs.
             .route("/healthz", get(healthz).with_state(state))
     }
+}
+
+/// The span of a request in the trace: its method and path, never its query,
+/// where a provider's callback carries the authorization code (ADR BE-LOGS).
+/// Under tower-http's target, as its own span is, so that one `RUST_LOG`
+/// filter silences the whole request trace.
+fn request_span(request: &Request) -> tracing::Span {
+    tracing::info_span!(
+        target: "tower_http::trace::make_span",
+        "request",
+        method = %request.method(),
+        path = request.uri().path(),
+        version = ?request.version(),
+    )
 }
 
 /// What the handlers share.
@@ -428,7 +442,11 @@ async fn put_document(
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, path::PathBuf};
+    use std::{
+        fs, io,
+        path::PathBuf,
+        sync::{Arc, Mutex},
+    };
 
     use anyhow::anyhow;
     use axum::{
@@ -511,6 +529,43 @@ mod tests {
             ben,
             cy,
         }
+    }
+
+    /// The log lines written, shared with the subscriber writing them.
+    #[derive(Clone, Default)]
+    struct Logs(Arc<Mutex<Vec<u8>>>);
+
+    impl io::Write for Logs {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn the_request_trace_logs_the_path_without_its_query() {
+        let app = app("trace-without-query").await;
+        let logs = Logs::default();
+        let writer = logs.clone();
+        let subscriber = tracing_subscriber::fmt()
+            .with_writer(move || writer.clone())
+            .with_ansi(false)
+            .finish();
+        let guard = tracing::subscriber::set_default(subscriber);
+        let uri = "/api/auth/unknown/callback?code=secret-code&state=secret-state";
+        let (status, _, _) = app.anonymous(Method::GET, uri).await;
+        drop(guard);
+        assert_eq!(status, StatusCode::SEE_OTHER);
+        let logs = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
+        assert!(
+            logs.contains("path=\"/api/auth/unknown/callback\""),
+            "{logs}"
+        );
+        assert!(!logs.contains("secret"), "{logs}");
     }
 
     /// Sends a request with `cookie`, if any, and `headers`.
