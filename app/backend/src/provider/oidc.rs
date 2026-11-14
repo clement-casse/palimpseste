@@ -3,6 +3,8 @@
 //! runs at each sign-in, so rotated keys need no cache. Tokens, codes and
 //! claims are never logged.
 
+use std::time::Duration;
+
 use anyhow::{Context as _, anyhow};
 use async_trait::async_trait;
 use openidconnect::{
@@ -20,6 +22,11 @@ use crate::{
 
 /// The scopes asked for besides `openid`, unless a provider sets its own.
 const DEFAULT_SCOPES: &str = "profile email";
+
+/// How long a provider has to answer one request (discovery, its keys, the
+/// token exchange): past it, the sign-in fails instead of waiting on a
+/// provider that hangs.
+const PROVIDER_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// A client discovered from a provider's metadata, with its redirect URI.
 type Client = CoreClient<
@@ -133,6 +140,7 @@ impl OidcProviders {
             // Following redirects would let a provider make the server
             // reach other hosts.
             .redirect(reqwest::redirect::Policy::none())
+            .timeout(PROVIDER_TIMEOUT)
             .build()
             .context("building the HTTP client of the providers")?;
         Ok(Self {
@@ -264,5 +272,23 @@ mod tests {
             Some(provider().summary())
         );
         assert_eq!(providers.provider_of("https://other.test"), None);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_provider_that_never_answers_fails_the_sign_in() {
+        // Connections wait in the backlog of a listener that never accepts.
+        let silent = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let issuer = format!("http://{}", silent.local_addr().unwrap());
+        let provider = ProviderConfig::new("mute", "Mute", &issuer, "c", "s").unwrap();
+        let providers = OidcProviders::new("http://localhost", vec![provider]).unwrap();
+        // The clock is paused and jumps to the next timer: the provider's
+        // timeout, or this longer one if there is none.
+        let authorized = tokio::time::timeout(
+            PROVIDER_TIMEOUT * 2,
+            providers.authorize(&ProviderId::from("mute")),
+        )
+        .await
+        .expect("the request to the provider has a timeout");
+        assert!(matches!(authorized, Err(Error::Underlying(_))));
     }
 }
