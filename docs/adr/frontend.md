@@ -118,7 +118,9 @@ ADR FE-OVERRIDES), the only gate in the interface, on a workflow, never
 on a rule. The form (`ProgressionEditor`) prepares one entry aside: a
 copy of the whole document with the entry, kept as a draft on this device
 (`palimpseste.draft.{id}` in `localStorage`, with the version it started
-from) so a reload keeps it, evaluated by the engine on every change; its
+from) so a reload keeps it, and forgotten when the engine no longer reads
+it (a draft from an earlier document version), evaluated by the engine on
+every change; its
 steps are the engine's (Capacités, Options, Changement d'orientation,
 Point orphelin; Rangs, Traits, Caractéristiques), then "Bilan", which
 lists what the entry brings and what it changes on the sheet (the
