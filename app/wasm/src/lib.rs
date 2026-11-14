@@ -831,6 +831,35 @@ mod tests {
     }
 
     #[test]
+    fn a_human_mage_is_asked_the_origin_of_the_diversity_the_voie_du_mage_keeps() {
+        let mut document = FantasyDocument::empty();
+        document.peuple = Some("cof.peuple.humain".into());
+        document.profil = Some("cof.profil.ensorceleur".into());
+        document.voies = vec![VoieEntry {
+            id: "cof.mage".into(),
+            ranks: vec![1],
+        }];
+        let held = |document: FantasyDocument| {
+            let Details::Fantasy(details) = fantasy(document).details else {
+                panic!("fantasy details expected");
+            };
+            details.abilities_held
+        };
+        let abilities = held(document.clone());
+        let ids = abilities
+            .iter()
+            .map(|h| h.ability.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(ids, ["cof.humain.1", "cof.mage.1"]);
+        assert_eq!(abilities[0].progression, None);
+        document.specialities = vec![SpecialityEntry {
+            ability: "cof.humain.1".into(),
+            speciality: "citadin".into(),
+        }];
+        assert_eq!(held(document)[0].speciality.as_deref(), Some("citadin"));
+    }
+
+    #[test]
     fn values_list_their_situational_modifiers() {
         let mut document = FantasyDocument::empty();
         document.voies = vec![VoieEntry {

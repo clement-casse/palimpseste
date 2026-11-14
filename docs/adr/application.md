@@ -103,8 +103,8 @@ creation step, or a step of a level-up or spending, numbered in
 `progression`; `sheet.steps` count the creation's own, and
 `sheet.progression` gives each level-up or spending with the status of its
 steps. The details carry what each level-up or spending offers within the
-rules, the capacités held with where they were acquired, and the options
-they offer. A capacité is always named by its identifier: the catalog's
+rules, the capacités held with where they were acquired (a capacité kept
+through the voie du mage with none), and the options they offer. A capacité is always named by its identifier: the catalog's
 `abilities` label each one, and a breakdown line gives the identifier of
 its source (`sourceId`), so the capacités' names, descriptions and effects
 attach later to the same key.
