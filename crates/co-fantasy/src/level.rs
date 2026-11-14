@@ -209,6 +209,16 @@ impl LevelUp {
         self.forgotten.iter().copied()
     }
 
+    /// Whether this level-up acquires the rank.
+    pub(crate) fn acquires(&self, voie: Voie, rank: Rank) -> bool {
+        self.ranks.contains(&(voie, rank))
+    }
+
+    /// Whether this level-up forgets the rank.
+    pub(crate) fn forgets(&self, voie: Voie, rank: Rank) -> bool {
+        self.forgotten.contains(&(voie, rank))
+    }
+
     /// The exchange of the orphan point, if any.
     pub(crate) const fn orphan(&self) -> Option<OrphanExchange> {
         self.orphan
