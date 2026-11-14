@@ -779,15 +779,6 @@ impl Character {
         voies
     }
 
-    /// Whether a level-up forgets a capacité: until one does, the current
-    /// ranks are every rank chosen or acquired, read without replaying the
-    /// level-ups.
-    fn forgets(&self) -> bool {
-        self.levels
-            .iter()
-            .any(|level_up| level_up.forgotten().next().is_some())
-    }
-
     /// The ranks acquired, at creation or at a level-up, in `voie`.
     fn acquired(&self, voie: Voie) -> impl Iterator<Item = Rank> + '_ {
         let created = self.voies.get(&voie).into_iter().flatten().copied();
@@ -802,23 +793,33 @@ impl Character {
 
     /// The highest rank held in `voie`.
     pub(crate) fn highest_rank(&self, voie: Voie) -> Option<Rank> {
-        if self.forgets() {
-            self.voies()
-                .get(&voie)
-                .and_then(|ranks| ranks.last().copied())
-        } else {
-            self.acquired(voie).max()
-        }
+        self.acquired(voie)
+            .filter(|rank| self.has_rank(voie, *rank))
+            .max()
     }
 
+    /// Whether the rank is held: what the last level-up acquiring or
+    /// forgetting it did, else whether it was chosen at creation. Read
+    /// without building the ranks held, as [`voies`](Self::voies) does.
     pub(crate) fn has_rank(&self, voie: Voie, rank: Rank) -> bool {
-        if self.forgets() {
-            self.voies()
-                .get(&voie)
-                .is_some_and(|ranks| ranks.contains(&rank))
-        } else {
-            self.acquired(voie).any(|acquired| acquired == rank)
-        }
+        self.levels
+            .iter()
+            .rev()
+            .find_map(|level_up| {
+                // A level-up forgets before it acquires.
+                if level_up.acquires(voie, rank) {
+                    Some(true)
+                } else if level_up.forgets(voie, rank) {
+                    Some(false)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| {
+                self.voies
+                    .get(&voie)
+                    .is_some_and(|ranks| ranks.contains(&rank))
+            })
     }
 
     /// The orphan points exchanged, with the level-up that exchanged each.
@@ -1019,5 +1020,49 @@ mod tests {
                 .without_rank(Voie::Rage, 2),
             LevelUp::new()
         );
+    }
+
+    #[test]
+    fn the_ranks_held_are_read_the_same_with_or_without_replaying_the_level_ups() {
+        let character = Character::new()
+            .with_rank(Voie::Rage, 1)
+            .with_rank(Voie::Pourfendeur, 1)
+            // Forgotten, then acquired again.
+            .with_level_up(LevelUp::new().with_rank(Voie::Rage, 2))
+            .with_level_up(LevelUp::new().with_forgotten(Voie::Rage, 2))
+            .with_level_up(LevelUp::new().with_rank(Voie::Rage, 2))
+            // Forgotten for good, a rank of creation and one never held.
+            .with_level_up(
+                LevelUp::new()
+                    .with_forgotten(Voie::Pourfendeur, 1)
+                    .with_forgotten(Voie::Combat, 3),
+            )
+            // Forgotten and acquired by one level-up: it forgets first.
+            .with_level_up(
+                LevelUp::new()
+                    .with_forgotten(Voie::Rage, 1)
+                    .with_rank(Voie::Rage, 1)
+                    .with_rank(Voie::Combat, 1),
+            )
+            .with_level_up(LevelUp::new().with_forgotten(Voie::Combat, 1));
+        let replayed = character.voies();
+        for voie in Voie::ALL {
+            let held = replayed.get(&voie);
+            assert_eq!(
+                character.highest_rank(voie),
+                held.and_then(|ranks| ranks.last().copied()),
+                "{voie:?}"
+            );
+            for rank in (0..=6).map(Rank::new) {
+                assert_eq!(
+                    character.has_rank(voie, rank),
+                    held.is_some_and(|ranks| ranks.contains(&rank)),
+                    "{voie:?} {rank:?}"
+                );
+            }
+        }
+        assert_eq!(character.highest_rank(Voie::Rage), Some(Rank::new(2)));
+        assert_eq!(character.highest_rank(Voie::Pourfendeur), None);
+        assert_eq!(character.highest_rank(Voie::Combat), None);
     }
 }
