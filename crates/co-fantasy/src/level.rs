@@ -552,7 +552,7 @@ fn check_voie_count(
 /// The capacités one level-up may forget: 1, or 2 with INT +2 or more (the
 /// current INT, COF.PRG.REORIENT).
 fn forget_max(character: &Character) -> usize {
-    if character.characteristics()[Characteristic::Int].get() >= FORGETFUL_INT {
+    if character.characteristic(Characteristic::Int).total() >= FORGETFUL_INT {
         FORGOTTEN_MAX_INT
     } else {
         FORGOTTEN_MAX

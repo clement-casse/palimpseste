@@ -800,11 +800,12 @@ const RAISES: &[(Voie, u8, Raise)] = {
 pub(crate) fn raise(value: DerivedValue, character: &Character, c: Characteristic) -> DerivedValue {
     RAISES
         .iter()
-        .filter(|(voie, rank, _)| holds(character, *voie, Rank::new(*rank)))
+        // The raises of `c` first: few rows are left to look a rank up for.
         .filter(|(voie, rank, raise)| match raise {
             Raise::Fixed(raised) => *raised == c,
             Raise::Chosen => chose(character, *voie, *rank, AbilityOption::Characteristic(c)),
         })
+        .filter(|(voie, rank, _)| holds(character, *voie, Rank::new(*rank)))
         .fold(value, |value, (voie, rank, _)| {
             value.with(Source::Ability(voie.ability(Rank::new(*rank))), 1)
         })
