@@ -625,6 +625,23 @@ impl PalimpsesteRepository for SqliteRepo {
         .await
     }
 
+    async fn character_engine(
+        &self,
+        owner: UserId,
+        id: CharacterId,
+    ) -> Result<Option<Engine>, Error> {
+        self.call("reading the engine of a character", move |connection| {
+            connection
+                .query_row(
+                    "SELECT engine FROM characters WHERE id = ?1 AND user_id = ?2",
+                    params![id.get(), owner.0],
+                    |row| engine_named(0, &row.get::<_, String>(0)?),
+                )
+                .optional()
+        })
+        .await
+    }
+
     async fn rename_character(
         &self,
         owner: UserId,
@@ -906,6 +923,20 @@ const fn engine_name(engine: Engine) -> &'static str {
         Engine::Contemporain => "contemporain",
         Engine::Fantasy => "fantasy",
     }
+}
+
+/// The engine stored as `name` in `column`.
+fn engine_named(column: usize, name: &str) -> rusqlite::Result<Engine> {
+    [Engine::Contemporain, Engine::Fantasy]
+        .into_iter()
+        .find(|engine| engine_name(*engine) == name)
+        .ok_or_else(|| {
+            rusqlite::Error::FromSqlConversionFailure(
+                column,
+                rusqlite::types::Type::Text,
+                format!("unknown engine {name:?}").into(),
+            )
+        })
 }
 
 /// Whether a user other than `except` has `nickname`, regardless of ASCII
@@ -1482,12 +1513,22 @@ mod tests {
             .await
             .unwrap();
         assert_ne!(brune.id, max.id);
+        let max_id = max.id;
         assert_eq!(brune.engine, Engine::Fantasy);
         assert_eq!(brune.version, Version::FIRST);
         assert_eq!(repo.characters(ana.id).await.unwrap(), vec![brune.clone()]);
         assert_eq!(repo.characters(ben.id).await.unwrap(), vec![max]);
 
         assert_eq!(repo.character(ben.id, brune.id).await.unwrap(), None);
+        assert_eq!(
+            repo.character_engine(ana.id, brune.id).await.unwrap(),
+            Some(Engine::Fantasy)
+        );
+        assert_eq!(repo.character_engine(ben.id, brune.id).await.unwrap(), None);
+        assert_eq!(
+            repo.character_engine(ben.id, max_id).await.unwrap(),
+            Some(Engine::Contemporain)
+        );
         assert_eq!(
             repo.rename_character(ben.id, brune.id, &brune_name())
                 .await
@@ -1553,6 +1594,22 @@ mod tests {
             repo.character(ana.id, brune.id).await,
             Err(Error::Underlying(_))
         ));
+    }
+
+    #[tokio::test]
+    async fn an_engine_this_server_does_not_know_is_a_technical_failure() {
+        let repo = SqliteRepo::in_memory();
+        let ana = sign_up(&repo, "a", "Ana").await;
+        let brune = repo
+            .create_character(ana.id, &brune_name(), &Document::empty(Engine::Fantasy))
+            .await
+            .unwrap();
+        lock(&repo.connection)
+            .execute("UPDATE characters SET engine = 'space-opera'", [])
+            .unwrap();
+        let error = repo.character_engine(ana.id, brune.id).await.unwrap_err();
+        assert!(matches!(error, Error::Underlying(_)));
+        assert!(format!("{error:#}").contains("unknown engine \"space-opera\""));
     }
 
     #[tokio::test]
