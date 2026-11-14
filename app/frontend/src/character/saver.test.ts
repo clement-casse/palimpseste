@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type Sent, stubBackend } from "../test/backend";
-import { DocumentSaver, SAVE_DELAY, settled } from "./saver.svelte";
+import { DocumentSaver, RETRY_DELAY, SAVE_DELAY, settled } from "./saver.svelte";
 
 /** A backend storing documents, answering `refuse` instead when given. */
 function backend(refuse?: number) {
@@ -64,13 +64,48 @@ describe("DocumentSaver", () => {
     expect(saver.unsaved).toBe(true);
   });
 
-  it("tries again on the next change after an error", async () => {
-    const sent = backend(500);
+  it("tries again on the next change after a refusal", async () => {
+    const sent = backend(422);
     const saver = new DocumentSaver(1, 1, "{}");
     saver.changed('{"a":1}');
     await vi.runAllTimersAsync();
     expect(saver.status).toBe("error");
+    expect(sent).toHaveLength(1);
     saver.changed('{"a":2}');
+    await vi.runAllTimersAsync();
+    expect(sent).toHaveLength(2);
+  });
+
+  it("tries again by itself while the backend fails or cannot be reached", async () => {
+    let answer: () => Response = () => new Response("down", { status: 503 });
+    const sent = stubBackend(() => answer());
+    const saver = new DocumentSaver(1, 1, "{}");
+    saver.changed('{"a":1}');
+    await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+    expect(saver.status).toBe("error");
+    answer = () => {
+      throw new TypeError("Failed to fetch");
+    };
+    await vi.advanceTimersByTimeAsync(RETRY_DELAY);
+    expect(saver.status).toBe("error");
+    expect(sent).toHaveLength(2);
+    answer = () => new Response(null, { status: 204, headers: { ETag: '"2"' } });
+    await vi.advanceTimersByTimeAsync(RETRY_DELAY);
+    expect(saver.status).toBe("saved");
+    expect(saved(sent)).toHaveLength(3);
+    expect(saver.unsaved).toBe(false);
+    await vi.runAllTimersAsync();
+    expect(sent).toHaveLength(3);
+  });
+
+  it("stops trying again once left or discarded", async () => {
+    const sent = backend(500);
+    const left = new DocumentSaver(1, 1, "{}");
+    left.flush('{"a":1}');
+    const deleted = new DocumentSaver(2, 1, "{}");
+    deleted.changed('{"a":1}');
+    await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+    deleted.discard();
     await vi.runAllTimersAsync();
     expect(sent).toHaveLength(2);
   });
