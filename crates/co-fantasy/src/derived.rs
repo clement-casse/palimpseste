@@ -367,8 +367,7 @@ mod tests {
         let sources = |character: &Character| {
             character
                 .value(Value::VigourPoints)
-                .map(|value| value.contributions().to_vec())
-                .unwrap_or_default()
+                .map_or_default(|value| value.contributions().to_vec())
         };
         assert!(
             sources(&sorcier)

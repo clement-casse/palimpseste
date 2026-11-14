@@ -471,15 +471,12 @@ impl Character {
     /// and the voie du mage for the mage family.
     #[must_use]
     pub fn peuple_slot_options(&self) -> Vec<Voie> {
-        let mut options: Vec<Voie> = self
-            .peuple
-            .map(|peuple| {
-                Voie::ALL
-                    .into_iter()
-                    .filter(|voie| peuple.allows_voie(*voie))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let mut options: Vec<Voie> = self.peuple.map_or_default(|peuple| {
+            Voie::ALL
+                .into_iter()
+                .filter(|voie| peuple.allows_voie(*voie))
+                .collect()
+        });
         if self.family() == Some(Family::Mages) {
             options.push(Voie::Mage);
         }

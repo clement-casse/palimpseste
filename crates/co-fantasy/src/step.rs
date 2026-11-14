@@ -258,8 +258,7 @@ fn voie_placement(character: &Character, violation: &Violation) -> Option<Placem
     let created: std::collections::BTreeSet<Rank> = character
         .creation_voies()
         .find(|(created, _)| *created == voie)
-        .map(|(_, ranks)| ranks.clone())
-        .unwrap_or_default();
+        .map_or_default(|(_, ranks)| ranks.clone());
     let from_creation = voie_rank_violations(&voie.id(), &created, VOIE_MECHANIC)
         .iter()
         .any(|found| found.rule() == violation.rule());

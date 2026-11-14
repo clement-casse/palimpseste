@@ -1034,8 +1034,7 @@ mod tests {
                     .parameters()
                     .iter()
                     .find(|p| p.name() == "reason")
-                    .map(|p| format!("{:?}", p.value()))
-                    .unwrap_or_default();
+                    .map_or_default(|p| format!("{:?}", p.value()));
                 (v.subject().clone(), reason)
             })
             .collect()
