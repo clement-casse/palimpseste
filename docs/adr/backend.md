@@ -273,9 +273,10 @@ Vite's origin and register that redirect URI.
 (default `info`; `info,tower_http=warn` keeps only the application's
 events).
 
-- tower-http's `TraceLayer`: each request with its method, URI, status
-  and latency at `info`, server errors at `error`; not `/healthz`, probed
-  every few seconds.
+- tower-http's `TraceLayer`: each request with its method, path, status
+  and latency at `info`, server errors at `error`; never its query, where
+  a provider's callback carries the authorization code and `state`; not
+  `/healthz`, probed every few seconds.
 - `main.rs`: the providers, the database and the address at startup, a
   warning when the front end directory has no `index.html`.
 - The service: each domain event at `info` (registration started and
