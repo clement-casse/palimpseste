@@ -165,14 +165,20 @@ pub(crate) fn option_required(voie: Voie, rank: Rank) -> bool {
     )
 }
 
+/// The voie de peuple whose rank-1 capacité the character keeps through the
+/// voie du mage that replaced it (COF.CRE.VOIE-DU-MAGE).
+pub(crate) fn kept(character: &Character) -> Option<Voie> {
+    character
+        .peuple()
+        .and_then(crate::Peuple::voie)
+        .filter(|_| character.has_rank(Voie::Mage, Rank::new(1)))
+}
+
 /// Whether the character holds the capacité at `rank` in `voie`: acquired,
 /// or, for the rank-1 capacité of its voie de peuple, kept through the voie
 /// du mage that replaced it (COF.CRE.VOIE-DU-MAGE).
 pub(crate) fn holds(character: &Character, voie: Voie, rank: Rank) -> bool {
-    let kept = rank.get() == 1
-        && character.peuple().and_then(crate::Peuple::voie) == Some(voie)
-        && character.has_rank(Voie::Mage, Rank::new(1));
-    character.has_rank(voie, rank) || kept
+    character.has_rank(voie, rank) || (rank.get() == 1 && kept(character) == Some(voie))
 }
 
 /// The rank reached in `voie`: the highest rank held (CO.VOIE.RANK-SCALING).
@@ -919,6 +925,28 @@ mod tests {
             option_violations(&mage),
             [(ability(Voie::Humain, 1), Category::Incomplete)]
         );
+    }
+
+    #[test]
+    fn abilities_held_include_the_peuple_capacite_the_voie_du_mage_keeps() {
+        let human = zero().with_peuple(Peuple::Humain);
+        let held = |character: &Character| character.abilities_held();
+        let (mage, diversity) = ((Voie::Mage, Rank::new(1)), (Voie::Humain, Rank::new(1)));
+        // Without the voie du mage, nothing is kept.
+        assert_eq!(held(&human), []);
+        assert_eq!(held(&human.clone().with_rank(Voie::Humain, 1)), [diversity]);
+        // With it, Diversité is held too, in voie order and once.
+        let mage_human = human.with_rank(Voie::Mage, 1);
+        assert_eq!(held(&mage_human), [diversity, mage]);
+        assert_eq!(
+            held(&mage_human.with_rank(Voie::Humain, 1)),
+            [diversity, mage]
+        );
+        // A demi-elfe has no voie de peuple of its own to keep.
+        let half_elf = zero()
+            .with_peuple(Peuple::DemiElfe)
+            .with_rank(Voie::Mage, 1);
+        assert_eq!(held(&half_elf), [mage]);
     }
 
     #[test]

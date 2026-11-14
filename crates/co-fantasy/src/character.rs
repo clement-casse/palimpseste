@@ -509,6 +509,23 @@ impl Character {
             .collect()
     }
 
+    /// Returns every capacité the character has, in voie and rank order: the
+    /// [`ranks`](Self::ranks) held, and the rank-1 capacité of its peuple's
+    /// voie kept through the voie du mage that replaced it, which no rank
+    /// records (COF.CRE.VOIE-DU-MAGE).
+    #[must_use]
+    pub fn abilities_held(&self) -> Vec<(Voie, Rank)> {
+        let mut held = self.ranks();
+        if let Some(voie) = ability::kept(self) {
+            let rank = Rank::new(1);
+            if !held.contains(&(voie, rank)) {
+                held.push((voie, rank));
+                held.sort();
+            }
+        }
+        held
+    }
+
     /// Returns the level whose level-up acquired the capacité at `rank` in
     /// `voie`, the last one when several did; `None` when it comes from
     /// creation or is not held.
