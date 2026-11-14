@@ -6,12 +6,34 @@ use co_kernel::{AbilityEffect, Bonus, Characteristic, EffectPart, Measure, Rank,
 
 use crate::{Character, Profil, Voie};
 
+/// The ranks of a voie.
+const RANKS: usize = 5;
+
+/// The row of each capacité in `EFFECTS`, by voie then rank: the table is
+/// written voie by voie as the catalogue lists them, not in the order of
+/// [`Voie`], so a capacité is found here instead of by reading the table
+/// through. Built when compiling; a rank outside 1 to 5 in the table does
+/// not compile.
+const ROWS: [usize; Voie::ALL.len() * RANKS] = {
+    let mut rows = [usize::MAX; Voie::ALL.len() * RANKS];
+    let mut row = 0;
+    while row < EFFECTS.len() {
+        let (voie, rank, _) = EFFECTS[row];
+        rows[voie as usize * RANKS + rank as usize - 1] = row;
+        row += 1;
+    }
+    rows
+};
+
 /// The effects of the capacité at `rank` in `voie`, empty outside ranks 1
 /// to 5.
 pub(crate) fn of(voie: Voie, rank: Rank) -> &'static [AbilityEffect] {
-    EFFECTS
-        .iter()
-        .find(|(v, r, _)| *v == voie && *r == rank.get())
+    rank.get()
+        .checked_sub(1)
+        .map(usize::from)
+        .filter(|rank| *rank < RANKS)
+        .and_then(|rank| ROWS.get(voie as usize * RANKS + rank))
+        .and_then(|row| EFFECTS.get(*row))
         .map_or(&[], |(_, _, effects)| effects)
 }
 
@@ -3254,5 +3276,18 @@ mod tests {
             .map(|(voie, rank, _)| (*voie, *rank))
             .collect();
         assert_eq!(wrong, []);
+    }
+
+    #[test]
+    fn each_capacite_is_found_at_its_row() {
+        for voie in Voie::ALL {
+            for rank in 1..=5 {
+                let row = EFFECTS.iter().find(|(v, r, _)| (*v, *r) == (voie, rank));
+                let effects = row.map_or(&[][..], |(_, _, effects)| effects);
+                assert_eq!(of(voie, Rank::new(rank)), effects, "{voie:?} {rank}");
+            }
+            assert_eq!(of(voie, Rank::new(0)), []);
+            assert_eq!(of(voie, Rank::new(6)), []);
+        }
     }
 }
