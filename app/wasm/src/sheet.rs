@@ -999,7 +999,7 @@ fn count(number: usize) -> u32 {
     u32::try_from(number).unwrap_or(u32::MAX)
 }
 
-/// Every COF2 capacité held, with the level-up that acquired it, its
+/// Every COF2 capacité held, the one the voie du mage keeps included, with the level-up that acquired it, its
 /// speciality and its option from `document`, its test bonuses and its dé
 /// bonus among `dice`.
 fn fantasy_held(
@@ -1010,7 +1010,7 @@ fn fantasy_held(
 ) -> Vec<HeldAbility> {
     let bonuses = character.test_bonuses();
     character
-        .ranks()
+        .abilities_held()
         .into_iter()
         .map(|(voie, rank)| HeldAbility {
             ability: voie.ability(rank).as_str().to_owned(),
