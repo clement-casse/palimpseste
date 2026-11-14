@@ -2,6 +2,7 @@
   import { Button, Heading, Input, Listgroup, P, Select, Spinner } from "flowbite-svelte";
 
   import { type User, createCharacter, listCharacters } from "./api";
+  import { settled } from "./character/saver.svelte";
   import CharacterItem from "./CharacterItem.svelte";
   import { ENGINES } from "./engines";
   import ErrorMessage from "./ErrorMessage.svelte";
@@ -10,7 +11,7 @@
 
   let { user }: { user: User } = $props();
 
-  const characters = listCharacters();
+  const characters = settled().then(listCharacters);
   const engines = Object.entries(ENGINES).map(([value, name]) => ({ value: value as Engine, name }));
   let name = $state("");
   let engine = $state<Engine>("fantasy");
