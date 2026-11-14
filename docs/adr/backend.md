@@ -148,7 +148,8 @@ the code it can never run again.
 can be configured (Google, Microsoft, Keycloak, Authentik, Dex, ...);
 GitHub, OAuth2 only, cannot. The flow is Authorization Code with PKCE
 (S256), `state` and `nonce`, through `openidconnect` and its `reqwest`
-client, following no redirect; the scopes are `openid` and, by default,
+client, following no redirect and giving each request 10 seconds, so a
+provider that hangs fails the sign-in; the scopes are `openid` and, by default,
 `profile email`. The ID token's signature, issuer, audience, expiry and
 nonce are verified; the access token is not used. Discovery runs when a
 sign-in starts and when it ends, never cached. *Why:* a rotated key needs
