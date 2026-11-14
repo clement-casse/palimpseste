@@ -133,6 +133,16 @@ impl<R: PalimpsesteRepository, P: IdentityProviders> PalimpsesteServiceImpl<R, P
     }
 }
 
+/// Whether `document` may replace the document of a character of engine
+/// `stored`, `None` when the character is unknown.
+fn check_engine(stored: Option<Engine>, document: &Document) -> Result<(), Error> {
+    match stored {
+        None => Err(Error::CharacterNotFound),
+        Some(engine) if engine != document.engine() => Err(Error::OtherEngine),
+        Some(_) => Ok(()),
+    }
+}
+
 /// `error` as a failed sign-in, unless it tells the user something more
 /// precise.
 fn sign_in_failed(linking: bool, error: Error) -> Error {
@@ -344,10 +354,8 @@ impl<R: PalimpsesteRepository, P: IdentityProviders> PalimpsesteService
             .check()
             .map_err(|error| Error::UnreadableDocument(error.to_string()))?;
         // A character never changes engine, so reading it first is safe.
-        let character = self.character(ctx, id).await?;
-        if character.engine != document.engine() {
-            return Err(Error::OtherEngine);
-        }
+        let stored = self.repo.character_engine(ctx.user, id).await?;
+        check_engine(stored, &document)?;
         let version = self
             .repo
             .replace_document(ctx.user, id, expected, &document)
@@ -825,21 +833,25 @@ mod tests {
         assert_eq!(identities[1].provider, None);
     }
 
-    fn brune(engine: Engine) -> Character {
-        Character {
-            id: CharacterId::from(1),
-            name: CharacterName::parse("Brune").unwrap(),
-            engine,
-            document: Document::empty(engine),
-            version: Version::FIRST,
-        }
+    #[test]
+    fn a_document_replaces_one_of_its_engine_of_a_known_character() {
+        let fantasy = Document::empty(Engine::Fantasy);
+        assert!(check_engine(Some(Engine::Fantasy), &fantasy).is_ok());
+        assert!(matches!(
+            check_engine(Some(Engine::Contemporain), &fantasy),
+            Err(Error::OtherEngine)
+        ));
+        assert!(matches!(
+            check_engine(None, &fantasy),
+            Err(Error::CharacterNotFound)
+        ));
     }
 
     #[tokio::test]
     async fn a_document_of_another_engine_is_refused_before_storing() {
         let mut repo = MockPalimpsesteRepository::new();
-        repo.expect_character()
-            .returning(|_, _| Ok(Some(brune(Engine::Fantasy))));
+        repo.expect_character_engine()
+            .returning(|_, _| Ok(Some(Engine::Fantasy)));
         repo.expect_replace_document().never();
         let result = service(repo, MockIdentityProviders::new())
             .replace_document(
@@ -855,7 +867,7 @@ mod tests {
     #[tokio::test]
     async fn a_document_of_an_unknown_character_is_not_found() {
         let mut repo = MockPalimpsesteRepository::new();
-        repo.expect_character().returning(|_, _| Ok(None));
+        repo.expect_character_engine().returning(|_, _| Ok(None));
         let result = service(repo, MockIdentityProviders::new())
             .replace_document(
                 &ANA,
@@ -870,8 +882,8 @@ mod tests {
     #[tokio::test]
     async fn a_document_is_stored_at_the_expected_version() {
         let mut repo = MockPalimpsesteRepository::new();
-        repo.expect_character()
-            .returning(|_, _| Ok(Some(brune(Engine::Fantasy))));
+        repo.expect_character_engine()
+            .returning(|_, _| Ok(Some(Engine::Fantasy)));
         repo.expect_replace_document()
             .withf(|owner, _, expected, _| *owner == ANA.user && *expected == Version::FIRST)
             .returning(|_, _, _, _| Ok(Version::from(2)));

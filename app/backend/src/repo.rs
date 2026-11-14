@@ -8,7 +8,7 @@ pub mod sqlite;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use palimpseste_document::Document;
+use palimpseste_document::{Document, Engine};
 
 pub use self::sqlite::SqliteRepo;
 use crate::{
@@ -131,6 +131,14 @@ pub trait PalimpsesteRepository: Send + Sync + 'static {
 
     /// Character `id`, unless it is unknown or not `owner`'s.
     async fn character(&self, owner: UserId, id: CharacterId) -> Result<Option<Character>, Error>;
+
+    /// The engine of character `id`, read without its document, unless it
+    /// is unknown or not `owner`'s.
+    async fn character_engine(
+        &self,
+        owner: UserId,
+        id: CharacterId,
+    ) -> Result<Option<Engine>, Error>;
 
     /// Renames `owner`'s character `id`; `None` when it is unknown or not
     /// theirs.
