@@ -720,14 +720,13 @@ mod tests {
     fn breakdown(character: &Character, bonus: TestBonus) -> Vec<(Source, i32)> {
         character
             .value(Value::TestBonus(bonus))
-            .map(|value| {
+            .map_or_default(|value| {
                 value
                     .contributions()
                     .iter()
                     .map(|c| (c.source().clone(), c.amount()))
                     .collect()
             })
-            .unwrap_or_default()
     }
 
     #[test]

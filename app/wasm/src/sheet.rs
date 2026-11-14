@@ -664,15 +664,13 @@ impl Common<'_> {
                 })
                 .collect(),
             details,
-            in_play: in_play
-                .map(|report| {
-                    report
-                        .entries()
-                        .iter()
-                        .map(|entry| self.violation(entry))
-                        .collect()
-                })
-                .unwrap_or_default(),
+            in_play: in_play.map_or_default(|report| {
+                report
+                    .entries()
+                    .iter()
+                    .map(|entry| self.violation(entry))
+                    .collect()
+            }),
             written_effects: Vec::new(),
         }
     }
@@ -760,9 +758,7 @@ impl Common<'_> {
             id,
             label,
             total: value.map(DerivedValue::total),
-            contributions: value
-                .map(|value| self.contributions(value))
-                .unwrap_or_default(),
+            contributions: value.map_or_default(|value| self.contributions(value)),
             dice: None,
             situational: Vec::new(),
         }
