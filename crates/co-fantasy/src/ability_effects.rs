@@ -3290,4 +3290,37 @@ mod tests {
             assert_eq!(of(voie, Rank::new(6)), []);
         }
     }
+
+    /// The coverage the README reports (its "Capacité coverage" table): how
+    /// many capacités have every effect counted in a total or showing its
+    /// amount, some of them, or none; and how many effects are computed,
+    /// describe an amount, or are only described. A change that moves a
+    /// number updates the table with it.
+    #[test]
+    fn the_readme_reports_this_coverage() {
+        let counted = |effect: &AbilityEffect| {
+            effect.application() == Application::Computed || effect.bonus().is_some()
+        };
+        let (mut every, mut some, mut none) = (0, 0, 0);
+        let (mut computed, mut amount, mut described) = (0, 0, 0);
+        for voie in Voie::ALL {
+            for rank in (1..=5).map(Rank::new) {
+                let effects = voie.ability_effects(rank);
+                match effects.iter().filter(|effect| counted(effect)).count() {
+                    0 => none += 1,
+                    n if n == effects.len() => every += 1,
+                    _ => some += 1,
+                }
+                for effect in effects {
+                    match (effect.application(), effect.bonus()) {
+                        (Application::Computed, _) => computed += 1,
+                        (Application::Described, Some(_)) => amount += 1,
+                        (Application::Described, None) => described += 1,
+                    }
+                }
+            }
+        }
+        assert_eq!((every, some, none), (52, 87, 251));
+        assert_eq!((computed, amount, described), (102, 90, 377));
+    }
 }
