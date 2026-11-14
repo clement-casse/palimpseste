@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App.svelte";
 import { navigate, takeReturn } from "./router.svelte";
-import { stubBackend } from "./test/backend";
+import { character, lhagva, stubBackend } from "./test/backend";
 
 afterEach(() => {
   sessionStorage.clear();
@@ -154,5 +154,37 @@ describe("an invitation link opened signed out", () => {
     render(App);
     expect(await screen.findByRole("heading", { name: "Connexion" })).toBeTruthy();
     expect(takeReturn()).toBeNull();
+  });
+});
+
+describe("leaving the editor with a change not saved yet", () => {
+  it("reads the character for the next page once the change is saved", async () => {
+    let stored = () => {};
+    const sent = stubBackend(({ method, url }) => {
+      if (url === "/api/me") return Response.json({ nickname: "Ana", profile: "" });
+      if (url === "/api/characters/1" && method === "GET") return Response.json(character(lhagva()));
+      if (method === "PUT") {
+        return new Promise((resolve) => {
+          stored = () => resolve(new Response(null, { status: 204, headers: { ETag: '"2"' } }));
+        });
+      }
+      return new Response(null, { status: 404 });
+    });
+    const requests = () =>
+      sent.filter(({ url }) => url.startsWith("/api/characters/1")).map(({ method }) => method);
+    navigate("/characters/1#equipment");
+    render(App);
+    await fireEvent.change(await screen.findByRole("spinbutton", { name: /^Bourse/ }), {
+      target: { value: "9" },
+    });
+
+    navigate("/characters/1/sheet");
+    await vi.waitFor(() => expect(requests()).toEqual(["GET", "PUT"]));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(requests()).toEqual(["GET", "PUT"]);
+
+    stored();
+    await vi.waitFor(() => expect(requests()).toEqual(["GET", "PUT", "GET"]));
+    navigate("/");
   });
 });

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type Sent, stubBackend } from "../test/backend";
-import { DocumentSaver, SAVE_DELAY } from "./saver.svelte";
+import { DocumentSaver, SAVE_DELAY, settled } from "./saver.svelte";
 
 /** A backend storing documents, answering `refuse` instead when given. */
 function backend(refuse?: number) {
@@ -87,5 +87,26 @@ describe("DocumentSaver", () => {
     await vi.runAllTimersAsync();
     expect(sent).toHaveLength(1);
     expect(deleted.unsaved).toBe(false);
+  });
+
+  it("makes the next page wait for the save of the editor left", async () => {
+    let answer = () => {};
+    const sent = stubBackend(
+      () =>
+        new Promise((resolve) => {
+          answer = () => resolve(new Response(null, { status: 204, headers: { ETag: '"2"' } }));
+        }),
+    );
+    const saver = new DocumentSaver(1, 1, "{}");
+    let ready = false;
+    // The next page may ask before the editor is told it is left.
+    void settled().then(() => (ready = true));
+    saver.flush('{"a":1}');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sent).toHaveLength(1);
+    expect(ready).toBe(false);
+    answer();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ready).toBe(true);
   });
 });

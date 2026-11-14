@@ -2,12 +2,28 @@
 // document at the version it was loaded at (ADR FE-EDITOR). A conflict stops
 // saving: the character was saved elsewhere in between.
 
+import { tick } from "svelte";
+
 import { ApiError, putDocument } from "../api";
 
 export type SaveStatus = "saved" | "pending" | "saving" | "conflict" | "error";
 
 /** How long saving waits for more changes, in milliseconds. */
 export const SAVE_DELAY = 600;
+
+/** The saves of the editors left, until the backend answered each. */
+let leaving: Promise<void> = Promise.resolve();
+
+/**
+ * Resolves once the editors left have saved: a page reading a character
+ * waits for it, so that it never reads the document from before the last
+ * change. An editor leaving in the same update counts, whichever of the two
+ * components the update reaches first.
+ */
+export async function settled(): Promise<void> {
+  await tick();
+  await leaving;
+}
 
 export class DocumentSaver {
   status = $state<SaveStatus>("saved");
@@ -58,9 +74,10 @@ export class DocumentSaver {
     this.#latest = json;
     this.#stopped = true;
     clearTimeout(this.#timer);
-    void this.#inflight.then(() => {
+    const done = this.#inflight.then(() => {
       if (this.unsaved && this.status !== "conflict") return this.#save();
     });
+    leaving = Promise.all([leaving, done]).then(() => undefined);
   }
 
   /** The character is gone: nothing is left to save. */

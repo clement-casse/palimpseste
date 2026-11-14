@@ -2,6 +2,7 @@
   import { A, Spinner } from "flowbite-svelte";
 
   import { getCharacter } from "../api";
+  import { settled } from "../character/saver.svelte";
   import ErrorMessage from "../ErrorMessage.svelte";
   import { follow } from "../router.svelte";
   import ProgressionEditor from "./ProgressionEditor.svelte";
@@ -11,7 +12,7 @@
 
 <!-- Another character or entry is another form, loaded anew. -->
 {#key `${id}/${number}`}
-  {#await getCharacter(id)}
+  {#await settled().then(() => getCharacter(id))}
     <p class="flex items-center gap-2"><Spinner size="4" /> Chargement…</p>
   {:then character}
     <ProgressionEditor {character} {number} />
