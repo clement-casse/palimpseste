@@ -812,15 +812,16 @@ fn fantasy(
     let character = document.to_character()?;
     let report = character.report();
     // In play, the values follow the equipment in play; the steps and
-    // violations stay those of the creation.
-    let played = equipment
-        .map(|equipment| equipment.to_equipment().map(|e| character.in_play(e)))
-        .transpose()?;
-    let value_of = |value: Value| match &played {
-        Some(played) => played.value(value),
-        None => character.value(value),
+    // violations stay those of the creation. Without equipment given, the
+    // character is in play with the equipment chosen at creation.
+    let creation = FantasyEquipment {
+        armour: document.armour.clone(),
+        shield: document.shield.clone(),
+        items: document.items.clone(),
     };
-    let items = equipment.map_or(&document.items, |equipment| &equipment.items);
+    let carried_in_play = equipment.unwrap_or(&creation);
+    let played = character.in_play(carried_in_play.to_equipment()?);
+    let items = &carried_in_play.items;
     let place = |violation: &co_kernel::Violation| match character.placement(violation) {
         Placement::Creation(step) => (None, step.id()),
         Placement::Level(level, step) => (Some(u32::from(level.get())), step.id()),
@@ -843,18 +844,13 @@ fn fantasy(
         label: &co_fantasy::label,
         term_label: &co_fantasy::term_label,
     };
-    let situational = |target: co_fantasy::Target| {
-        fantasy_situational(&match &played {
-            Some(played) => played.situational(target),
-            None => character.situational(target),
-        })
-    };
+    let situational = |target: co_fantasy::Target| fantasy_situational(&played.situational(target));
     let line = |value: Value| ValueLine {
         situational: situational(co_fantasy::Target::Value(value)),
         ..common.line(
             value.id().as_str().to_owned(),
             value.name(),
-            value_of(value).as_ref(),
+            played.value(value).as_ref(),
         )
     };
     let recovery_die = character.recovery_die().map(|die| die.to_string());
@@ -866,11 +862,7 @@ fn fantasy(
     }
     for weapon in carried(items, Weapon::from_id) {
         for weapon_use in WeaponUse::ALL {
-            let dice = match &played {
-                Some(played) => played.damage_dice(weapon, weapon_use),
-                None => character.damage_dice(weapon, weapon_use),
-            };
-            if let Some(dice) = dice {
+            if let Some(dice) = played.damage_dice(weapon, weapon_use) {
                 values.push(line(Value::WeaponAttack(weapon, weapon_use)));
                 let mut damage = line(Value::Damage(weapon, weapon_use));
                 damage.dice = Some(dice.to_string());
@@ -879,10 +871,7 @@ fn fantasy(
         }
         values.push(line(Value::CriticalRange(weapon)));
     }
-    let bonus_dice = match &played {
-        Some(played) => played.bonus_dice(),
-        None => character.bonus_dice(),
-    };
+    let bonus_dice = played.bonus_dice();
     let details = Details::Fantasy(FantasyDetails {
         family: character
             .family()
@@ -893,14 +882,16 @@ fn fantasy(
             .iter()
             .map(|voie| voie.id().as_str().to_owned())
             .collect(),
-        money: value_of(Value::Money).map(|money| Money::pc(money.total()).to_string()),
+        money: played
+            .value(Value::Money)
+            .map(|money| Money::pc(money.total()).to_string()),
         level,
         evolutive_die: format!("d{}", character.level().evolutive_die().faces()),
         levels: fantasy_levels(&character),
         ability_options: fantasy_options(&character),
         abilities_held: fantasy_held(&character, document, &bonus_dice, &line),
     });
-    let in_play = played.as_ref().map(co_fantasy::InPlay::report);
+    let in_play = equipment.map(|_| played.report());
     let mut sheet = common.sheet(
         |c| character.characteristic(c),
         |c| situational(co_fantasy::Target::Characteristic(c)),
@@ -921,19 +912,15 @@ fn contemporain(
     let report = character.report();
     // In play, the values follow the equipment in play; the steps and
     // violations stay those of the creation. No COC2 equipment rule holds in
-    // play.
-    let played = equipment
-        .map(|equipment| equipment.to_equipment().map(|e| character.in_play(e)))
-        .transpose()?;
-    let value_of = |value: Value| match &played {
-        Some(played) => played.value(value),
-        None => character.value(value),
+    // play. Without equipment given, the character is in play with the
+    // equipment chosen at creation.
+    let creation = ContemporainEquipment {
+        protections: document.protections.clone(),
+        items: document.items.clone(),
     };
-    let damage_dice = |weapon: Weapon| match &played {
-        Some(played) => played.damage_dice(weapon),
-        None => character.damage_dice(weapon),
-    };
-    let items = equipment.map_or(&document.items, |equipment| &equipment.items);
+    let carried_in_play = equipment.unwrap_or(&creation);
+    let played = character.in_play(carried_in_play.to_equipment()?);
+    let items = &carried_in_play.items;
     let place = |violation: &co_kernel::Violation| match character.placement(violation) {
         Placement::Creation(step) => (None, step.id()),
         Placement::Spending(spending, step) => (Some(count(spending)), step.id()),
@@ -956,18 +943,14 @@ fn contemporain(
         label: &co_contemporain::label,
         term_label: &co_contemporain::term_label,
     };
-    let situational = |target: co_contemporain::Target| {
-        contemporain_situational(&match &played {
-            Some(played) => played.situational(target),
-            None => character.situational(target),
-        })
-    };
+    let situational =
+        |target: co_contemporain::Target| contemporain_situational(&played.situational(target));
     let line = |value: Value| ValueLine {
         situational: situational(co_contemporain::Target::Value(value)),
         ..common.line(
             value.id().as_str().to_owned(),
             value.name(),
-            value_of(value).as_ref(),
+            played.value(value).as_ref(),
         )
     };
     let mut values: Vec<ValueLine> = Value::FIXED.into_iter().map(line).collect();
@@ -979,7 +962,7 @@ fn contemporain(
     );
     for weapon in weapons {
         let mut damage = line(Value::Damage(weapon));
-        damage.dice = Some(damage_dice(weapon).to_string());
+        damage.dice = Some(played.damage_dice(weapon).to_string());
         values.push(damage);
         values.push(line(Value::CriticalBonus(weapon)));
         values.push(line(Value::CriticalRange(weapon)));
