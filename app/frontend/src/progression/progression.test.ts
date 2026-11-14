@@ -107,4 +107,20 @@ describe("drafts", () => {
     clearDraft(7);
     expect(loadDraft(7)).toBeNull();
   });
+
+  it("are forgotten when they cannot be read", () => {
+    const draft = { number: 2, fresh: true, base: 3, document: withNext(lhagva()) };
+    const unreadable = [
+      "not json",
+      "[]",
+      JSON.stringify({ ...draft, number: "2" }),
+      JSON.stringify({ ...draft, document: { ...draft.document, version: 1 } }),
+      JSON.stringify({ ...draft, document: { ...draft.document, profil: "cof.profil.unknown" } }),
+    ];
+    for (const stored of unreadable) {
+      localStorage.setItem("palimpseste.draft.7", stored);
+      expect(loadDraft(7), stored).toBeNull();
+      expect(localStorage.getItem("palimpseste.draft.7"), stored).toBeNull();
+    }
+  });
 });

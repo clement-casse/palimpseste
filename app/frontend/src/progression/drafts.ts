@@ -4,7 +4,7 @@
 // started from. One draft per character; storage may be blocked, then the
 // draft lasts as long as the page.
 
-import type { Document } from "../wasm/palimpseste_wasm";
+import { type Document, evaluate } from "../wasm/palimpseste_wasm";
 
 export type Draft = {
   /** The level (COF2) or rank (COC2) of the entry prepared. */
@@ -19,13 +19,37 @@ export type Draft = {
 
 const key = (id: number) => `palimpseste.draft.${id}`;
 
+/**
+ * Whether `kept` is a draft the engines read: what storage holds may be
+ * anything, and a draft kept from an earlier document version no longer
+ * evaluates.
+ */
+function isDraft(kept: unknown): kept is Draft {
+  if (typeof kept !== "object" || kept === null) return false;
+  const { number, fresh, base, document } = kept as Record<string, unknown>;
+  if (!Number.isInteger(number) || typeof fresh !== "boolean" || !Number.isInteger(base)) {
+    return false;
+  }
+  try {
+    evaluate(document as Document);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The draft kept for character `id`; one that cannot be read is forgotten. */
 export function loadDraft(id: number): Draft | null {
   try {
     const stored = localStorage.getItem(key(id));
-    return stored ? (JSON.parse(stored) as Draft) : null;
+    if (!stored) return null;
+    const kept: unknown = JSON.parse(stored);
+    if (isDraft(kept)) return kept;
   } catch {
-    return null;
+    // Storage blocked, or not JSON: no draft.
   }
+  clearDraft(id);
+  return null;
 }
 
 export function saveDraft(id: number, draft: Draft) {
