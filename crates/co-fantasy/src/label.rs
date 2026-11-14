@@ -41,9 +41,11 @@ pub fn label(id: &str) -> Option<String> {
         .map(|(_, name)| *name)
         .or_else(|| content_name(id))
         .map(str::to_owned)
-        .or_else(|| Value::from_id(id).map(Value::name))
+        // A level and a capacité are read from their identifier; a value is
+        // looked up among every value's, so it comes last.
         .or_else(|| level_name(id))
         .or_else(|| ability_name(id))
+        .or_else(|| Value::from_id(id).map(Value::name))
 }
 
 /// The display name of the level-up `id`, `cof.level.<level>`.
@@ -221,6 +223,13 @@ mod tests {
             for id in ids {
                 assert!(label(&id).is_some(), "{id}");
             }
+        }
+    }
+
+    #[test]
+    fn a_value_is_named_as_a_value_never_as_a_capacite() {
+        for value in Value::all() {
+            assert_eq!(label(value.id().as_str()), Some(value.name()), "{value:?}");
         }
     }
 }
