@@ -126,6 +126,20 @@ describe("the COF voies step", () => {
     expect(saves(sent)[1].body).toMatchObject({ specialities: [] });
     expect(screen.getAllByText(/écrivez sa spécialité \(origine\)/).length).toBeGreaterThan(0);
   });
+
+  it("asks the origin of the Diversité a human mage keeps through the voie du mage", async () => {
+    const sent = stubBackend(storing());
+    navigate("/characters/1#voies");
+    signedIn({ nickname: "Ana", profile: "" });
+    const document = { ...lhagva(), specialities: [], voies: [{ id: "cof.mage", ranks: [1] }] };
+    render(CharacterEditor, { character: character(document) });
+    const origin = screen.getByRole("textbox", { name: /^Origine : Diversité/ });
+    await fireEvent.change(origin, { target: { value: "Citadin" } });
+    await vi.advanceTimersByTimeAsync(600);
+    expect(saves(sent)[0].body).toMatchObject({
+      specialities: [{ ability: "cof.humain.1", speciality: "Citadin" }],
+    });
+  });
 });
 
 describe("saving", () => {
