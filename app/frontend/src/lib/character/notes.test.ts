@@ -69,7 +69,12 @@ describe("notes", () => {
     const { document } = richer();
     document.adjustments = [
       { target: { kind: "value", id: "cof.defence" }, amount: 1, author: "Ana", reason: "Bague" },
-      { target: { kind: "characteristic", id: "FOR" }, amount: -1, author: "Ana", reason: "Blessure" },
+      {
+        target: { kind: "characteristic", id: "FOR" },
+        amount: -1,
+        author: "Ana",
+        reason: "Blessure",
+      },
     ];
     const all = notes(document);
     expect(all.map((note) => [note.number, note.kind])).toEqual([

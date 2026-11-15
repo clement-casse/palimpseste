@@ -131,7 +131,9 @@ describe("a COF level-up", () => {
     expect(forgettable).toContain("cof.mage.1");
     expect(forgettable).not.toContain("cof.elfe-haut.1");
     navigate("/characters/1/progression/new#abilities");
-    await fireEvent.click(await screen.findByRole("button", { name: /Hors règles : autres capacités/ }));
+    await fireEvent.click(
+      await screen.findByRole("button", { name: /Hors règles : autres capacités/ }),
+    );
     const acquire = await screen.findByRole("combobox", { name: "Acquérir hors règles" });
     const acquirable = [...acquire.querySelectorAll("option")].map((o) => o.value);
     expect(acquirable).toContain("cof.elfe-haut.1");

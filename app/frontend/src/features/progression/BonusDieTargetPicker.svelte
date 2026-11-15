@@ -5,11 +5,7 @@
   import { Label, Select } from "flowbite-svelte";
 
   import { valueOf } from "$lib/character/edits";
-  import type {
-    ContemporainCatalog,
-    ContemporainDocument,
-    RankFiveLine,
-  } from "$lib/engine";
+  import type { ContemporainCatalog, ContemporainDocument, RankFiveLine } from "$lib/engine";
   import Ability from "$lib/components/Ability.svelte";
   import { abilityLabel } from "$lib/character/progression";
 
@@ -35,7 +31,9 @@
 </script>
 
 <Label class="flex flex-col gap-2">
-  <span>Capacité dont le test reçoit le dé bonus de <Ability {catalog} id={`${line.voie}.5`} /></span>
+  <span
+    >Capacité dont le test reçoit le dé bonus de <Ability {catalog} id={`${line.voie}.5`} /></span
+  >
   <Select placeholder="" value={chosen} onchange={(e) => choose(valueOf(e))}>
     <option value="">— Choisir —</option>
     {#each line.bonusDieChoice as id (id)}

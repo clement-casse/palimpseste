@@ -20,7 +20,8 @@
   function color(violation: ReportedViolation) {
     if (violation.waived) return "primary";
     const category = violation.category;
-    if (category.kind === "deviation") return category.severity === "recommended" ? "yellow" : "red";
+    if (category.kind === "deviation")
+      return category.severity === "recommended" ? "yellow" : "red";
     return category.kind === "notice" ? "primary" : "gray";
   }
 </script>

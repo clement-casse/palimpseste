@@ -26,8 +26,7 @@ import { type Note, notesOf } from "$lib/character/notes";
 import { PlayState } from "./play.svelte";
 import { RollLog } from "./rolls.svelte";
 
-type Evaluation =
-  { sheet: Sheet; equipment: Equipment; unreadable: boolean } | { error: string };
+type Evaluation = { sheet: Sheet; equipment: Equipment; unreadable: boolean } | { error: string };
 
 // The steps of the COC2 échelle de santé filled reach a roll (D-56).
 const HEALTH = COC.healthScale;

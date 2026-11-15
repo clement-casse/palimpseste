@@ -70,7 +70,9 @@
 </script>
 
 {#if sheet.details.engine === "fantasy"}
-  <P weight="semibold">Niveau {sheet.details.level} · dé évolutif d4° : {sheet.details.evolutiveDie}</P>
+  <P weight="semibold"
+    >Niveau {sheet.details.level} · dé évolutif d4° : {sheet.details.evolutiveDie}</P
+  >
 {:else if choices.engine === "contemporain"}
   <div class="flex flex-wrap items-end gap-3">
     <Label class="flex flex-col gap-2">
@@ -81,8 +83,13 @@
         class="w-32"
         value={choices.experience ?? 0}
         onchange={(e) => {
-          const value = integerOf(e, choices.experience ?? 0, { min: 0, max: U32_MAX, blank: false });
-          if (value !== null && value !== undefined && choices.engine === "contemporain") choices.experience = value;
+          const value = integerOf(e, choices.experience ?? 0, {
+            min: 0,
+            max: U32_MAX,
+            blank: false,
+          });
+          if (value !== null && value !== undefined && choices.engine === "contemporain")
+            choices.experience = value;
         }}
       />
     </Label>
@@ -98,7 +105,9 @@
   </div>
 {/if}
 
-<Heading tag="h3" class="text-lg">{choices.engine === "fantasy" ? "Niveaux" : "Dépenses d’XP"}</Heading>
+<Heading tag="h3" class="text-lg"
+  >{choices.engine === "fantasy" ? "Niveaux" : "Dépenses d’XP"}</Heading
+>
 {#if sheet.progression.length > 0}
   <Listgroup class="flex-col">
     {#each sheet.progression as entry (entry.number)}
@@ -108,26 +117,43 @@
           {entry.name}
           {#if left > 0}<Badge color="yellow">{left} à régler</Badge>{/if}
         </span>
-        <Button size="xs" color="alternative" href={characterProgressionPath(characterId, entry.number)} onclick={follow}>
+        <Button
+          size="xs"
+          color="alternative"
+          href={characterProgressionPath(characterId, entry.number)}
+          onclick={follow}
+        >
           Ouvrir
         </Button>
       </ListgroupItem>
     {/each}
   </Listgroup>
 {:else}
-  <Helper class="text-sm">{choices.engine === "fantasy" ? "Niveau 1 : aucun niveau gagné depuis la création." : "Aucune XP dépensée."}</Helper>
+  <Helper class="text-sm"
+    >{choices.engine === "fantasy"
+      ? "Niveau 1 : aucun niveau gagné depuis la création."
+      : "Aucune XP dépensée."}</Helper
+  >
 {/if}
 
 {#if draftPath}
-  <P size="sm">Un brouillon est en cours sur cet appareil. <a class="underline" href={draftPath} onclick={follow}>Le reprendre</a></P>
+  <P size="sm"
+    >Un brouillon est en cours sur cet appareil. <a
+      class="underline"
+      href={draftPath}
+      onclick={follow}>Le reprendre</a
+    ></P
+  >
 {/if}
 {#if open === 0}
-  <Button class="w-fit" href={characterProgressionPath(characterId, "new")} onclick={follow}>{nextLabel(choices)}</Button>
+  <Button class="w-fit" href={characterProgressionPath(characterId, "new")} onclick={follow}
+    >{nextLabel(choices)}</Button
+  >
 {:else}
   <Button class="w-fit" disabled>{nextLabel(choices)}</Button>
   <Helper class="text-sm">
-    Terminez d’abord le personnage : {open} point{open > 1 ? "s" : ""} à régler, choix manquants ou
-    règles enfreintes sans dérogation.
+    Terminez d’abord le personnage : {open} point{open > 1 ? "s" : ""} à régler, choix manquants ou règles
+    enfreintes sans dérogation.
   </Helper>
 {/if}
 
@@ -159,7 +185,12 @@
   </Select>
 {/if}
 
-<Modal open={sequel !== ""} title={sequelNames.get(sequel) ?? ""} size="sm" oncancel={() => (sequel = "")}>
+<Modal
+  open={sequel !== ""}
+  title={sequelNames.get(sequel) ?? ""}
+  size="sm"
+  oncancel={() => (sequel = "")}
+>
   <P>Ce que la séquelle change sur la fiche :</P>
   <Differences differences={preview} />
   <div class="flex justify-end gap-2">

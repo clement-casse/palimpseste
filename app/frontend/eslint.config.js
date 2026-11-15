@@ -72,7 +72,10 @@ export default ts.config(
   },
   {
     files: ["src/features/auth/**"],
-    rules: restrict(SHELL, otherFeatures("characters", "editor", "progression", "sheet", "friends")),
+    rules: restrict(
+      SHELL,
+      otherFeatures("characters", "editor", "progression", "sheet", "friends"),
+    ),
   },
   {
     files: ["src/features/characters/**"],

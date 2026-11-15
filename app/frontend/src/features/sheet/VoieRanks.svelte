@@ -55,7 +55,9 @@
       {@const others = voie.ranks.filter((rank) => !RANKS.includes(rank))}
       <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
         <span>
-          {names.get(voie.id) ?? voie.id}<Marks notes={marksAt(notes, { kind: "voie", id: voie.id })} />
+          {names.get(voie.id) ?? voie.id}<Marks
+            notes={marksAt(notes, { kind: "voie", id: voie.id })}
+          />
         </span>
         <span class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
           <span class="sr-only">Rangs {voie.ranks.join(", ")}</span>
@@ -75,7 +77,9 @@
               {@const entry = entryOf(h.ability)}
               <!-- With its effects written, a capacité shows its bonuses in them. -->
               {@const inEffects = (entry?.effects.length ?? 0) > 0}
-              {@const spoken = [...h.testBonuses, ...(h.bonusDie ? [h.bonusDie] : [])].some((b) => b.onSpeciality)}
+              {@const spoken = [...h.testBonuses, ...(h.bonusDie ? [h.bonusDie] : [])].some(
+                (b) => b.onSpeciality,
+              )}
               <li>
                 <Ability {catalog} id={h.ability} short />{#if h.speciality && !spoken}
                   {` (${h.speciality})`}{/if}
@@ -96,7 +100,11 @@
                   />
                 {/each}
                 {#if h.bonusDie && !inEffects}
-                  · dé bonus : {bonusDieLabel(catalog, h.bonusDie, h.speciality)}{#if h.bonusDie.characteristics.length > 0}{` (${h.bonusDie.characteristics.join(", ")})`}{/if}
+                  · dé bonus : {bonusDieLabel(
+                    catalog,
+                    h.bonusDie,
+                    h.speciality,
+                  )}{#if h.bonusDie.characteristics.length > 0}{` (${h.bonusDie.characteristics.join(", ")})`}{/if}
                 {/if}
                 <AbilityEffects {catalog} id={h.ability} held={h} {notes} {written} />
               </li>

@@ -17,9 +17,9 @@
   ]}
 >
   <p>
-    <strong>Palimpseste est un projet de fan, non officiel.</strong> Il n’est pas affilié à
-    Black Book Éditions ni à la gamme <cite>Chroniques Oubliées</cite>, dont les règles, les noms
-    et les données appartiennent à Black Book Éditions et à leurs auteurs.
+    <strong>Palimpseste est un projet de fan, non officiel.</strong> Il n’est pas affilié à Black
+    Book Éditions ni à la gamme <cite>Chroniques Oubliées</cite>, dont les règles, les noms et les
+    données appartiennent à Black Book Éditions et à leurs auteurs.
   </p>
   <p>
     <strong>Palimpseste est en cours de développement et fourni sans aucune garantie.</strong>

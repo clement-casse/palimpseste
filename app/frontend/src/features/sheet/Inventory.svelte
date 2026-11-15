@@ -29,11 +29,16 @@
 
 {#each items as item, i (i)}
   <li class="flex items-center gap-1.5">
-    <span class={["flex-1", item.quantity === 0 && "text-gray-500 line-through dark:text-gray-400"]}>
+    <span
+      class={["flex-1", item.quantity === 0 && "text-gray-500 line-through dark:text-gray-400"]}
+    >
       {label(item)}
     </span>
     <span
-      class={["text-gray-500 tabular-nums dark:text-gray-400", item.quantity === 0 && "line-through"]}
+      class={[
+        "text-gray-500 tabular-nums dark:text-gray-400",
+        item.quantity === 0 && "line-through",
+      ]}
     >
       ×{item.quantity}
     </span>

@@ -57,11 +57,15 @@ describe("inviting a friend", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Créer un lien d’invitation" }));
     await fireEvent.click(await screen.findByRole("button", { name: "Révoquer" }));
 
-    await vi.waitFor(() => expect(screen.queryByRole("heading", { name: "Liens en attente" })).toBeNull());
-    expect(link()).toBeNull();
-    expect(sent.some((request) => request.method === "DELETE" && request.url === "/api/me/invitations/1")).toBe(
-      true,
+    await vi.waitFor(() =>
+      expect(screen.queryByRole("heading", { name: "Liens en attente" })).toBeNull(),
     );
+    expect(link()).toBeNull();
+    expect(
+      sent.some(
+        (request) => request.method === "DELETE" && request.url === "/api/me/invitations/1",
+      ),
+    ).toBe(true);
   });
 
   it("replaces the link shown by a new one, both waiting, and revoking the older keeps it", async () => {
@@ -72,10 +76,14 @@ describe("inviting a friend", () => {
     await fireEvent.click(await screen.findByRole("button", { name: "Créer un autre lien" }));
 
     await vi.waitFor(() => expect(link()?.value).toBe(`${location.origin}/invitation#t2`));
-    await vi.waitFor(() => expect(screen.getAllByRole("button", { name: "Révoquer" })).toHaveLength(2));
+    await vi.waitFor(() =>
+      expect(screen.getAllByRole("button", { name: "Révoquer" })).toHaveLength(2),
+    );
     await fireEvent.click(screen.getAllByRole("button", { name: "Révoquer" })[0]);
 
-    await vi.waitFor(() => expect(screen.getAllByRole("button", { name: "Révoquer" })).toHaveLength(1));
+    await vi.waitFor(() =>
+      expect(screen.getAllByRole("button", { name: "Révoquer" })).toHaveLength(1),
+    );
     expect(link()?.value).toBe(`${location.origin}/invitation#t2`);
   });
 
@@ -106,7 +114,9 @@ describe("inviting a friend", () => {
     render(InviteCard);
     await fireEvent.click(screen.getByRole("button", { name: "Créer un lien d’invitation" }));
     await fireEvent.click(await screen.findByRole("button", { name: "Partager…" }));
-    expect(share).toHaveBeenCalledWith(expect.objectContaining({ url: `${location.origin}/invitation#t1` }));
+    expect(share).toHaveBeenCalledWith(
+      expect.objectContaining({ url: `${location.origin}/invitation#t1` }),
+    );
   });
 
   it("offers no sharing where the device cannot", async () => {
@@ -123,7 +133,9 @@ describe("inviting a friend", () => {
       return new Response(null, { status: 500 });
     });
     render(InviteCard);
-    const create = screen.getByRole("button", { name: "Créer un lien d’invitation" }) as HTMLButtonElement;
+    const create = screen.getByRole("button", {
+      name: "Créer un lien d’invitation",
+    }) as HTMLButtonElement;
     await fireEvent.click(create);
 
     expect(await screen.findByText(/Le serveur a rencontré une erreur/)).toBeTruthy();

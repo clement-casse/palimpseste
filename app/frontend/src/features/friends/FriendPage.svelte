@@ -43,7 +43,8 @@
 </script>
 
 <section class="flex flex-col gap-4">
-  <A href={FRIENDS} onclick={follow} class="gap-1 self-start"><ArrowLeftOutline size="sm" /> Amis</A>
+  <A href={FRIENDS} onclick={follow} class="gap-1 self-start"><ArrowLeftOutline size="sm" /> Amis</A
+  >
   {#key id}
     <Loader load={load(id)}>
       {#snippet children([friend, characters])}
@@ -58,7 +59,11 @@
             <Listgroup class="flex-col">
               {#each characters as character (character.id)}
                 <ListgroupItem class="flex-wrap gap-x-3 gap-y-2 py-3">
-                  <A href={friendSheetPath(friend.id, character.id)} onclick={follow} class="font-semibold">
+                  <A
+                    href={friendSheetPath(friend.id, character.id)}
+                    onclick={follow}
+                    class="font-semibold"
+                  >
                     {character.name}
                   </A>
                   <Badge color="gray">{ENGINES[character.engine]}</Badge>

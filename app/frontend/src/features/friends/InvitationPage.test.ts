@@ -31,7 +31,10 @@ function open(
   return sent;
 }
 
-const from = (status: ReceivedInvitation["status"], friend: number | null = null): ReceivedInvitation => ({
+const from = (
+  status: ReceivedInvitation["status"],
+  friend: number | null = null,
+): ReceivedInvitation => ({
   nickname: "Ana",
   profile: "Joue une barbare.",
   status,
@@ -41,7 +44,9 @@ const from = (status: ReceivedInvitation["status"], friend: number | null = null
 describe("an invitation link", () => {
   it("shows who sent it, and accepting it leads to the new friend", async () => {
     const sent = open(from("open"));
-    expect(await screen.findByRole("heading", { name: "Ana vous invite à devenir amis" })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { name: "Ana vous invite à devenir amis" }),
+    ).toBeTruthy();
     expect(screen.getByText("Joue une barbare.")).toBeTruthy();
 
     await fireEvent.click(screen.getByRole("button", { name: "Accepter" }));

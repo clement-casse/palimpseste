@@ -58,8 +58,8 @@
     {#snippet children(registration)}
       <P>
         Première connexion avec <strong>{registration.provider}</strong>{#if registration.label}
-          ({registration.label}){/if} : choisissez votre pseudonyme et présentez-vous avant de créer
-        vos personnages.
+          ({registration.label}){/if} : choisissez votre pseudonyme et présentez-vous avant de créer vos
+        personnages.
       </P>
       <form class="flex flex-col gap-4" onsubmit={create}>
         <ProfileFields bind:nickname bind:profile />
@@ -69,7 +69,8 @@
         </div>
       </form>
       <P size="sm" class="text-gray-500 dark:text-gray-400">
-        Annuler abandonne la création : aucun compte n’est créé et votre compte {registration.provider} reste libre.
+        Annuler abandonne la création : aucun compte n’est créé et votre compte {registration.provider}
+        reste libre.
       </P>
       {#if failure}<Alert color="red">{failure}</Alert>{/if}
     {/snippet}

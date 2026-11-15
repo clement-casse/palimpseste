@@ -37,6 +37,9 @@
 {#if catalog}
   <SituationalList
     {catalog}
-    entries={characteristics.map((line) => ({ label: line.characteristic, situational: line.situational }))}
+    entries={characteristics.map((line) => ({
+      label: line.characteristic,
+      situational: line.situational,
+    }))}
   />
 {/if}

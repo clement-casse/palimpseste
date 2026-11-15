@@ -105,7 +105,6 @@
   </div>
 
   <div class="grid gap-4 lg:col-span-5">
-
     <Block title="Combat" notes={marksAt(notes, ...steps("derived"))}>
       <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
         {#each model.combat as tile (tile.id)}
@@ -126,7 +125,11 @@
       {#if model.weapons.length > 0}
         <Table class="mt-3">
           <TableHead>
-            <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Usage</TableHeadCell><TableHeadCell class="px-2 py-2">Attaque</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
+            <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2"
+              >Usage</TableHeadCell
+            ><TableHeadCell class="px-2 py-2">Attaque</TableHeadCell><TableHeadCell
+              class="px-2 py-2">DM</TableHeadCell
+            ><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
           </TableHead>
           <TableBody>
             {#each model.weapons as { weapon, quantity, uses, critical } (weapon.id)}
@@ -134,14 +137,40 @@
                 {@const dm = use.damage}
                 <TableBodyRow>
                   {#if i === 0}
-                    <TableHeadCell scope="row" rowspan={uses.length} class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">
+                    <TableHeadCell
+                      scope="row"
+                      rowspan={uses.length}
+                      class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white"
+                    >
                       {weapon.name}{#if quantity > 1}{` ×${quantity}`}{/if}
                     </TableHeadCell>
                   {/if}
                   <TableBodyCell class="px-2 py-2">{use.name}</TableBodyCell>
                   {@const attackId = use.attackId}
-                  <TableBodyCell class="px-2 py-2">{shown(use.attack, true)}<Marks notes={valueMarks(attackId)} />{#if onroll && dm.attackRoll}{@const attackRoll = dm.attackRoll} <RollButton label="attaque, {weapon.name} ({use.name})" onclick={() => onroll(attackRoll)} />{/if}{#each use.attack?.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}</TableBodyCell>
-                  <TableBodyCell class="px-2 py-2">{damage(dm)}<Marks notes={valueMarks(dm.id)} />{#if onroll && dm.roll}{@const dmRoll = dm.roll} <RollButton label="DM, {weapon.name} ({use.name})" onclick={() => onroll(dmRoll)} />{/if}{#each dm.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}</TableBodyCell>
+                  <TableBodyCell class="px-2 py-2"
+                    >{shown(use.attack, true)}<Marks
+                      notes={valueMarks(attackId)}
+                    />{#if onroll && dm.attackRoll}{@const attackRoll = dm.attackRoll}
+                      <RollButton
+                        label="attaque, {weapon.name} ({use.name})"
+                        onclick={() => onroll(attackRoll)}
+                      />{/if}{#each use.attack?.situational ?? [] as s, k (k)}<span
+                        class="block text-xs text-gray-500 dark:text-gray-400"
+                        >{situationalText(s)}</span
+                      >{/each}</TableBodyCell
+                  >
+                  <TableBodyCell class="px-2 py-2"
+                    >{damage(dm)}<Marks
+                      notes={valueMarks(dm.id)}
+                    />{#if onroll && dm.roll}{@const dmRoll = dm.roll}
+                      <RollButton
+                        label="DM, {weapon.name} ({use.name})"
+                        onclick={() => onroll(dmRoll)}
+                      />{/if}{#each dm.situational ?? [] as s, k (k)}<span
+                        class="block text-xs text-gray-500 dark:text-gray-400"
+                        >{situationalText(s)}</span
+                      >{/each}</TableBodyCell
+                  >
                   {#if i === 0}
                     <TableBodyCell rowspan={uses.length} class="px-2 py-2">
                       {range(critical)}{#if critical}<Marks notes={valueMarks(critical.id)} />{/if}
@@ -171,7 +200,6 @@
   </div>
 
   <div class="grid items-start gap-4 md:col-span-2 md:grid-cols-2 lg:col-span-12">
-
     <EquipmentSection
       notes={marksAt(notes, ...steps("equipment"))}
       items={equipment.items ?? []}

@@ -54,7 +54,9 @@ test("hovering a characteristic in the editor shows its sources", async ({ page 
   await expect(page.getByRole("tooltip")).toContainText("Humain +1");
 });
 
-test("a test rolled from the sheet shows its calculation and stays in the journal", async ({ page }) => {
+test("a test rolled from the sheet shows its calculation and stays in the journal", async ({
+  page,
+}) => {
   await page.goto(`/characters/${id}/sheet`);
   await page.getByRole("button", { name: "Lancer : Test de AGI" }).click();
   const dialog = page.getByRole("dialog");
@@ -76,16 +78,24 @@ test("a test rolled from the sheet shows its calculation and stays in the journa
 
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
-  const journal = page.locator("section", { has: page.getByRole("heading", { name: "Journal des jets" }) });
+  const journal = page.locator("section", {
+    has: page.getByRole("heading", { name: "Journal des jets" }),
+  });
   await expect(journal.getByText("Test de AGI")).toBeVisible();
 });
 
 test("an attack rolled from the sheet leads to its DM", async ({ page }) => {
   await page.goto(`/characters/${id}/sheet`);
-  await page.getByRole("button", { name: /^Lancer : attaque, Épée longue/ }).first().click();
+  await page
+    .getByRole("button", { name: /^Lancer : attaque, Épée longue/ })
+    .first()
+    .click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Lancer le dé" }).click();
-  await dialog.getByRole("button", { name: /^Lancer les DM/ }).last().click();
+  await dialog
+    .getByRole("button", { name: /^Lancer les DM/ })
+    .last()
+    .click();
   await expect(dialog.getByRole("heading", { name: /^DM : Épée longue/ })).toBeVisible();
   // The attack's dialog fades out behind the DM's: the last is the DM's own.
   await dialog.last().getByRole("button", { name: "Lancer les DM", exact: true }).click();
