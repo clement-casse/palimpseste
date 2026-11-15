@@ -5,7 +5,7 @@
   import { Spinner } from "flowbite-svelte";
   import type { Snippet } from "svelte";
 
-  import ErrorMessage from "../../ErrorMessage.svelte";
+  import ErrorMessage from "./ErrorMessage.svelte";
 
   let {
     load,

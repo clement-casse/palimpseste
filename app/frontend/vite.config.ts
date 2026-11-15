@@ -1,4 +1,6 @@
 /// <reference types="vitest/config" />
+import { fileURLToPath } from "node:url";
+
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
@@ -18,7 +20,7 @@ export default defineConfig({
     svelteTesting(),
     !testing &&
     VitePWA({
-      // A new version waits for the user (`src/pwa.svelte.ts`) rather than
+      // A new version waits for the user (`src/app/pwa.svelte.ts`) rather than
       // replacing the app mid-edit; `main.ts` registers the service worker.
       registerType: "prompt",
       injectRegister: false,
@@ -49,6 +51,11 @@ export default defineConfig({
       },
     }),
   ],
+  // `$lib` is `src/lib`, what the whole app shares (ADR FE-LAYOUT); the same
+  // alias is in `tsconfig.json`.
+  resolve: {
+    alias: { $lib: fileURLToPath(new URL("./src/lib", import.meta.url)) },
+  },
   build: {
     // flowbite-svelte declares no `sideEffects`: without this, importing one
     // component bundles every component's theme.
