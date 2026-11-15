@@ -67,7 +67,9 @@ design decisions are in [docs/adr/engines.md](../../docs/adr/engines.md)
   min(level, 10) as `Source::Rule(COF.DER.ATTACK)`.
 - **Capacités held.** `ranks()` lists the ranks held; `abilities_held()` adds
   the rank-1 capacité of the peuple's voie that the voie du mage keeps, which
-  no rank records (COF.CRE.VOIE-DU-MAGE).
+  no rank records (COF.CRE.VOIE-DU-MAGE). `kept_through(voie, rank)` names the
+  capacité keeping it, and `acquired_at` places it where that one was
+  acquired.
 - **Values.** `Character::value(Value)` returns a `DerivedValue`, or `None`
   when it does not apply. Weapon values are keyed by weapon and use
   (`Value::Damage(Weapon, WeaponUse)`). Every `Value` and every

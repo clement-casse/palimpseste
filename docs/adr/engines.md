@@ -113,8 +113,10 @@ placed where the capacité was acquired. A speciality written for a
 capacité not held, or asking for none, is kept and checked by nothing. The
 capacité Diversité kept through the voie du mage (COF.CRE.VOIE-DU-MAGE)
 is held without a rank recording it, so `Character::abilities_held()`
-lists it with the ranks, and the interface asks for its origin as for any
-other. `TestBonus::on_speciality` and
+lists it with the ranks, `kept_through` names the voie du mage's rank 1
+keeping it, and the origin is asked where that rank was acquired (at
+creation, or at its level-up), as for any other capacité. Nothing forgets
+it: it goes with the voie du mage. `TestBonus::on_speciality` and
 `BonusDie::on_speciality` say which bonuses apply to it, so the sheet
 names them by the player's words. *Why free text:* the lists are open
 (any discipline, any vehicle), and no rule reads them.
