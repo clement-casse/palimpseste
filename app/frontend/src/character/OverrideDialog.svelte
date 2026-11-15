@@ -6,7 +6,7 @@
 
   import { message } from "../messages";
   import { I32_MAX, I32_MIN } from "./edits";
-  import type { OverrideRequest } from "./override";
+  import type { OverrideRequest } from "./override.svelte";
 
   let {
     request,
