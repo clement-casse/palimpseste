@@ -1,7 +1,7 @@
 // How the sheets write the engine's computed values.
 
 import { signed } from "../character/edits";
-import type { SituationalLine, ValueLine } from "../wasm/palimpseste_wasm";
+import type { RollOptionLine, SituationalLine, ValueLine } from "../wasm/palimpseste_wasm";
 
 /**
  * A modifier holding only in a situation (ADR ENG-SITUATIONAL), such as
@@ -27,10 +27,20 @@ export function damage(line: ValueLine | undefined): string {
   return line.total === 0 ? dice : `${dice}${signed(line.total)}`;
 }
 
-/** A critical range from its lowest roll, such as `19-20`. */
+/** A critical range from its lowest roll `from`, such as `19-20`. */
+export function rangeFrom(from: number): string {
+  return from >= 20 ? String(from) : `${from}-20`;
+}
+
+/** The critical range of a value, a dash while it cannot be computed. */
 export function range(line: ValueLine | undefined): string {
-  if (line?.total === undefined) return "—";
-  return line.total >= 20 ? String(line.total) : `${line.total}-20`;
+  return line?.total === undefined ? "—" : rangeFrom(line.total);
+}
+
+/** What a roll's option adds and to what, such as `+3 intimidation` or `+1d6 contre un animal`. */
+export function optionText(option: RollOptionLine): string {
+  const amount = option.dice ? `+${option.dice}` : signed(option.amount ?? 0);
+  return `${amount} ${option.label}`;
 }
 
 /** The identifiers of the weapons that values `prefix.<weapon>…` are about, in order. */

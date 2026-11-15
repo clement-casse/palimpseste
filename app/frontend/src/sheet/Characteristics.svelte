@@ -11,7 +11,14 @@
     characteristics,
     notes,
     catalog,
-  }: { characteristics: CharacteristicLine[]; notes: Note[]; catalog?: Abilities } = $props();
+    onroll,
+  }: {
+    characteristics: CharacteristicLine[];
+    notes: Note[];
+    catalog?: Abilities;
+    /** Opens the test of a characteristic, by the identifier of its roll. */
+    onroll?: (roll: string) => void;
+  } = $props();
 </script>
 
 <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
@@ -22,6 +29,8 @@
       notes={marksAt(notes, { kind: "characteristic", id: line.characteristic })}
       contributions={line.contributions}
       situational={line.situational}
+      rollLabel="Test de {line.characteristic}"
+      onroll={onroll ? () => onroll(line.roll) : undefined}
     />
   {/each}
 </ul>

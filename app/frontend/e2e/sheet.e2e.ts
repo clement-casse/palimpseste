@@ -53,3 +53,41 @@ test("hovering a characteristic in the editor shows its sources", async ({ page 
   await page.locator("#editor-characteristic-PER").hover();
   await expect(page.getByRole("tooltip")).toContainText("Humain +1");
 });
+
+test("a test rolled from the sheet shows its calculation and stays in the journal", async ({ page }) => {
+  await page.goto(`/characters/${id}/sheet`);
+  await page.getByRole("button", { name: "Lancer : Test de AGI" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Test de AGI" })).toBeVisible();
+  // Réflexes éclair's bonus holds for dodging only: offered, not picked.
+  const dodge = dialog.getByRole("checkbox", { name: /\+3 esquiver/ });
+  await expect(dodge).not.toBeChecked();
+  await dialog.getByRole("button", { name: "Un allié de plus" }).click();
+  await dialog.getByRole("button", { name: "Lancer le dé" }).click();
+
+  // The die is drawn in the browser: any face, then the lines add up.
+  await expect(dialog.getByText(/d20 : \d+/).first()).toBeVisible();
+  const lines = dialog.getByRole("list", { name: "Calcul" });
+  await expect(lines).toContainText("Coopération : 1 allié");
+  const amounts = await lines.locator("li > span:last-child").allTextContents();
+  const sum = amounts.reduce((total, amount) => total + Number(amount), 0);
+  await expect(dialog.getByRole("status", { name: "Total" })).toHaveText(String(sum));
+  await expect(dialog.getByText("Peut aussi s’appliquer, à annoncer au MJ")).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  const journal = page.locator("section", { has: page.getByRole("heading", { name: "Journal des jets" }) });
+  await expect(journal.getByText("Test de AGI")).toBeVisible();
+});
+
+test("an attack rolled from the sheet leads to its DM", async ({ page }) => {
+  await page.goto(`/characters/${id}/sheet`);
+  await page.getByRole("button", { name: /^Lancer : attaque, Épée longue/ }).first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Lancer le dé" }).click();
+  await dialog.getByRole("button", { name: /^Lancer les DM/ }).last().click();
+  await expect(dialog.getByRole("heading", { name: /^DM : Épée longue/ })).toBeVisible();
+  // The attack's dialog fades out behind the DM's: the last is the DM's own.
+  await dialog.last().getByRole("button", { name: "Lancer les DM", exact: true }).click();
+  await expect(dialog.last().getByRole("status", { name: "Total" })).toBeVisible();
+});

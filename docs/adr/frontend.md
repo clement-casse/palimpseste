@@ -227,6 +227,34 @@ nothing kept on the device (the engine sheets get no `PlayState`, and
 their controls show only with a callback). *Why the amounts used:* a
 maximum changed in the editor keeps the count sensible.
 
+**FE-ROLLS: A die beside what is rolled.** On the user's own sheet, a
+die (`RollButton`) sits beside each characteristic, each attack value and,
+in a weapon's row, its attack and its DM: wherever a sheet line carries a
+roll (`roll`, `attackRoll`, ADR APP-ROLLS). It opens `RollDialog`, one
+dialog per roll, recreated for another. Before the roll, the dialog shows
+what `rollOffer` returns: the base with its breakdown, the test bonuses
+and situational modifiers as checkboxes ("Selon les circonstances",
+unpicked unless the engine says otherwise), the notes, the capacités' dé
+bonus beside the choice of the die (normal, bonus, malus), the allies
+helping as a count with a minus and a plus, the Game Master's modifier,
+and a critical for a DM. "Lancer" calls `roll`, and `RollResult` shows
+the outcome as returned: every die, the one set aside struck through, the
+natural 20 or 1 and the critical range as badges, every line of the total
+with its origin, the total, the competence bonuses set aside, and the
+options left unpicked under "Peut aussi s'appliquer, à annoncer au MJ",
+so the Game Master hears of a bonus the player was unsure of. An attack
+leads to its DM ("Lancer les DM"), critical when the die was. The
+interface adds nothing and decides nothing: it sends positions and counts
+and shows labels and amounts; nothing says whether the roll succeeds.
+`RollLog` keeps the last 50 outcomes per character, as returned, under
+`palimpseste.rolls.{id}` in `localStorage`; `RollJournal` lists them at
+the end of the sheet, each opening on its calculation, with "Vider le
+journal". The device's play state reaches the roll as `Play`: the
+equipment shown and the steps of the COC2 échelle de santé filled. A
+friend's sheet has no die and no journal. *Why a modal:* a roll is one
+deliberate action with its own choices, unlike a breakdown, read in
+passing.
+
 **FE-FRIENDS: Friends, through links.** "Amis" in the navigation bar
 leads to `/friends`: the friends by nickname, each leading to their page,
 and a card to create an invitation link (ADR BE-INVITATIONS), shown once
@@ -291,3 +319,5 @@ server holds no way around authentication.
 - Local drafts when a session ends mid-edit.
 - Saving play state (the resources of the sheet) with the character or a
   campaign, and the Game Master seeing it.
+- Rolls with physical dice, their faces typed in; rolls and their journal
+  shared with the Game Master, who alone knows whether they succeed.

@@ -1,9 +1,8 @@
 <script lang="ts">
   // The COC2 échelle de santé during a session: damage fills its steps from
-  // the first one not blackened (COC.DER.HEALTH-SCALE). The states come from
-  // the engine; the one shown is the last whose step is filled, so a state
-  // on a blackened step never applies (COC.CNT.SCALES). Without `onchange`,
-  // only read.
+  // the first one not blackened (COC.DER.HEALTH-SCALE). The states, and
+  // which one each step filled reaches, come from the engine (COC.CNT.SCALES).
+  // Without `onchange`, only read.
   import { Button } from "flowbite-svelte";
   import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
 
@@ -16,6 +15,7 @@
     scale,
     length,
     damage,
+    reached: states,
     notes,
     onchange,
   }: {
@@ -24,6 +24,8 @@
     length: number;
     /** The steps filled. */
     damage: number;
+    /** The identifier of the state reached, by the steps filled. */
+    reached: (string | undefined)[];
     notes: Note[];
     onchange?: (damage: number) => void;
   } = $props();
@@ -31,9 +33,7 @@
   const steps = $derived(Math.max(scale.steps, length));
   const blackened = $derived(Math.max(0, scale.steps - length));
   const reached = $derived(blackened + damage);
-  const state = $derived(
-    scale.states.filter((s) => s.step > blackened && s.step <= reached).at(-1),
-  );
+  const state = $derived(scale.states.find((s) => s.id === states[damage]));
 
   /** Fills up to `step`; the last step filled is emptied instead. */
   function fill(step: number) {

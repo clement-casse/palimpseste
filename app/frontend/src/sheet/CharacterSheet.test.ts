@@ -307,20 +307,28 @@ describe("a shorter échelle de santé", () => {
     return content.healthScale;
   };
 
-  function track(length: number, damage: number) {
-    return render(HealthTrack, { scale: scale(), length, damage, notes: [], onchange: () => {} });
+  /** The states the engine gives a scale of `length` steps, by the steps filled. */
+  function track(length: number, damage: number, reached: (string | undefined)[]) {
+    return render(HealthTrack, {
+      scale: scale(),
+      length,
+      damage,
+      reached,
+      notes: [],
+      onchange: () => {},
+    });
   }
 
   it("blackens its first steps, and damage fills from the next one", () => {
-    track(16, 1);
+    track(16, 1, [undefined, "coc.health-state.contusionne"]);
     expect(screen.getAllByTitle(/noircie$/)).toHaveLength(4);
     expect(screen.getAllByRole("button", { name: /^Case/ })).toHaveLength(16);
     expect(screen.getByRole("button", { name: "Case 5" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByText("Aucun état")).toBeNull();
   });
 
-  it("never applies a state on a blackened step", () => {
-    track(12, 1);
+  it("shows no state while the engine gives none", () => {
+    track(12, 1, [undefined, undefined]);
     expect(screen.getByText("Aucun état")).toBeTruthy();
   });
 });

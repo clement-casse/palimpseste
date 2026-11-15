@@ -61,7 +61,7 @@ export class PlayState {
 }
 
 /** Keeps `value` under `key`, or forgets it for `null`. */
-function store(key: string, value: string | null) {
+export function store(key: string, value: string | null) {
   try {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, value);

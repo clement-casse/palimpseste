@@ -85,6 +85,8 @@ src/
 │   ├── EquipmentSection, Inventory (.svelte)            the equipment in play, worn, counted, edited
 │   ├── equipment.ts            equipmentOf(): the creation equipment, as an equipment in play
 │   ├── play.svelte.ts          PlayState: resources used and equipment in play, per character, in localStorage
+│   ├── RollButton, RollDialog, RollResult, RollJournal (.svelte)   a roll from its die to its total, and the journal
+│   ├── rolls.svelte.ts         RollLog: the rolls of a session, per character, in localStorage
 │   ├── notes.ts, Marks.svelte, NoteList.svelte          waivers and adjustments, numbered and placed
 │   ├── Tile, Characteristics, VoieRanks (.svelte)
 │   └── values.ts               how values, damage and critical ranges are written

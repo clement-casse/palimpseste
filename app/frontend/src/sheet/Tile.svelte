@@ -8,6 +8,7 @@
   import type { ContributionLine, SituationalLine } from "../wasm/palimpseste_wasm";
   import Marks from "./Marks.svelte";
   import type { Note } from "./notes";
+  import RollButton from "./RollButton.svelte";
 
   let {
     label,
@@ -16,6 +17,8 @@
     notes = [],
     contributions,
     situational = [],
+    onroll,
+    rollLabel,
   }: {
     label: string;
     value: string;
@@ -24,6 +27,10 @@
     contributions?: ContributionLine[];
     /** Its modifiers holding only in a situation, in its popover. */
     situational?: SituationalLine[];
+    /** Opens the roll of the value; none for a value not rolled, or a sheet only read. */
+    onroll?: () => void;
+    /** What the roll is, such as `Test de FOR`; the title or the label otherwise. */
+    rollLabel?: string;
   } = $props();
 
   const uid = $props.id();
@@ -45,5 +52,6 @@
     {:else}
       <strong class="text-2xl font-bold text-gray-900 dark:text-white">{value}</strong>
     {/if}
+    {#if onroll}<RollButton label={rollLabel ?? title ?? label} onclick={onroll} />{/if}
   </Card>
 </li>
