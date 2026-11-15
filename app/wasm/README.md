@@ -22,7 +22,7 @@ Stateless functions over plain data (ADR APP-BINDINGS):
 | `emptyDocument(engine)` | `empty_document_js` | a `Document` with no choice made |
 | `catalog(engine)` | `catalog_js` → `catalog()` | the content the engine offers: profils, peuples, voies, every capacité by identifier (`abilities`), weapons, the steps of a level-up or spending, ... with identifiers and French names |
 | `evaluate(document)` | `evaluate_js` → `evaluate()` | a `Sheet`: the status of each creation step and of each level-up or spending (`progression`), characteristics, values with their breakdown, violations (waived or not) placed in their step, unused waivers, and engine-specific details, the offers of each level-up or spending among them |
-| `rollOffer(document, play, roll)` | `roll_offer_js` → `roll_offer()` | a `RollOffer`: what the roll named by a sheet line (`roll`, `attackRoll`) offers the character in play (`Play`: the equipment worn, the COC2 damage taken): its base with its breakdown, the options to pick, the dé bonus to show, the critical range, what each ally adds |
+| `rollOffer(document, play, roll)` | `roll_offer_js` → `roll_offer()` | a `RollOffer`: what the roll named by a sheet line (`roll`, `attackRoll`) offers the character in play (`Play`: the equipment worn, the COC2 damage taken): its base with its breakdown, the options to pick and the dé bonus to show, each saying whether it is put forward (`featured`), the critical range, what each ally adds |
 | `roll(document, play, request)` | `roll_js` → `roll()` | a `RollOutcome`: the dice drawn here from `crypto.getRandomValues`, the die kept, every line of the total, the options left unpicked or set aside |
 
 No Rust object crosses the boundary, so JavaScript never frees memory by
