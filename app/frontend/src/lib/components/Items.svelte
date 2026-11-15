@@ -29,7 +29,11 @@
   }
 
   function typeQuantity(event: Event, index: number) {
-    const quantity = integerOf(event, items[index].quantity, { min: 0, max: U32_MAX, blank: false });
+    const quantity = integerOf(event, items[index].quantity, {
+      min: 0,
+      max: U32_MAX,
+      blank: false,
+    });
     if (typeof quantity === "number") setQuantity(index, quantity);
   }
 
@@ -67,7 +71,11 @@
               onchange={(event) => typeQuantity(event, i)}
             />
           </div>
-          <Button size="xs" color="alternative" onclick={() => onchange(items.filter((_, j) => j !== i))}>
+          <Button
+            size="xs"
+            color="alternative"
+            onclick={() => onchange(items.filter((_, j) => j !== i))}
+          >
             Retirer
           </Button>
         </ListgroupItem>
@@ -82,7 +90,12 @@
       {/each}
     </Select>
     <form class="flex flex-1 gap-2" onsubmit={addOther}>
-      <Input class="min-w-40" aria-label="Autre objet" placeholder="Autre objet" bind:value={other} />
+      <Input
+        class="min-w-40"
+        aria-label="Autre objet"
+        placeholder="Autre objet"
+        bind:value={other}
+      />
       <Button type="submit" disabled={!other.trim()}>Ajouter</Button>
     </form>
   </div>

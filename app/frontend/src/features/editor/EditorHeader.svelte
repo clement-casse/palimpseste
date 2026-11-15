@@ -69,9 +69,15 @@
     onchange={rename}
   />
   <Badge color="gray">{ENGINES[character.engine]}</Badge>
-  <Button size="sm" color="alternative" href={characterSheetPath(character.id)} onclick={follow}>Fiche</Button>
+  <Button size="sm" color="alternative" href={characterSheetPath(character.id)} onclick={follow}
+    >Fiche</Button
+  >
   <Badge
-    color={saver.status === "conflict" || saver.status === "error" ? "red" : saver.status === "saved" ? "green" : "gray"}
+    color={saver.status === "conflict" || saver.status === "error"
+      ? "red"
+      : saver.status === "saved"
+        ? "green"
+        : "gray"}
     title={saver.failure === null ? undefined : detail(saver.failure)}
     class="gap-1"
   >

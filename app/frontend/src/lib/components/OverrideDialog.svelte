@@ -36,7 +36,11 @@
         (Number.isInteger(amount) && amount !== 0 && amount >= I32_MIN && amount <= I32_MAX)),
   );
   const title = $derived(
-    request?.kind === "waiver" ? "Accepter une dérogation" : request ? `Ajuster ${request.label}` : "",
+    request?.kind === "waiver"
+      ? "Accepter une dérogation"
+      : request
+        ? `Ajuster ${request.label}`
+        : "",
   );
 
   // The next request starts from a blank form.
@@ -66,8 +70,7 @@
       {#if request.kind === "waiver"}
         <P>{message(request.violation)}</P>
         <Helper class="text-sm">
-          La règle <code>{request.violation.rule}</code> reste signalée comme acceptée par une
-          dérogation.
+          La règle <code>{request.violation.rule}</code> reste signalée comme acceptée par une dérogation.
         </Helper>
       {:else}
         <Label class="flex flex-col gap-2">

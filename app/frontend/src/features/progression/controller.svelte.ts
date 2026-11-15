@@ -21,7 +21,13 @@ import {
   catalog,
   evaluate,
 } from "$lib/engine";
-import { characterPath, characterProgressionPath, navigate, route, setHash } from "$lib/router.svelte";
+import {
+  characterPath,
+  characterProgressionPath,
+  navigate,
+  route,
+  setHash,
+} from "$lib/router.svelte";
 import { type Draft, clearDraft, loadDraft, saveDraft } from "./drafts";
 import {
   type Difference,

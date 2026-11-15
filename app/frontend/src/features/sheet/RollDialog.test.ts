@@ -91,11 +91,16 @@ describe("rolling from the sheet", () => {
 
     await fireEvent.click(dialog().getByRole("button", { name: "Lancer les DM (critique)" }));
     expect(dialog().getByRole("heading", { name: /^DM : Épée longue/ })).toBeTruthy();
-    expect(dialog().getByRole("checkbox", { name: "Coup critique : DM doublés" })).toHaveProperty("checked", true);
+    expect(dialog().getByRole("checkbox", { name: "Coup critique : DM doublés" })).toHaveProperty(
+      "checked",
+      true,
+    );
     dice(5);
     await fireEvent.click(dialog().getByRole("button", { name: "Lancer les DM" }));
     expect(dialog().getByText("DM critiques")).toBeTruthy();
-    expect(dialog().getByRole("list", { name: "Calcul" }).textContent).toContain("Critique : DM doublés");
+    expect(dialog().getByRole("list", { name: "Calcul" }).textContent).toContain(
+      "Critique : DM doublés",
+    );
     expect(Number(total()) % 2).toBe(0);
   });
 

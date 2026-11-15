@@ -103,7 +103,11 @@
       onchange={play ? (damage) => play.set(HEALTH, damage, health) : undefined}
     />
     {#if play && characterId !== undefined && play.used(HEALTH, health) >= health}
-      <a class="text-sm underline" href={`${characterPath(characterId)}#progression`} onclick={follow}>
+      <a
+        class="text-sm underline"
+        href={`${characterPath(characterId)}#progression`}
+        onclick={follow}
+      >
         Séquelle subie ? L’inscrire
       </a>
     {/if}
@@ -121,7 +125,6 @@
   </div>
 
   <div class="grid gap-4 lg:col-span-5">
-
     <Block title="Combat" notes={marksAt(notes, ...steps("secondary"))}>
       <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
         {#each model.combat as tile (tile.id)}
@@ -141,18 +144,44 @@
       <SituationalList {catalog} entries={model.situational} />
       <Table class="mt-3">
         <TableHead>
-          <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Att.</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
+          <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2"
+            >Att.</TableHeadCell
+          ><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2"
+            >Critique</TableHeadCell
+          >
         </TableHead>
         <TableBody>
           {#each model.weapons as w (w.weapon.id)}
             <TableBodyRow>
-              <TableHeadCell scope="row" class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">{w.weapon.name}{#if w.quantity > 1}{` ×${w.quantity}`}{/if}</TableHeadCell>
-              <TableBodyCell title={w.attack?.label} class="px-2 py-2">{shown(w.attack, true)}{#if onroll && w.damage?.attackRoll}{@const attackRoll = w.damage.attackRoll} <RollButton label="attaque, {w.weapon.name}" onclick={() => onroll(attackRoll)} />{/if}</TableBodyCell>
+              <TableHeadCell
+                scope="row"
+                class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white"
+                >{w.weapon.name}{#if w.quantity > 1}{` ×${w.quantity}`}{/if}</TableHeadCell
+              >
+              <TableBodyCell title={w.attack?.label} class="px-2 py-2"
+                >{shown(w.attack, true)}{#if onroll && w.damage?.attackRoll}{@const attackRoll =
+                    w.damage.attackRoll}
+                  <RollButton
+                    label="attaque, {w.weapon.name}"
+                    onclick={() => onroll(attackRoll)}
+                  />{/if}</TableBodyCell
+              >
               <TableBodyCell class="px-2 py-2">
-                {damage(w.damage)}{#if w.damage}<Marks notes={valueMarks(w.damage.id)} />{/if}{#if onroll && w.damage?.roll}{@const dmRoll = w.damage.roll} <RollButton label="DM, {w.weapon.name}" onclick={() => onroll(dmRoll)} />{/if}{#each w.damage?.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}
+                {damage(w.damage)}{#if w.damage}<Marks
+                    notes={valueMarks(w.damage.id)}
+                  />{/if}{#if onroll && w.damage?.roll}{@const dmRoll = w.damage.roll}
+                  <RollButton
+                    label="DM, {w.weapon.name}"
+                    onclick={() => onroll(dmRoll)}
+                  />{/if}{#each w.damage?.situational ?? [] as s, k (k)}<span
+                    class="block text-xs text-gray-500 dark:text-gray-400"
+                    >{situationalText(s)}</span
+                  >{/each}
               </TableBodyCell>
               <TableBodyCell class="px-2 py-2">
-                {range(w.range)}{#if w.bonus?.total !== undefined}{` · ${signed(w.bonus.total)}`}{/if}
+                {range(
+                  w.range,
+                )}{#if w.bonus?.total !== undefined}{` · ${signed(w.bonus.total)}`}{/if}
               </TableBodyCell>
             </TableBodyRow>
           {/each}
@@ -174,7 +203,11 @@
       <p class="mt-2 text-sm">
         XP restante : {model.experience ?? "—"}
         {#if play && characterId !== undefined}
-          · <a class="underline" href={`${characterPath(characterId)}#progression`} onclick={follow}>
+          · <a
+            class="underline"
+            href={`${characterPath(characterId)}#progression`}
+            onclick={follow}
+          >
             Fin de séance : inscrire l’XP gagnée
           </a>
         {/if}
@@ -198,7 +231,9 @@
         {/if}
       {/each}
       {#if model.sequels.length > 0}
-        <Heading tag="h4" class="text-base text-gray-500 dark:text-gray-400">Séquelles subies</Heading>
+        <Heading tag="h4" class="text-base text-gray-500 dark:text-gray-400"
+          >Séquelles subies</Heading
+        >
         <ul class="space-y-1">
           {#each model.sequels as sequel (sequel.id)}
             <li>{sequel.name}</li>
@@ -221,12 +256,17 @@
       {#snippet worn(editing: boolean)}
         {#if editing}
           <fieldset class="flex flex-col gap-2">
-            <legend class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Protections</legend>
+            <legend class="mb-2 text-sm font-medium text-gray-900 dark:text-white"
+              >Protections</legend
+            >
             {#each catalog.protections as protection (protection.id)}
               <Checkbox
                 checked={equipment.protections?.includes(protection.id) ?? false}
                 onchange={(e) =>
-                  wear(protection.id, e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked)}
+                  wear(
+                    protection.id,
+                    e.currentTarget instanceof HTMLInputElement && e.currentTarget.checked,
+                  )}
               >
                 {protection.name}
               </Checkbox>

@@ -17,7 +17,9 @@
           <span>
             <strong>{note.kind === "waiver" ? "Dérogation" : "Ajustement"}</strong>
             {note.text}
-            <span class="block text-sm text-gray-500 dark:text-gray-400">{note.author} : {note.reason}</span>
+            <span class="block text-sm text-gray-500 dark:text-gray-400"
+              >{note.author} : {note.reason}</span
+            >
           </span>
         </li>
       {/each}

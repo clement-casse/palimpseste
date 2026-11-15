@@ -19,37 +19,37 @@ export default defineConfig({
     svelte(),
     svelteTesting(),
     !testing &&
-    VitePWA({
-      // A new version waits for the user (`src/app/pwa.svelte.ts`) rather than
-      // replacing the app mid-edit; `main.ts` registers the service worker.
-      registerType: "prompt",
-      injectRegister: false,
-      includeAssets: ["apple-touch-icon.png"],
-      manifest: {
-        id: "/",
-        scope: "/",
-        name: "Palimpseste",
-        short_name: "Palimpseste",
-        description: "Personnages pour Chroniques Oubliées",
-        lang: "fr",
-        start_url: "/",
-        display: "standalone",
-        background_color: "#2b2620",
-        theme_color: "#2b2620",
-        icons: [
-          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "icon-512.png", sizes: "512x512", type: "image/png" },
-          { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-        ],
-      },
-      workbox: {
-        // The engines ship as a .wasm file: precache it with the app.
-        globPatterns: ["**/*.{js,css,html,wasm,png}"],
-        // The API is never answered with the app shell.
-        navigateFallbackDenylist: [/^\/api\//],
-        cleanupOutdatedCaches: true,
-      },
-    }),
+      VitePWA({
+        // A new version waits for the user (`src/app/pwa.svelte.ts`) rather than
+        // replacing the app mid-edit; `main.ts` registers the service worker.
+        registerType: "prompt",
+        injectRegister: false,
+        includeAssets: ["apple-touch-icon.png"],
+        manifest: {
+          id: "/",
+          scope: "/",
+          name: "Palimpseste",
+          short_name: "Palimpseste",
+          description: "Personnages pour Chroniques Oubliées",
+          lang: "fr",
+          start_url: "/",
+          display: "standalone",
+          background_color: "#2b2620",
+          theme_color: "#2b2620",
+          icons: [
+            { src: "icon-192.png", sizes: "192x192", type: "image/png" },
+            { src: "icon-512.png", sizes: "512x512", type: "image/png" },
+            { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          ],
+        },
+        workbox: {
+          // The engines ship as a .wasm file: precache it with the app.
+          globPatterns: ["**/*.{js,css,html,wasm,png}"],
+          // The API is never answered with the app shell.
+          navigateFallbackDenylist: [/^\/api\//],
+          cleanupOutdatedCaches: true,
+        },
+      }),
   ],
   // `$lib` is `src/lib`, what the whole app shares (ADR FE-LAYOUT); the same
   // alias is in `tsconfig.json`.

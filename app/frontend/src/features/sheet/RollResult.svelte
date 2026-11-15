@@ -16,12 +16,20 @@
 <div class="flex flex-col gap-3">
   <p class="flex flex-wrap items-center gap-2" aria-label="Dés lancés">
     {#each outcome.dice as die, i (i)}
-      <Badge large color={die.kept ? "primary" : "gray"} class={die.kept ? "font-bold" : "line-through"}>
+      <Badge
+        large
+        color={die.kept ? "primary" : "gray"}
+        class={die.kept ? "font-bold" : "line-through"}
+      >
         d{die.faces} : {die.face}{#if !die.kept}<span class="sr-only"> (écarté)</span>{/if}
       </Badge>
     {/each}
-    {#if outcome.mode === "bonus"}<span class="text-sm text-gray-500 dark:text-gray-400">dé bonus : le meilleur est gardé</span>{/if}
-    {#if outcome.mode === "malus"}<span class="text-sm text-gray-500 dark:text-gray-400">dé malus : le moins bon est gardé</span>{/if}
+    {#if outcome.mode === "bonus"}<span class="text-sm text-gray-500 dark:text-gray-400"
+        >dé bonus : le meilleur est gardé</span
+      >{/if}
+    {#if outcome.mode === "malus"}<span class="text-sm text-gray-500 dark:text-gray-400"
+        >dé malus : le moins bon est gardé</span
+      >{/if}
   </p>
   {#if outcome.natural || outcome.critical}
     <p class="flex flex-wrap gap-2">
@@ -40,15 +48,21 @@
         <span>
           {line.kind === "dice" ? `Dés (${line.label})` : line.label}
           {#if line.kind !== "dice" && line.dice.length > 0}
-            <span class="text-gray-500 dark:text-gray-400">({line.dice.map((d) => `d${d.faces} : ${d.face}`).join(", ")})</span>
+            <span class="text-gray-500 dark:text-gray-400"
+              >({line.dice.map((d) => `d${d.faces} : ${d.face}`).join(", ")})</span
+            >
           {/if}
-          {#if line.origin}<span class="block text-xs text-gray-500 dark:text-gray-400">{line.origin}</span>{/if}
+          {#if line.origin}<span class="block text-xs text-gray-500 dark:text-gray-400"
+              >{line.origin}</span
+            >{/if}
         </span>
         <span class="font-semibold tabular-nums">{signed(line.amount)}</span>
       </li>
     {/each}
   </ul>
-  <p class="flex items-baseline justify-between gap-3 border-t-2 border-primary-700 pt-2 dark:border-primary-400">
+  <p
+    class="flex items-baseline justify-between gap-3 border-t-2 border-primary-700 pt-2 dark:border-primary-400"
+  >
     <span class="font-bold">Total</span>
     <output class="text-3xl font-bold tabular-nums" aria-label="Total">{outcome.total}</output>
   </p>
@@ -67,7 +81,10 @@
       <p class="font-semibold">Peut aussi s’appliquer, à annoncer au MJ</p>
       <ul class="list-inside list-disc">
         {#each outcome.unpicked as option, i (i)}
-          <li>{optionText(option)} <span class="text-gray-500 dark:text-gray-400">— {option.origin}</span></li>
+          <li>
+            {optionText(option)}
+            <span class="text-gray-500 dark:text-gray-400">— {option.origin}</span>
+          </li>
         {/each}
       </ul>
     </div>

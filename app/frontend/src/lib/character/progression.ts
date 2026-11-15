@@ -75,7 +75,8 @@ export function truncated(document: Document, count: number): Document {
 /** A copy of `document` without its entry at `index`. */
 export function without(document: Document, index: number): Document {
   const kept = copy(document);
-  if (kept.engine === "fantasy") kept.levelUps = (kept.levelUps ?? []).filter((_, i) => i !== index);
+  if (kept.engine === "fantasy")
+    kept.levelUps = (kept.levelUps ?? []).filter((_, i) => i !== index);
   else kept.xpSpendings = (kept.xpSpendings ?? []).filter((_, i) => i !== index);
   return kept;
 }
@@ -121,7 +122,8 @@ export function differences(before: Sheet, after: Sheet): Difference[] {
   }
   for (const line of after.values) {
     const old = before.values.find((v) => v.id === line.id);
-    if (old?.total !== line.total) found.push({ label: line.label, before: old?.total, after: line.total });
+    if (old?.total !== line.total)
+      found.push({ label: line.label, before: old?.total, after: line.total });
   }
   return found;
 }

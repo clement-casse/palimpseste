@@ -35,7 +35,11 @@
 </script>
 
 {#each later as h (h.ability)}
-  <a href={characterProgressionPath(characterId, h.progression ?? 0)} onclick={follow} title={abilityLabel(catalog, h.ability)}>
+  <a
+    href={characterProgressionPath(characterId, h.progression ?? 0)}
+    onclick={follow}
+    title={abilityLabel(catalog, h.ability)}
+  >
     <Badge color="gray">rang {rankOf(h.ability)} · {at(h.progression ?? 0)}</Badge>
   </a>
 {/each}

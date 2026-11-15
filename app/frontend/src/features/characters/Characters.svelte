@@ -13,7 +13,10 @@
   let { user }: { user: User } = $props();
 
   const characters = loadCharacters();
-  const engines = Object.entries(ENGINES).map(([value, name]) => ({ value: value as Engine, name }));
+  const engines = Object.entries(ENGINES).map(([value, name]) => ({
+    value: value as Engine,
+    name,
+  }));
   let name = $state("");
   let engine = $state<Engine>("fantasy");
   let failure = $state<unknown>(null);
@@ -32,7 +35,9 @@
   <Loader load={characters}>
     {#snippet children(characters)}
       {#if characters.length === 0}
-        <P class="text-gray-500 dark:text-gray-400">Aucun personnage pour l'instant : créez le premier.</P>
+        <P class="text-gray-500 dark:text-gray-400"
+          >Aucun personnage pour l'instant : créez le premier.</P
+        >
       {:else}
         <Listgroup class="flex-col">
           {#each characters as character (character.id)}

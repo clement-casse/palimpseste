@@ -10,12 +10,7 @@
   import { signed } from "../character/edits";
   import Marks from "./Marks.svelte";
   import { type Note, marksAt } from "../character/notes";
-  import type {
-    AbilityEffectEntry,
-    HeldAbility,
-    TestBonusLine,
-    WrittenEffects,
-  } from "../engine";
+  import type { AbilityEffectEntry, HeldAbility, TestBonusLine, WrittenEffects } from "../engine";
   import { type Abilities, bonusDieLabel, scopeLabel } from "../character/progression";
 
   let {
@@ -67,13 +62,13 @@
       {@const given = bonuses(effect)}
       {#if effect.choice && held && !held.choice}
         <li class="text-gray-900 dark:text-white">
-          {@render text(effect, i)} · <strong class="text-primary-700 dark:text-primary-400">à choisir</strong>
+          {@render text(effect, i)} ·
+          <strong class="text-primary-700 dark:text-primary-400">à choisir</strong>
         </li>
       {:else if effect.computed}
         <li class="text-gray-400 dark:text-gray-500" title="Déjà compté dans la fiche">
-          {@render text(effect, i)}{#if effect.choice && held?.choice} · choisi : {held.choice}{/if}<span
-            class="sr-only"
-          > (déjà compté dans la fiche)</span>
+          {@render text(effect, i)}{#if effect.choice && held?.choice}
+            · choisi : {held.choice}{/if}<span class="sr-only"> (déjà compté dans la fiche)</span>
         </li>
       {:else if given.length > 0}
         {#each given as line (line.value.id)}
@@ -88,7 +83,9 @@
         {/each}
       {:else if effect.bonus?.kind === "die" && held?.bonusDie}
         <li class="text-gray-900 dark:text-white">
-          dé bonus : {bonusDieLabel(catalog, held.bonusDie, held.speciality)}{characteristics(held.bonusDie.characteristics)}
+          dé bonus : {bonusDieLabel(catalog, held.bonusDie, held.speciality)}{characteristics(
+            held.bonusDie.characteristics,
+          )}
         </li>
       {:else}
         <li class="text-gray-900 dark:text-white">{@render text(effect, i)}</li>

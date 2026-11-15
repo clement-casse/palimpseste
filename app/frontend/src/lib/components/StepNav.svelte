@@ -39,7 +39,13 @@
           <Badge color="red" title="Règles enfreintes">{step.deviations}</Badge>
         {/if}
         {#if step.incomplete === 0 && step.deviations === 0}
-          <span title="Terminé"><CheckOutline size="sm" class="text-green-600 dark:text-green-500" ariaLabel="Terminé" /></span>
+          <span title="Terminé"
+            ><CheckOutline
+              size="sm"
+              class="text-green-600 dark:text-green-500"
+              ariaLabel="Terminé"
+            /></span
+          >
         {/if}
       </ListgroupItem>
     {/each}

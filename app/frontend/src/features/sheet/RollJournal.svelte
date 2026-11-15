@@ -16,7 +16,8 @@
 <Block title="Journal des jets">
   {#if log.entries.length === 0}
     <p class="text-sm text-gray-500 dark:text-gray-400">
-      Aucun jet pour l’instant : le dé à côté d’une caractéristique, d’une attaque ou d’une arme en lance un.
+      Aucun jet pour l’instant : le dé à côté d’une caractéristique, d’une attaque ou d’une arme en
+      lance un.
     </p>
   {:else}
     <Accordion flush>
@@ -26,14 +27,21 @@
           {#snippet header()}
             <span class="flex w-full items-baseline justify-between gap-3 pe-3">
               <span>{entry.outcome.name}</span>
-              <span class="tabular-nums"><strong>{entry.outcome.total}</strong> · {time(entry.at)}</span>
+              <span class="tabular-nums"
+                ><strong>{entry.outcome.total}</strong> · {time(entry.at)}</span
+              >
             </span>
           {/snippet}
           <RollResult outcome={entry.outcome} />
         </AccordionItem>
       {/each}
     </Accordion>
-    <Button color="alternative" size="sm" class="self-start print:hidden" onclick={() => log.clear()}>
+    <Button
+      color="alternative"
+      size="sm"
+      class="self-start print:hidden"
+      onclick={() => log.clear()}
+    >
       Vider le journal
     </Button>
   {/if}

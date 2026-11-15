@@ -50,7 +50,10 @@ export class RollLog {
 
 function isEntry(kept: unknown): kept is RollEntry {
   if (typeof kept !== "object" || kept === null) return false;
-  const { at, outcome } = kept as { at?: unknown; outcome?: Partial<Record<keyof RollOutcome, unknown>> | null };
+  const { at, outcome } = kept as {
+    at?: unknown;
+    outcome?: Partial<Record<keyof RollOutcome, unknown>> | null;
+  };
   return (
     typeof at === "number" &&
     typeof outcome === "object" &&

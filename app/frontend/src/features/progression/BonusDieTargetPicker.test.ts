@@ -12,7 +12,9 @@ import BonusDieTargetPicker from "./BonusDieTargetPicker.svelte";
 
 describe("the capacité a dé bonus goes to", () => {
   it("offers the ranks of the voie, the others out of the rules, and records the choice", async () => {
-    const choices = emptyDocument("contemporain") as ContemporainDocument & { engine: "contemporain" };
+    const choices = emptyDocument("contemporain") as ContemporainDocument & {
+      engine: "contemporain";
+    };
     choices.voies = [{ id: "coc.crime", ranks: [1, 2, 3, 4, 5] }];
     const { details } = evaluate(choices);
     if (details.engine !== "contemporain") throw new Error("contemporain details expected");

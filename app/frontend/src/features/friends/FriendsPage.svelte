@@ -27,7 +27,9 @@
           <Listgroup class="flex-col">
             {#each friends as friend (friend.id)}
               <ListgroupItem class="flex-col items-start gap-1 py-3">
-                <A href={friendPath(friend.id)} onclick={follow} class="font-semibold">{friend.nickname}</A>
+                <A href={friendPath(friend.id)} onclick={follow} class="font-semibold"
+                  >{friend.nickname}</A
+                >
                 {#if friend.profile}
                   <span class="w-full truncate text-sm text-gray-500 dark:text-gray-400">
                     {friend.profile.split("\n")[0]}
