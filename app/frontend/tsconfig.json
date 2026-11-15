@@ -5,6 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": ["svelte", "vite/client", "vite-plugin-pwa/client"],
+    "paths": { "$lib": ["./src/lib"], "$lib/*": ["./src/lib/*"] },
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { loadEnginesSync } from "../lib/engine";
+import { loadEnginesSync } from "$lib/engine";
 
 loadEnginesSync(readFileSync(join(import.meta.dirname, "../wasm/palimpseste_wasm_bg.wasm")));
 
