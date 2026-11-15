@@ -76,6 +76,9 @@ out-of-scope lists of [AGENTS.md](AGENTS.md)); none is scheduled.
   on
 - [x] PWA: rolls from the sheet, with every term of the total, what may
   still apply recalled for the Game Master, and a journal on the device
+- [x] PWA: the roll dialog puts forward the bonuses of the characteristic
+  rolled, named or usual (D-60), and folds the others away with the help
+  and the Game Master's modifier
 - [x] PWA: installable, with a theme per device, and end-to-end tests
 - [x] PWA: sources laid out as shell, shared library and features, each
   page's state and data apart from its markup, linted and formatted
@@ -309,7 +312,8 @@ entry prepared as a draft on the device and saved when validated. Its
 sheet (`/characters/{id}/sheet`) is for play: each capacité's effects,
 situational modifiers, resources counted and equipment in play kept on the
 device, the screen kept on, and a die beside each characteristic, attack
-and weapon to roll it: the dialog shows what the engine offers, the dice
+and weapon to roll it: the dialog shows what the engine offers, the
+bonuses of the characteristic rolled first, the dice
 drawn and every term of the total, and the rolls stay in a journal on the
 device. Friends are made through invitation links, and
 read each other's sheets. The theme is chosen per device. The rules run

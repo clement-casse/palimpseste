@@ -75,7 +75,10 @@ weapon (`cof.damage.epee-longue.one-handed`), so `Value::id` is not
 (D-50).** A capacité's permanent bonus to the character's own tests is a
 `TestBonus`, one per amount the capacité gives, numbered within it, with
 the characteristics its catalogue entry names (`characteristics()`, empty
-when it names none) and the tests it covers as a scope, a few French
+when it names none) or, when it names none, those usually tested for its
+scope (`usual_characteristics()`, D-60: AGI and CHA for Discrétion, every
+characteristic for Éclectique and Diversité), the dé bonus likewise, and
+the tests it covers as a scope, a few French
 words of our own (`scope()`: `discrétion, déguisement`), never the
 catalogue's text. Each bonus is a `Value::TestBonus`
 (`coc.test-bonus.<voie>.<rank>.<n>`, `cof.test-bonus...`) with the
@@ -243,7 +246,11 @@ whether it starts picked), the notes and dé bonus to show, the critical
 range of an attack, and what each ally helping adds. The engine does not
 know the circumstances of a roll, so nothing circumstantial is applied by
 itself: a test bonus (ADR ENG-TEST-BONUSES) is offered to the tests of
-the characteristics it names, or to all when it names none, unpicked; a
+the characteristics it names, or to all when it names none, unpicked, and put forward (`Offered::featured`) on the tests
+of the characteristics it names or usually tested for it (D-60), the
+others offered all the same; the dé bonus likewise
+(`RollOffer::featured_dice`); every other option aims at the roll and is
+put forward, the COC2 malus of the state of health where it starts picked; a
 COF2 situational modifier (ADR ENG-SITUATIONAL) is offered to its target
 the same way, while COC2's, on the targets it rolls, are notes without an
 amount, shown and never picked.
