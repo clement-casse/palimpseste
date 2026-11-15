@@ -5,6 +5,7 @@
 // draft lasts as long as the page.
 
 import { type Document, attempt, evaluate } from "../lib/engine";
+import { KEYS, readJson, remove, writeJson } from "../lib/storage";
 
 export type Draft = {
   /** The level (COF2) or rank (COC2) of the entry prepared. */
@@ -16,8 +17,6 @@ export type Draft = {
   /** The whole document, the entry prepared included. */
   document: Document;
 };
-
-const key = (id: number) => `palimpseste.draft.${id}`;
 
 /**
  * Whether `kept` is a draft the engines read: what storage holds may be
@@ -35,30 +34,16 @@ function isDraft(kept: unknown): kept is Draft {
 
 /** The draft kept for character `id`; one that cannot be read is forgotten. */
 export function loadDraft(id: number): Draft | null {
-  try {
-    const stored = localStorage.getItem(key(id));
-    if (!stored) return null;
-    const kept: unknown = JSON.parse(stored);
-    if (isDraft(kept)) return kept;
-  } catch {
-    // Storage blocked, or not JSON: no draft.
-  }
+  const kept = readJson(KEYS.draft(id));
+  if (isDraft(kept)) return kept;
   clearDraft(id);
   return null;
 }
 
 export function saveDraft(id: number, draft: Draft) {
-  try {
-    localStorage.setItem(key(id), JSON.stringify(draft));
-  } catch {
-    // Storage blocked or full: the draft lives as long as the page.
-  }
+  writeJson(KEYS.draft(id), draft);
 }
 
 export function clearDraft(id: number) {
-  try {
-    localStorage.removeItem(key(id));
-  } catch {
-    // Nothing kept.
-  }
+  remove(KEYS.draft(id));
 }

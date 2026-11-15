@@ -4,7 +4,7 @@
 // two sheets of one character open at once keep each other's rolls.
 
 import type { RollOutcome } from "../lib/engine";
-import { store } from "./play.svelte";
+import { KEYS, readJson, remove, writeJson } from "../lib/storage";
 
 /** A roll made, and when. */
 export interface RollEntry {
@@ -22,7 +22,7 @@ export class RollLog {
   #entries = $state.raw<RollEntry[]>([]);
 
   constructor(characterId: number) {
-    this.#key = `palimpseste.rolls.${characterId}`;
+    this.#key = KEYS.rolls(characterId);
     this.#entries = read(this.#key);
   }
 
@@ -38,13 +38,13 @@ export class RollLog {
     const kept = read(this.#key);
     const before = kept.length > 0 ? kept : this.#entries;
     this.#entries = [{ at: Date.now(), outcome }, ...before].slice(0, KEPT);
-    store(this.#key, JSON.stringify(this.#entries));
+    writeJson(this.#key, this.#entries);
   }
 
   /** Forgets every roll. */
   clear() {
     this.#entries = [];
-    store(this.#key, null);
+    remove(this.#key);
   }
 }
 
@@ -63,10 +63,6 @@ function isEntry(kept: unknown): kept is RollEntry {
 
 /** What was kept for `key`, anything unreadable dropped. */
 function read(key: string): RollEntry[] {
-  try {
-    const kept: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
-    return Array.isArray(kept) ? kept.filter(isEntry).slice(0, KEPT) : [];
-  } catch {
-    return [];
-  }
+  const kept = readJson(key);
+  return Array.isArray(kept) ? kept.filter(isEntry).slice(0, KEPT) : [];
 }
