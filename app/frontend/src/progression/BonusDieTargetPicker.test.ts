@@ -7,7 +7,7 @@ import {
   catalog,
   emptyDocument,
   evaluate,
-} from "../wasm/palimpseste_wasm";
+} from "../lib/engine";
 import BonusDieTargetPicker from "./BonusDieTargetPicker.svelte";
 
 describe("the capacité a dé bonus goes to", () => {

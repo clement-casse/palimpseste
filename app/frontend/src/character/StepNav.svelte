@@ -4,7 +4,7 @@
   import { Badge, Listgroup, ListgroupItem } from "flowbite-svelte";
   import { CheckOutline } from "flowbite-svelte-icons";
 
-  import type { StepStatus } from "../wasm/palimpseste_wasm";
+  import type { StepStatus } from "../lib/engine";
 
   let {
     steps,

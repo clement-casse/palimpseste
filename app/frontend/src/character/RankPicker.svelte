@@ -5,7 +5,7 @@
 
   import AbilityEffects from "../progression/AbilityEffects.svelte";
   import type { Abilities } from "../progression/progression";
-  import type { WrittenEffects } from "../wasm/palimpseste_wasm";
+  import type { WrittenEffects } from "../lib/engine";
 
   let {
     catalog,

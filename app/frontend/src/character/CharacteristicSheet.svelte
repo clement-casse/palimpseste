@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Accordion, AccordionItem, Button } from "flowbite-svelte";
 
-  import type { CharacteristicLine, Target } from "../wasm/palimpseste_wasm";
+  import type { CharacteristicLine, Target } from "../lib/engine";
   import Breakdown from "./Breakdown.svelte";
   import BreakdownPopover from "./BreakdownPopover.svelte";
   import { signed } from "./edits";

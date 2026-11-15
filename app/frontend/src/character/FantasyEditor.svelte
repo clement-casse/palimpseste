@@ -29,7 +29,7 @@
     FantasyDocument,
     ItemEntry,
     WrittenEffects,
-  } from "../wasm/palimpseste_wasm";
+  } from "../lib/engine";
   import {
     CHARACTERISTICS,
     I32_MAX,

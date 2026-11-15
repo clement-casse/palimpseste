@@ -3,7 +3,7 @@
   // take it back. A waiver that no longer accepts anything is flagged.
   import { Button, Heading, Listgroup, ListgroupItem } from "flowbite-svelte";
 
-  import type { AdjustmentEntry, Sheet, WaiverEntry } from "../wasm/palimpseste_wasm";
+  import type { AdjustmentEntry, Sheet, WaiverEntry } from "../lib/engine";
   import { sameSubject, signed } from "./edits";
 
   let {

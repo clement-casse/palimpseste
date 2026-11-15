@@ -3,7 +3,7 @@
 // latest first. The journal is read again before each roll is added, so
 // two sheets of one character open at once keep each other's rolls.
 
-import type { RollOutcome } from "../wasm/palimpseste_wasm";
+import type { RollOutcome } from "../lib/engine";
 import { store } from "./play.svelte";
 
 /** A roll made, and when. */

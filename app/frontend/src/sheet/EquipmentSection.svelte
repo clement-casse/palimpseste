@@ -9,7 +9,7 @@
 
   import Items from "../character/Items.svelte";
   import { message } from "../messages";
-  import type { ItemEntry, ReportedViolation } from "../wasm/palimpseste_wasm";
+  import type { ItemEntry, ReportedViolation } from "../lib/engine";
   import Block from "./Block.svelte";
   import Inventory from "./Inventory.svelte";
   import type { Note } from "./notes";

@@ -9,7 +9,7 @@ import type {
   Document,
   ReportedViolation,
   Sheet,
-} from "../wasm/palimpseste_wasm";
+} from "../lib/engine";
 
 /** Where the sheet shows the mark of a note. */
 export type Place =

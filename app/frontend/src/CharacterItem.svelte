@@ -4,17 +4,14 @@
   import type { Character } from "./api";
   import { ENGINES, unsettledAll } from "./engines";
   import { characterPath, characterSheetPath, follow } from "./router.svelte";
-  import { evaluate } from "./wasm/palimpseste_wasm";
+  import { attempt, evaluate } from "./lib/engine";
 
   let { character }: { character: Character } = $props();
 
   // Computed in the browser by the engine compiled to WebAssembly.
   const evaluation = $derived.by(() => {
-    try {
-      return evaluate(character.document);
-    } catch {
-      return null;
-    }
+    const result = attempt(() => evaluate(character.document));
+    return result.ok ? result.value : null;
   });
   const open = $derived(evaluation ? unsettledAll(evaluation) : null);
   /** Where the character stands after creation: its level, or the XP left. */

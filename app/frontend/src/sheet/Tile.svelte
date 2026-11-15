@@ -5,7 +5,7 @@
   import { Button, Card } from "flowbite-svelte";
 
   import BreakdownPopover from "../character/BreakdownPopover.svelte";
-  import type { ContributionLine, SituationalLine } from "../wasm/palimpseste_wasm";
+  import type { ContributionLine, SituationalLine } from "../lib/engine";
   import Marks from "./Marks.svelte";
   import type { Note } from "./notes";
   import RollButton from "./RollButton.svelte";

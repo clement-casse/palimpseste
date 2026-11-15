@@ -4,7 +4,7 @@
   import { Input, Label } from "flowbite-svelte";
 
   import { valueOf } from "../character/edits";
-  import type { SpecialityEntry } from "../wasm/palimpseste_wasm";
+  import type { SpecialityEntry } from "../lib/engine";
   import Ability from "./Ability.svelte";
   import type { Abilities } from "./progression";
 

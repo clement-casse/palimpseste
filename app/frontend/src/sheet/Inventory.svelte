@@ -5,7 +5,7 @@
   import { Button } from "flowbite-svelte";
   import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
 
-  import type { ItemEntry } from "../wasm/palimpseste_wasm";
+  import type { ItemEntry } from "../lib/engine";
 
   let {
     items,

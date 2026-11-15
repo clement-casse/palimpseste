@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/svelte";
 import { expect, test } from "vitest";
 
 import CharacteristicSheet from "../character/CharacteristicSheet.svelte";
-import type { CharacteristicLine } from "../wasm/palimpseste_wasm";
+import type { CharacteristicLine } from "../lib/engine";
 import Characteristics from "./Characteristics.svelte";
 
 // The popover opens on a debounced timer, after the page is laid out: give it

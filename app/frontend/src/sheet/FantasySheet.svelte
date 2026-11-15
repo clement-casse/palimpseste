@@ -21,7 +21,7 @@
     FantasyEquipment,
     Sheet,
     ValueLine,
-  } from "../wasm/palimpseste_wasm";
+  } from "../lib/engine";
   import Block from "./Block.svelte";
   import Characteristics from "./Characteristics.svelte";
   import Counter from "./Counter.svelte";

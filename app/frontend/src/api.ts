@@ -3,7 +3,7 @@
 // session travels in an HttpOnly cookie, sent by every same-origin request.
 
 import { signedOut } from "./session.svelte";
-import type { Document, Engine } from "./wasm/palimpseste_wasm";
+import type { Document, Engine } from "./lib/engine";
 
 /** The signed-in user: their nickname and profile are public. */
 export type User = { nickname: string; profile: string };
