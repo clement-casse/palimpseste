@@ -42,11 +42,3 @@ export function optionText(option: RollOptionLine): string {
   const amount = option.dice ? `+${option.dice}` : signed(option.amount ?? 0);
   return `${amount} ${option.label}`;
 }
-
-/** The identifiers of the weapons that values `prefix.<weapon>…` are about, in order. */
-export function weaponSlugs(values: ValueLine[], prefix: string): string[] {
-  const slugs = values
-    .filter((line) => line.id.startsWith(`${prefix}.`))
-    .map((line) => line.id.slice(prefix.length + 1).split(".")[0]);
-  return [...new Set(slugs)];
-}
