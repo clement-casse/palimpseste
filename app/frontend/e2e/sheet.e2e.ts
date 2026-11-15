@@ -64,6 +64,8 @@ test("a test rolled from the sheet shows its calculation and stays in the journa
   // Réflexes éclair's bonus holds for dodging only: offered, not picked.
   const dodge = dialog.getByRole("checkbox", { name: /\+3 esquiver/ });
   await expect(dodge).not.toBeChecked();
+  // The help waits in the folded section.
+  await dialog.getByRole("button", { name: /^Autres bonus et modificateurs/ }).click();
   await dialog.getByRole("button", { name: "Un allié de plus" }).click();
   await dialog.getByRole("button", { name: "Lancer le dé" }).click();
 

@@ -2,22 +2,25 @@
   // One roll, from its die to its total (ADR FE-ROLLS). The state and what
   // is done with it are `RollController`'s: this component only shows them.
   import {
+    Accordion,
+    AccordionItem,
     Alert,
     Button,
+    ButtonToggle,
+    ButtonToggleGroup,
     Checkbox,
     Heading,
     Helper,
     Input,
     Label,
     Modal,
-    Radio,
   } from "flowbite-svelte";
   import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
   import { untrack } from "svelte";
 
   import { I32_MAX, I32_MIN, integerOf, signed } from "$lib/character/edits";
-  import type { Document, Mode, Play, RollOutcome } from "$lib/engine";
-  import { RollController } from "./rollController.svelte";
+  import type { Document, Mode, Play, RollBonusDie, RollOutcome } from "$lib/engine";
+  import { type Placed, RollController } from "./rollController.svelte";
   import RollResult from "./RollResult.svelte";
   import { optionText } from "$lib/format";
 
@@ -53,11 +56,41 @@
   const rolling = untrack(() => new RollController(choices, play, roll, critical, onrolled));
   const offer = rolling.offer;
 
+  // A second tap on the mode chosen would leave none: the group is redrawn.
+  let redraws = $state(0);
+  function choose(selected: string | string[] | null) {
+    const mode = MODES.find((option) => option.mode === selected);
+    if (mode) rolling.mode = mode.mode;
+    else redraws += 1;
+  }
+
   function launch(event: SubmitEvent) {
     event.preventDefault();
     rolling.launch();
   }
 </script>
+
+{#snippet options(placed: Placed[])}
+  {#each placed as { option, index } (index)}
+    <Checkbox bind:checked={rolling.picked[index]}>
+      <span>
+        {optionText(option)}
+        <span class="block text-xs text-gray-500 dark:text-gray-400">{option.origin}</span>
+      </span>
+    </Checkbox>
+  {/each}
+{/snippet}
+
+{#snippet dice(shown: RollBonusDie[])}
+  <ul class="text-sm" aria-label="Dés bonus des capacités">
+    {#each shown as die, i (i)}
+      <li>
+        Dé bonus : {die.scope}
+        <span class="text-gray-500 dark:text-gray-400">— {die.origin}</span>
+      </li>
+    {/each}
+  </ul>
+{/snippet}
 
 <Modal open title={offer?.name ?? "Jet"} size="md" oncancel={onclose}>
   {#if !offer}
@@ -66,16 +99,30 @@
     >
   {:else}
     <form class="flex flex-col gap-4" onsubmit={launch}>
-      <section aria-label="Base">
-        <Heading tag="h4" class="text-base">Base : {signed(offer.base)}</Heading>
-        <ul class="text-sm text-gray-500 dark:text-gray-400">
-          {#each offer.contributions as contribution, i (i)}
-            <li>{contribution.label} {signed(contribution.amount)}</li>
-          {/each}
-        </ul>
-      </section>
+      {#if offer.kind !== "damage"}
+        <section class="flex flex-col gap-2" aria-label="Dé">
+          {#key redraws}
+            <ButtonToggleGroup name="Dé" value={rolling.mode} onSelect={choose}>
+              {#each MODES as option (option.mode)}
+                <ButtonToggle value={option.mode}>{option.label}</ButtonToggle>
+              {/each}
+            </ButtonToggleGroup>
+          {/key}
+          {#if rolling.featuredDice.length > 0}
+            {@render dice(rolling.featuredDice)}
+          {/if}
+        </section>
+      {/if}
 
-      {#if offer.options.length > 0}
+      <div class="flex items-center justify-between gap-4">
+        <Heading tag="h4" class="w-auto text-xl">Base : {signed(offer.base)}</Heading>
+        <Button type="submit" class="min-h-11 shrink-0"
+          >{rolling.outcome ? "Relancer" : "Lancer"}
+          {offer.kind === "damage" ? "les DM" : "le dé"}</Button
+        >
+      </div>
+
+      {#if rolling.featured.length > 0}
         <fieldset class="flex flex-col gap-2">
           <legend class="mb-1 font-semibold text-gray-900 dark:text-white"
             >Selon les circonstances</legend
@@ -83,14 +130,7 @@
           <Helper
             >Cochez ce qui s’applique à ce jet ; le reste sera rappelé avec le résultat.</Helper
           >
-          {#each offer.options as option, i (i)}
-            <Checkbox bind:checked={rolling.picked[i]}>
-              <span>
-                {optionText(option)}
-                <span class="block text-xs text-gray-500 dark:text-gray-400">{option.origin}</span>
-              </span>
-            </Checkbox>
-          {/each}
+          {@render options(rolling.featured)}
         </fieldset>
       {/if}
 
@@ -107,83 +147,95 @@
         </section>
       {/if}
 
-      {#if offer.kind !== "damage"}
-        <fieldset class="flex flex-col gap-2">
-          <legend class="mb-1 font-semibold text-gray-900 dark:text-white">Dé</legend>
-          {#if offer.bonusDice.length > 0}
-            <ul class="text-sm" aria-label="Dés bonus des capacités">
-              {#each offer.bonusDice as die, i (i)}
-                <li>
-                  Dé bonus : {die.scope}
-                  <span class="text-gray-500 dark:text-gray-400">— {die.origin}</span>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-          <div class="flex flex-wrap gap-4">
-            {#each MODES as option (option.mode)}
-              <Radio name="roll-mode" bind:group={rolling.mode} value={option.mode}>
-                {option.label}
-              </Radio>
-            {/each}
-          </div>
-        </fieldset>
-      {/if}
-
-      {#if offer.helperBonus != null}
-        <div class="flex flex-wrap items-center gap-2" role="group" aria-label={offer.helpersLabel}>
-          <span class="font-semibold text-gray-900 dark:text-white">{offer.helpersLabel}</span>
-          <Button
-            color="alternative"
-            class="h-11 w-11 p-0"
-            aria-label="Un allié de moins"
-            disabled={rolling.helpers <= 0}
-            onclick={() => (rolling.helpers -= 1)}
-          >
-            <MinusOutline />
-          </Button>
-          <output class="min-w-8 text-center text-xl font-bold tabular-nums"
-            >{rolling.helpers}</output
-          >
-          <Button
-            color="alternative"
-            class="h-11 w-11 p-0"
-            aria-label="Un allié de plus"
-            onclick={() => (rolling.helpers += 1)}
-          >
-            <PlusOutline />
-          </Button>
-          <span class="text-sm text-gray-500 dark:text-gray-400"
-            >{signed(offer.helperBonus)} chacun</span
-          >
-        </div>
-      {/if}
-
-      <Label class="flex flex-col gap-2">
-        Modificateur du MJ
-        <Input
-          type="number"
-          step="1"
-          value={rolling.modifier}
-          onchange={(event) => {
-            const typed = integerOf(event, rolling.modifier, {
-              min: I32_MIN,
-              max: I32_MAX,
-              blank: false,
-            });
-            if (typed != null) rolling.modifier = typed;
-          }}
-        />
-      </Label>
-
       {#if offer.critical}
         <Checkbox bind:checked={rolling.critical}>Coup critique : {offer.critical}</Checkbox>
       {/if}
 
-      <Button type="submit" class="min-h-11"
-        >{rolling.outcome ? "Relancer" : "Lancer"}
-        {offer.kind === "damage" ? "les DM" : "le dé"}</Button
-      >
+      <Accordion flush>
+        <AccordionItem>
+          {#snippet header()}
+            Autres bonus et modificateurs{rolling.foldedInUse > 0
+              ? ` (${rolling.foldedInUse} en cours)`
+              : ""}
+          {/snippet}
+          <div class="flex flex-col gap-4">
+            {#if rolling.others.length > 0}
+              <fieldset class="flex flex-col gap-2">
+                <legend class="mb-1 font-semibold text-gray-900 dark:text-white"
+                  >Pour d’autres caractéristiques</legend
+                >
+                {@render options(rolling.others)}
+              </fieldset>
+            {/if}
+
+            {#if rolling.otherDice.length > 0}
+              {@render dice(rolling.otherDice)}
+            {/if}
+
+            <section aria-label="Base">
+              <p class="font-semibold text-gray-900 dark:text-white">
+                Base : {signed(offer.base)}
+              </p>
+              <ul class="text-sm text-gray-500 dark:text-gray-400">
+                {#each offer.contributions as contribution, i (i)}
+                  <li>{contribution.label} {signed(contribution.amount)}</li>
+                {/each}
+              </ul>
+            </section>
+
+            {#if offer.helperBonus != null}
+              <div
+                class="flex flex-wrap items-center gap-2"
+                role="group"
+                aria-label={offer.helpersLabel}
+              >
+                <span class="font-semibold text-gray-900 dark:text-white">{offer.helpersLabel}</span
+                >
+                <Button
+                  color="alternative"
+                  class="h-11 w-11 p-0"
+                  aria-label="Un allié de moins"
+                  disabled={rolling.helpers <= 0}
+                  onclick={() => (rolling.helpers -= 1)}
+                >
+                  <MinusOutline />
+                </Button>
+                <output class="min-w-8 text-center text-xl font-bold tabular-nums"
+                  >{rolling.helpers}</output
+                >
+                <Button
+                  color="alternative"
+                  class="h-11 w-11 p-0"
+                  aria-label="Un allié de plus"
+                  onclick={() => (rolling.helpers += 1)}
+                >
+                  <PlusOutline />
+                </Button>
+                <span class="text-sm text-gray-500 dark:text-gray-400"
+                  >{signed(offer.helperBonus)} chacun</span
+                >
+              </div>
+            {/if}
+
+            <Label class="flex flex-col gap-2">
+              Modificateur du MJ
+              <Input
+                type="number"
+                step="1"
+                value={rolling.modifier}
+                onchange={(event) => {
+                  const typed = integerOf(event, rolling.modifier, {
+                    min: I32_MIN,
+                    max: I32_MAX,
+                    blank: false,
+                  });
+                  if (typed != null) rolling.modifier = typed;
+                }}
+              />
+            </Label>
+          </div>
+        </AccordionItem>
+      </Accordion>
     </form>
 
     {#if rolling.failure}<Alert color="red" class="mt-3">Le jet a échoué : {rolling.failure}</Alert
