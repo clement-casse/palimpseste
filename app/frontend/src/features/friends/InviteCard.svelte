@@ -14,7 +14,12 @@
   } from "flowbite-svelte";
 
   import Loader from "$lib/components/Loader.svelte";
-  import { type CreatedInvitation, createInvitation, listInvitations, revokeInvitation } from "$lib/api";
+  import {
+    type CreatedInvitation,
+    createInvitation,
+    listInvitations,
+    revokeInvitation,
+  } from "$lib/api";
   import ErrorMessage from "$lib/components/ErrorMessage.svelte";
   import { invitationLink } from "$lib/router.svelte";
 
@@ -74,8 +79,8 @@
 <Card size="xl" class="gap-4 p-6">
   <Heading tag="h3" class="text-lg">Inviter un ami</Heading>
   <P size="sm" class="text-gray-500 dark:text-gray-400">
-    Envoyez un lien à la personne à inviter : dès qu’il est accepté, vous êtes amis. Chaque lien sert
-    une seule fois.
+    Envoyez un lien à la personne à inviter : dès qu’il est accepté, vous êtes amis. Chaque lien
+    sert une seule fois.
   </P>
   {#if created}
     <div class="flex flex-wrap gap-2">
@@ -84,11 +89,16 @@
       {#if sharing}<Button color="alternative" onclick={share}>Partager…</Button>{/if}
     </div>
     <Helper>
-      Valable pour une seule personne, jusqu’au {when(created.expires)}. Copiez-le maintenant : il ne
-      sera plus affiché.
+      Valable pour une seule personne, jusqu’au {when(created.expires)}. Copiez-le maintenant : il
+      ne sera plus affiché.
     </Helper>
   {/if}
-  <Button class="self-start" color={created ? "alternative" : "primary"} disabled={creating} onclick={create}>
+  <Button
+    class="self-start"
+    color={created ? "alternative" : "primary"}
+    disabled={creating}
+    onclick={create}
+  >
     {created ? "Créer un autre lien" : "Créer un lien d’invitation"}
   </Button>
   {#if failure}<ErrorMessage error={failure} />{/if}
@@ -101,7 +111,9 @@
           {#each waiting as invitation (invitation.id)}
             <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
               <span>Expire le {when(invitation.expires)}</span>
-              <Button size="xs" color="alternative" onclick={() => revoke(invitation.id)}>Révoquer</Button>
+              <Button size="xs" color="alternative" onclick={() => revoke(invitation.id)}
+                >Révoquer</Button
+              >
             </ListgroupItem>
           {/each}
         </Listgroup>

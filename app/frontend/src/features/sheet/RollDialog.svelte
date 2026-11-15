@@ -1,7 +1,17 @@
 <script lang="ts">
   // One roll, from its die to its total (ADR FE-ROLLS). The state and what
   // is done with it are `RollController`'s: this component only shows them.
-  import { Alert, Button, Checkbox, Heading, Helper, Input, Label, Modal, Radio } from "flowbite-svelte";
+  import {
+    Alert,
+    Button,
+    Checkbox,
+    Heading,
+    Helper,
+    Input,
+    Label,
+    Modal,
+    Radio,
+  } from "flowbite-svelte";
   import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
   import { untrack } from "svelte";
 
@@ -51,7 +61,9 @@
 
 <Modal open title={offer?.name ?? "Jet"} size="md" oncancel={onclose}>
   {#if !offer}
-    <Alert color="red">Ce jet ne peut pas être préparé : {rolling.offered.ok ? "" : rolling.offered.error}</Alert>
+    <Alert color="red"
+      >Ce jet ne peut pas être préparé : {rolling.offered.ok ? "" : rolling.offered.error}</Alert
+    >
   {:else}
     <form class="flex flex-col gap-4" onsubmit={launch}>
       <section aria-label="Base">
@@ -65,8 +77,12 @@
 
       {#if offer.options.length > 0}
         <fieldset class="flex flex-col gap-2">
-          <legend class="mb-1 font-semibold text-gray-900 dark:text-white">Selon les circonstances</legend>
-          <Helper>Cochez ce qui s’applique à ce jet ; le reste sera rappelé avec le résultat.</Helper>
+          <legend class="mb-1 font-semibold text-gray-900 dark:text-white"
+            >Selon les circonstances</legend
+          >
+          <Helper
+            >Cochez ce qui s’applique à ce jet ; le reste sera rappelé avec le résultat.</Helper
+          >
           {#each offer.options as option, i (i)}
             <Checkbox bind:checked={rolling.picked[i]}>
               <span>
@@ -83,7 +99,9 @@
           <p class="font-semibold text-gray-900 dark:text-white">À savoir</p>
           <ul class="list-inside list-disc">
             {#each offer.notes as note, i (i)}
-              <li>{note.scope} <span class="text-gray-500 dark:text-gray-400">— {note.origin}</span></li>
+              <li>
+                {note.scope} <span class="text-gray-500 dark:text-gray-400">— {note.origin}</span>
+              </li>
             {/each}
           </ul>
         </section>
@@ -95,7 +113,10 @@
           {#if offer.bonusDice.length > 0}
             <ul class="text-sm" aria-label="Dés bonus des capacités">
               {#each offer.bonusDice as die, i (i)}
-                <li>Dé bonus : {die.scope} <span class="text-gray-500 dark:text-gray-400">— {die.origin}</span></li>
+                <li>
+                  Dé bonus : {die.scope}
+                  <span class="text-gray-500 dark:text-gray-400">— {die.origin}</span>
+                </li>
               {/each}
             </ul>
           {/if}
@@ -121,11 +142,20 @@
           >
             <MinusOutline />
           </Button>
-          <output class="min-w-8 text-center text-xl font-bold tabular-nums">{rolling.helpers}</output>
-          <Button color="alternative" class="h-11 w-11 p-0" aria-label="Un allié de plus" onclick={() => (rolling.helpers += 1)}>
+          <output class="min-w-8 text-center text-xl font-bold tabular-nums"
+            >{rolling.helpers}</output
+          >
+          <Button
+            color="alternative"
+            class="h-11 w-11 p-0"
+            aria-label="Un allié de plus"
+            onclick={() => (rolling.helpers += 1)}
+          >
             <PlusOutline />
           </Button>
-          <span class="text-sm text-gray-500 dark:text-gray-400">{signed(offer.helperBonus)} chacun</span>
+          <span class="text-sm text-gray-500 dark:text-gray-400"
+            >{signed(offer.helperBonus)} chacun</span
+          >
         </div>
       {/if}
 
@@ -136,7 +166,11 @@
           step="1"
           value={rolling.modifier}
           onchange={(event) => {
-            const typed = integerOf(event, rolling.modifier, { min: I32_MIN, max: I32_MAX, blank: false });
+            const typed = integerOf(event, rolling.modifier, {
+              min: I32_MIN,
+              max: I32_MAX,
+              blank: false,
+            });
             if (typed != null) rolling.modifier = typed;
           }}
         />
@@ -146,10 +180,14 @@
         <Checkbox bind:checked={rolling.critical}>Coup critique : {offer.critical}</Checkbox>
       {/if}
 
-      <Button type="submit" class="min-h-11">{rolling.outcome ? "Relancer" : "Lancer"} {offer.kind === "damage" ? "les DM" : "le dé"}</Button>
+      <Button type="submit" class="min-h-11"
+        >{rolling.outcome ? "Relancer" : "Lancer"}
+        {offer.kind === "damage" ? "les DM" : "le dé"}</Button
+      >
     </form>
 
-    {#if rolling.failure}<Alert color="red" class="mt-3">Le jet a échoué : {rolling.failure}</Alert>{/if}
+    {#if rolling.failure}<Alert color="red" class="mt-3">Le jet a échoué : {rolling.failure}</Alert
+      >{/if}
     <div class="mt-4" aria-live="polite">
       {#if rolling.outcome}
         {@const outcome = rolling.outcome}
@@ -157,7 +195,11 @@
         {#if outcome.damageRoll}
           {@const next = outcome.damageRoll}
           {@const wasCritical = outcome.critical}
-          <Button color="alternative" class="mt-3 min-h-11" onclick={() => onchain(next, wasCritical)}>
+          <Button
+            color="alternative"
+            class="mt-3 min-h-11"
+            onclick={() => onchain(next, wasCritical)}
+          >
             Lancer les DM{wasCritical ? " (critique)" : ""}
           </Button>
         {/if}

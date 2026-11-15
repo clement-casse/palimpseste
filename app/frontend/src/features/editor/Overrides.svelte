@@ -52,7 +52,8 @@
           ]}
         >
           <span>
-            Dérogation <code class="text-xs text-gray-500 dark:text-gray-400">{waiver.rule}</code> sur
+            Dérogation <code class="text-xs text-gray-500 dark:text-gray-400">{waiver.rule}</code>
+            sur
             {waiverSubject(waiver)}
             {#if unused(waiver)}<em>(sans objet)</em>{/if}
             — {waiver.author} : {waiver.reason}
@@ -66,7 +67,9 @@
             Ajustement {target(adjustment)}
             {signed(adjustment.amount)} — {adjustment.author} : {adjustment.reason}
           </span>
-          <Button size="xs" color="alternative" onclick={() => onremoveadjustment(i)}>Retirer</Button>
+          <Button size="xs" color="alternative" onclick={() => onremoveadjustment(i)}
+            >Retirer</Button
+          >
         </ListgroupItem>
       {/each}
     </Listgroup>

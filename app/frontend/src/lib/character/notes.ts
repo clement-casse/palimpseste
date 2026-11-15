@@ -4,12 +4,7 @@
 
 import { sameSubject, signed } from "./edits";
 import { message } from "../messages";
-import type {
-  Characteristic,
-  Document,
-  ReportedViolation,
-  Sheet,
-} from "../engine";
+import type { Characteristic, Document, ReportedViolation, Sheet } from "../engine";
 
 /** Where the sheet shows the mark of a note. */
 export type Place =

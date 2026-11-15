@@ -135,7 +135,10 @@ describe("the COC2 sheet model", () => {
 
   it("lists bare hands, then the weapons carried", () => {
     const weapons = contemporain(amelia()).weapons;
-    expect(weapons.map((w) => w.weapon.name)).toEqual(["Mains nues", "Couteau, poignard, baïonnette"]);
+    expect(weapons.map((w) => w.weapon.name)).toEqual([
+      "Mains nues",
+      "Couteau, poignard, baïonnette",
+    ]);
     expect(weapons[1]).toMatchObject({
       quantity: 1,
       attack: { id: "coc.attack.contact-weapon" },

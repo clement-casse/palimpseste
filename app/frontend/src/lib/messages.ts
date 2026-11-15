@@ -25,8 +25,7 @@ const MESSAGES: Record<string, Message> = {
   "CO.VOIE.STRUCTURE": (s, p) => `${s} : le rang ${p.rank} n'existe pas (rangs 1 à 5).`,
   "CO.VOIE.ORDER": (s, p) =>
     `${s} : il manque ${p.missing} rang(s) avant les rangs acquis, à partir du rang ${p.first_missing}.`,
-  "CO.GM.ADJUSTMENT": (s, p) =>
-    `${s} ajusté de ${signed(p.amount)} par ${p.author} : ${p.reason}`,
+  "CO.GM.ADJUSTMENT": (s, p) => `${s} ajusté de ${signed(p.amount)} par ${p.author} : ${p.reason}`,
 
   "COF.CRE.PROFIL": () => "Choisissez un profil.",
   "COF.CRE.PEUPLE": () => "Choisissez un peuple.",
@@ -66,7 +65,8 @@ const MESSAGES: Record<string, Message> = {
   "COF.PRG.COST": (s, p) => `${s} : déjà acquise, achetée de nouveau au niveau ${p.level}.`,
   "COF.PRG.ORDER": (s, p) => `${s} : acquise au niveau ${p.level} avant le rang inférieur.`,
   "COF.PRG.NEW-VOIES": (s, p) => `${s} : cette voie ne peut pas être ouverte (niveau ${p.level}).`,
-  "COF.PRG.HYBRID": (s, p) => `${s} : voie d'un autre profil ouverte au niveau ${p.level} (hybride).`,
+  "COF.PRG.HYBRID": (s, p) =>
+    `${s} : voie d'un autre profil ouverte au niveau ${p.level} (hybride).`,
   "COF.PRG.MAX-VOIES": (s, p) => `${s} : ${p.voies} voies, ${p.max} au plus.`,
   "COF.PRG.ORPHAN": (s) =>
     `${s} : le point orphelin ne s'échange qu'une fois toutes les capacités de rang 1 et 2 acquises.`,

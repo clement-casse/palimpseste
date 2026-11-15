@@ -3,10 +3,15 @@
   // its voie and rank, or, `short` under its voie, its rank and name.
   import { type Abilities, abilityLabel } from "../character/progression";
 
-  let { catalog, id, short = false }: { catalog: Abilities; id: string; short?: boolean } =
-    $props();
+  let {
+    catalog,
+    id,
+    short = false,
+  }: { catalog: Abilities; id: string; short?: boolean } = $props();
 
   const entry = $derived(catalog.abilities.find((a) => a.id === id));
 </script>
 
-<span data-ability={id}>{short && entry ? `${entry.rank}. ${entry.name}` : abilityLabel(catalog, id)}</span>
+<span data-ability={id}
+  >{short && entry ? `${entry.rank}. ${entry.name}` : abilityLabel(catalog, id)}</span
+>

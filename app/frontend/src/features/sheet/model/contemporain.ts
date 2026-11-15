@@ -74,7 +74,12 @@ const COMBAT = [
     title: "Capacité de guérison : DM soignés par semaine",
     signed: false,
   },
-  { id: COC.contactDamageBonus, label: "DM contact", title: "Bonus aux DM au contact", signed: true },
+  {
+    id: COC.contactDamageBonus,
+    label: "DM contact",
+    title: "Bonus aux DM au contact",
+    signed: true,
+  },
 ];
 
 /** What the sheet of a COC2 character shows, with `equipment` in play. */
@@ -106,14 +111,20 @@ export function contemporainSheetModel({
 
   return {
     identity: [
-      { label: "Âge", value: choices.age === undefined ? "À choisir" : `${choices.age} ans${bracket}` },
+      {
+        label: "Âge",
+        value: choices.age === undefined ? "À choisir" : `${choices.age} ans${bracket}`,
+      },
       { label: "Domaine", value: domaine?.name ?? "À choisir" },
       { label: "Classe sociale", value: details.socialClass ?? "contradictoire" },
     ],
     health: valueLine(values, COC.healthScale)?.total,
     combat: [
       // The values nobody rolls: no die beside them.
-      ...COMBAT.map(({ id, ...text }) => ({ ...tile(id, valueLine(values, id), text), roll: undefined })),
+      ...COMBAT.map(({ id, ...text }) => ({
+        ...tile(id, valueLine(values, id), text),
+        roll: undefined,
+      })),
       ...(agi?.total
         ? [
             {

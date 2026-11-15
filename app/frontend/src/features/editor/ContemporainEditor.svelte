@@ -122,7 +122,7 @@
           value={choices.age ?? ""}
           onchange={(e) => {
             const age = integerOf(e, choices.age, { min: 0, max: U16_MAX });
-            if (age !== null) (choices.age = age);
+            if (age !== null) choices.age = age;
           }}
         />
       </div>
@@ -136,7 +136,7 @@
       value={choices.domaine ?? ""}
       onchange={(e) => {
         const id = valueOf(e);
-        (choices.domaine = id || undefined);
+        choices.domaine = id || undefined;
       }}
     >
       <option value="">— Choisir —</option>
@@ -294,7 +294,9 @@
       </Checkbox>
     {/each}
   </div>
-  <Helper class="text-sm">Aucune voie ne donne de protection : en porter une se négocie avec le MJ.</Helper>
+  <Helper class="text-sm"
+    >Aucune voie ne donne de protection : en porter une se négocie avec le MJ.</Helper
+  >
   <Heading tag="h3" class="text-lg">Objets portés</Heading>
   <Items
     items={choices.items ?? []}

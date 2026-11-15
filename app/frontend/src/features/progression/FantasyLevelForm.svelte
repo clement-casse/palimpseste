@@ -143,8 +143,8 @@
   {/if}
 {:else if step === "orientation"}
   <Helper class="text-sm">
-    Facultatif : oubliez {offer?.forgetMax ?? 1} capacité{(offer?.forgetMax ?? 1) > 1 ? "s" : ""} au
-    plus ; ses points reviennent au niveau.
+    Facultatif : oubliez {offer?.forgetMax ?? 1} capacité{(offer?.forgetMax ?? 1) > 1 ? "s" : ""} au plus
+    ; ses points reviennent au niveau.
   </Helper>
   {#if forgotten.length > 0}
     <Listgroup class="flex-col" aria-label="Capacités oubliées">
@@ -169,7 +169,9 @@
   {#if offer && offer.protected.length > 0}
     <Helper class="text-sm">
       {#each offer.protected as entry (entry.ability)}
-        <span class="block"><Ability {catalog} id={entry.ability} /> : {REASONS[entry.reason] ?? entry.reason}.</span>
+        <span class="block"
+          ><Ability {catalog} id={entry.ability} /> : {REASONS[entry.reason] ?? entry.reason}.</span
+        >
       {/each}
     </Helper>
   {/if}
@@ -179,7 +181,9 @@
       <Select placeholder="" aria-label="Oublier hors règles" onchange={(e) => picked(e, forget)}>
         <option value="">Oublier une autre capacité…</option>
         {#each ranksHeld.filter((h) => !forgotten.includes(h.ability)) as h (h.ability)}
-          <option value={h.ability}>{catalog.abilities.find((a) => a.id === h.ability)?.label ?? h.ability}</option>
+          <option value={h.ability}
+            >{catalog.abilities.find((a) => a.id === h.ability)?.label ?? h.ability}</option
+          >
         {/each}
       </Select>
     </AccordionItem>
@@ -188,10 +192,14 @@
   {#if levelUp.orphan}
     <P>
       Point orphelin échangé contre {exchanges.get(levelUp.orphan) ?? levelUp.orphan}.
-      <Button size="xs" color="alternative" onclick={() => exchange(undefined)}>Annuler l’échange</Button>
+      <Button size="xs" color="alternative" onclick={() => exchange(undefined)}
+        >Annuler l’échange</Button
+      >
     </P>
   {:else if offer?.orphanAllowed}
-    <Helper class="text-sm">Plus aucune capacité de rang 1 ou 2 à acquérir : échangez le point restant.</Helper>
+    <Helper class="text-sm"
+      >Plus aucune capacité de rang 1 ou 2 à acquérir : échangez le point restant.</Helper
+    >
     <div class="flex flex-wrap gap-2">
       {#each catalog.orphanExchanges as option (option.id)}
         <Button size="sm" onclick={() => exchange(option.id)}>{option.name}</Button>
@@ -204,7 +212,11 @@
     <Accordion flush>
       <AccordionItem headingTag="h3" classes={{ content: "space-y-3 py-3" }}>
         {#snippet header()}Hors règles : échanger un point{/snippet}
-        <Select placeholder="" aria-label="Échanger hors règles" onchange={(e) => picked(e, exchange)}>
+        <Select
+          placeholder=""
+          aria-label="Échanger hors règles"
+          onchange={(e) => picked(e, exchange)}
+        >
           <option value="">Échanger un point contre…</option>
           {#each catalog.orphanExchanges as option (option.id)}
             <option value={option.id}>{option.name}</option>

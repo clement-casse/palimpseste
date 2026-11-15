@@ -12,8 +12,11 @@
     choices = $bindable(),
     catalog,
     ability,
-  }: { choices: { specialities?: SpecialityEntry[] }; catalog: Abilities; ability: string } =
-    $props();
+  }: {
+    choices: { specialities?: SpecialityEntry[] };
+    catalog: Abilities;
+    ability: string;
+  } = $props();
 
   const asked = $derived(catalog.abilities.find((a) => a.id === ability)?.speciality ?? "");
   const written = $derived(

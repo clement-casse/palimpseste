@@ -42,7 +42,8 @@ describe("a friend", () => {
     const sent = stubBackend(({ method, url }) => {
       if (method === "GET" && url === "/api/me/friends/3") return Response.json(BEN);
       if (url === "/api/me/friends/3/characters") return Response.json([character(lhagva())]);
-      if (method === "DELETE" && url === "/api/me/friends/3") return new Response(null, { status: 204 });
+      if (method === "DELETE" && url === "/api/me/friends/3")
+        return new Response(null, { status: 204 });
       return new Response(null, { status: 404 });
     });
     render(FriendPage, { id: 3 });
@@ -52,7 +53,9 @@ describe("a friend", () => {
   it("shows their profile and leads to their characters' sheets", async () => {
     friend();
     expect(await screen.findByRole("heading", { name: "Ben" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Lhagva" }).getAttribute("href")).toBe("/friends/3/characters/1");
+    expect(screen.getByRole("link", { name: "Lhagva" }).getAttribute("href")).toBe(
+      "/friends/3/characters/1",
+    );
   });
 
   it("is removed for both once confirmed", async () => {
@@ -64,6 +67,8 @@ describe("a friend", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Retirer" }));
 
     await vi.waitFor(() => expect(location.pathname).toBe("/friends"));
-    expect(sent.some((request) => request.method === "DELETE" && request.url === "/api/me/friends/3")).toBe(true);
+    expect(
+      sent.some((request) => request.method === "DELETE" && request.url === "/api/me/friends/3"),
+    ).toBe(true);
   });
 });

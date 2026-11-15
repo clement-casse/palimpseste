@@ -21,8 +21,9 @@
       {#snippet header()}
         <span class="flex flex-1 justify-between gap-2 pe-3">
           <span>{line.characteristic}</span>
-          <strong id="editor-characteristic-{line.characteristic}" class="text-gray-900 dark:text-white"
-            >{signed(line.total)}</strong
+          <strong
+            id="editor-characteristic-{line.characteristic}"
+            class="text-gray-900 dark:text-white">{signed(line.total)}</strong
           >
         </span>
       {/snippet}
@@ -30,7 +31,8 @@
       <Button
         size="xs"
         color="alternative"
-        onclick={() => onadjust({ kind: "characteristic", id: line.characteristic }, line.characteristic)}
+        onclick={() =>
+          onadjust({ kind: "characteristic", id: line.characteristic }, line.characteristic)}
       >
         Ajuster…
       </Button>

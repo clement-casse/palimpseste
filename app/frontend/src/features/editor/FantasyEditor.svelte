@@ -66,9 +66,7 @@
   } = $props();
 
   const voieNames = $derived(namesOf(catalog.voies));
-  const gearNames = $derived(
-    namesOf([...catalog.weapons, ...catalog.armours, ...catalog.shields]),
-  );
+  const gearNames = $derived(namesOf([...catalog.weapons, ...catalog.armours, ...catalog.shields]));
   const profil = $derived(catalog.profils.find((p) => p.id === choices.profil));
   const peuple = $derived(catalog.peuples.find((p) => p.id === choices.peuple));
   const series = $derived(catalog.series.find((s) => s.id === choices.series));
@@ -153,7 +151,7 @@
       value={choices.profil ?? ""}
       onchange={(e) => {
         const id = valueOf(e);
-        (choices.profil = id || undefined);
+        choices.profil = id || undefined;
       }}
     >
       <option value="">— Choisir —</option>
@@ -171,17 +169,33 @@
       <DescriptionList tag="dt" class="md:text-base">Famille</DescriptionList>
       <DescriptionList tag="dd" class="text-base">{details.family?.name}</DescriptionList>
       <DescriptionList tag="dt" class="md:text-base">Voies</DescriptionList>
-      <DescriptionList tag="dd" class="text-base">{profil.voies.map((id) => voieNames.get(id)).join(", ")}</DescriptionList>
+      <DescriptionList tag="dd" class="text-base"
+        >{profil.voies.map((id) => voieNames.get(id)).join(", ")}</DescriptionList
+      >
       <DescriptionList tag="dt" class="md:text-base">Caractéristiques clés</DescriptionList>
-      <DescriptionList tag="dd" class="text-base">{profil.keyCharacteristics.map((slot) => slot.join(" ou ")).join(", ")}</DescriptionList>
+      <DescriptionList tag="dd" class="text-base"
+        >{profil.keyCharacteristics.map((slot) => slot.join(" ou ")).join(", ")}</DescriptionList
+      >
       <DescriptionList tag="dt" class="md:text-base">Caractéristique de magie</DescriptionList>
-      <DescriptionList tag="dd" class="text-base">{profil.magicCharacteristic ?? "aucune"}</DescriptionList>
+      <DescriptionList tag="dd" class="text-base"
+        >{profil.magicCharacteristic ?? "aucune"}</DescriptionList
+      >
       <DescriptionList tag="dt" class="md:text-base">Armure</DescriptionList>
-      <DescriptionList tag="dd" class="text-base">{profil.armourLimit ? `jusqu'à ${gearNames.get(profil.armourLimit)}` : "aucune"}</DescriptionList>
+      <DescriptionList tag="dd" class="text-base"
+        >{profil.armourLimit
+          ? `jusqu'à ${gearNames.get(profil.armourLimit)}`
+          : "aucune"}</DescriptionList
+      >
       <DescriptionList tag="dt" class="md:text-base">Bouclier</DescriptionList>
-      <DescriptionList tag="dd" class="text-base">{profil.shieldLimit ? `jusqu'au ${gearNames.get(profil.shieldLimit)}` : "aucun"}</DescriptionList>
+      <DescriptionList tag="dd" class="text-base"
+        >{profil.shieldLimit
+          ? `jusqu'au ${gearNames.get(profil.shieldLimit)}`
+          : "aucun"}</DescriptionList
+      >
       <DescriptionList tag="dt" class="md:text-base">Armes maîtrisées</DescriptionList>
-      <DescriptionList tag="dd" class="text-base">{profil.masteredWeapons.map((id) => gearNames.get(id)).join(", ")}</DescriptionList>
+      <DescriptionList tag="dd" class="text-base"
+        >{profil.masteredWeapons.map((id) => gearNames.get(id)).join(", ")}</DescriptionList
+      >
     </dl>
   {/if}
 {:else if step === "peuple"}
@@ -192,7 +206,7 @@
       value={choices.peuple ?? ""}
       onchange={(e) => {
         const id = valueOf(e);
-        (choices.peuple = id || undefined);
+        choices.peuple = id || undefined;
       }}
     >
       <option value="">— Choisir —</option>
@@ -210,7 +224,9 @@
           : peuple.bonusOptions.join(" ou ")}
       </DescriptionList>
       <DescriptionList tag="dt" class="md:text-base">Malus (-1)</DescriptionList>
-      <DescriptionList tag="dd" class="text-base">{peuple.malusOptions.length ? peuple.malusOptions.join(" ou ") : "aucun"}</DescriptionList>
+      <DescriptionList tag="dd" class="text-base"
+        >{peuple.malusOptions.length ? peuple.malusOptions.join(" ou ") : "aucun"}</DescriptionList
+      >
       <DescriptionList tag="dt" class="md:text-base">Voie de peuple</DescriptionList>
       <DescriptionList tag="dd" class="text-base">
         {peuple.voie
@@ -223,7 +239,11 @@
   <fieldset class="flex flex-col gap-2">
     <legend class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Série de valeurs</legend>
     {#each catalog.series as s (s.id)}
-      <Radio name="series" checked={choices.series === s.id} onchange={() => (choices.series = s.id)}>
+      <Radio
+        name="series"
+        checked={choices.series === s.id}
+        onchange={() => (choices.series = s.id)}
+      >
         {s.name} ({s.values.map(signed).join(", ")})
       </Radio>
     {/each}
@@ -233,7 +253,10 @@
       {#each CHARACTERISTICS as c (c)}
         <TableBodyRow>
           <TableHeadCell scope="row" class="py-2">
-            {c} <small class="font-normal text-gray-500 normal-case dark:text-gray-400">{keyMark(c)}</small>
+            {c}
+            <small class="font-normal text-gray-500 normal-case dark:text-gray-400"
+              >{keyMark(c)}</small
+            >
           </TableHeadCell>
           <TableBodyCell class="flex flex-wrap gap-2 py-2">
             <Select
@@ -280,7 +303,7 @@
         value={choices.peupleBonus ?? ""}
         onchange={(e) => {
           const c = valueOf(e) as Characteristic | "";
-          (choices.peupleBonus = c || undefined);
+          choices.peupleBonus = c || undefined;
         }}
       >
         <option value="">— Choisir —</option>
@@ -301,7 +324,7 @@
         value={choices.peupleMalus ?? ""}
         onchange={(e) => {
           const c = valueOf(e) as Characteristic | "";
-          (choices.peupleMalus = c || undefined);
+          choices.peupleMalus = c || undefined;
         }}
       >
         <option value="">
@@ -328,7 +351,13 @@
   {#snippet voieRow(id: string)}
     <ListgroupItem class="flex-col items-start gap-2 text-gray-900 dark:text-white">
       <span class="font-semibold">{voieNames.get(id) ?? id}</span>
-      <RankPicker {catalog} voie={id} ranks={ranksOf(choices.voies, id)} onchange={(r) => setVoie(id, r)} {written} />
+      <RankPicker
+        {catalog}
+        voie={id}
+        ranks={ranksOf(choices.voies, id)}
+        onchange={(r) => setVoie(id, r)}
+        {written}
+      />
       <span class="inline-flex flex-wrap items-center gap-2 empty:hidden">
         <LaterRanks {catalog} held={details.abilitiesHeld} voie={id} {characterId} levels />
       </span>
@@ -372,30 +401,34 @@
     {/each}
   {/if}
   <Accordion flush>
-    <AccordionItem open={otherVoies.length > 0} headingTag="h3" classes={{ content: "space-y-3 py-3" }}>
-      {#snippet header()}Hors règles : autres voies{/snippet}
-    {#if otherVoies.length > 0}
-      <Listgroup class="flex-col">
-        {#each otherVoies as id (id)}
-          {@render voieRow(id)}
-        {/each}
-      </Listgroup>
-    {/if}
-    <Select
-      placeholder=""
-      class="w-auto"
-      aria-label="Ajouter une voie"
-      onchange={(e) => {
-        const id = valueOf(e);
-        if (e.currentTarget instanceof HTMLSelectElement) e.currentTarget.value = "";
-        if (id) setVoie(id, [1]);
-      }}
+    <AccordionItem
+      open={otherVoies.length > 0}
+      headingTag="h3"
+      classes={{ content: "space-y-3 py-3" }}
     >
-      <option value="">Ajouter une voie…</option>
-      {#each catalog.voies.filter((v) => !ranksOf(choices.voies, v.id).length) as v (v.id)}
-        <option value={v.id}>{v.name}</option>
-      {/each}
-    </Select>
+      {#snippet header()}Hors règles : autres voies{/snippet}
+      {#if otherVoies.length > 0}
+        <Listgroup class="flex-col">
+          {#each otherVoies as id (id)}
+            {@render voieRow(id)}
+          {/each}
+        </Listgroup>
+      {/if}
+      <Select
+        placeholder=""
+        class="w-auto"
+        aria-label="Ajouter une voie"
+        onchange={(e) => {
+          const id = valueOf(e);
+          if (e.currentTarget instanceof HTMLSelectElement) e.currentTarget.value = "";
+          if (id) setVoie(id, [1]);
+        }}
+      >
+        <option value="">Ajouter une voie…</option>
+        {#each catalog.voies.filter((v) => !ranksOf(choices.voies, v.id).length) as v (v.id)}
+          <option value={v.id}>{v.name}</option>
+        {/each}
+      </Select>
     </AccordionItem>
   </Accordion>
 {:else if step === "equipment"}
@@ -407,12 +440,12 @@
         value={choices.armour ?? ""}
         onchange={(e) => {
           const id = valueOf(e);
-          (choices.armour = id || undefined);
+          choices.armour = id || undefined;
         }}
       >
         <option value="">Aucune</option>
         <optgroup label="Permise par le profil">
-          {#each catalog.armours.filter((a) => within(catalog.armours, a.id, profil?.armourLimit)) as a (a.id)}
+          {#each catalog.armours.filter( (a) => within(catalog.armours, a.id, profil?.armourLimit) ) as a (a.id)}
             <option value={a.id}>{a.name} (DEF +{a.defence})</option>
           {/each}
         </optgroup>
@@ -430,12 +463,12 @@
         value={choices.shield ?? ""}
         onchange={(e) => {
           const id = valueOf(e);
-          (choices.shield = id || undefined);
+          choices.shield = id || undefined;
         }}
       >
         <option value="">Aucun</option>
         <optgroup label="Permis par le profil">
-          {#each catalog.shields.filter((s) => within(catalog.shields, s.id, profil?.shieldLimit)) as s (s.id)}
+          {#each catalog.shields.filter( (s) => within(catalog.shields, s.id, profil?.shieldLimit) ) as s (s.id)}
             <option value={s.id}>{s.name} (DEF +{s.defence})</option>
           {/each}
         </optgroup>
@@ -491,7 +524,7 @@
             min: Math.ceil(I32_MIN / 10),
             max: Math.floor(I32_MAX / 10),
           });
-          if (pa !== null) (choices.purse = pa === undefined ? undefined : pa * 10);
+          if (pa !== null) choices.purse = pa === undefined ? undefined : pa * 10;
         }}
       />
     </div>

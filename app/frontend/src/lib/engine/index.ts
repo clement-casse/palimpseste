@@ -76,7 +76,11 @@ export type EngineView =
  */
 export function narrow(choices: Document, catalog: Catalog, sheet: Sheet): EngineView | null {
   const details = sheet.details;
-  if (choices.engine === "fantasy" && catalog.engine === "fantasy" && details.engine === "fantasy") {
+  if (
+    choices.engine === "fantasy" &&
+    catalog.engine === "fantasy" &&
+    details.engine === "fantasy"
+  ) {
     return { engine: "fantasy", choices, catalog, sheet, details };
   }
   if (

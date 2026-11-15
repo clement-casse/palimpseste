@@ -129,7 +129,8 @@
   {:else}
     <Helper class="text-sm">Plus aucun rang à acheter dans les règles avec l’XP restante.</Helper>
   {/if}
-  <Helper class="text-sm">Chaque rang doit être accordé par le MJ et convenir au personnage.</Helper>
+  <Helper class="text-sm">Chaque rang doit être accordé par le MJ et convenir au personnage.</Helper
+  >
   <Accordion flush>
     <AccordionItem headingTag="h3" classes={{ content: "space-y-3 py-3" }}>
       {#snippet header()}Hors règles : autres rangs{/snippet}
@@ -147,7 +148,8 @@
       {#each changes as trait (trait.id)}
         <ListgroupItem class="justify-between gap-2 text-gray-900 dark:text-white">
           <span>{describe(trait)}</span>
-          <Button size="xs" color="alternative" onclick={() => unsetTrait(trait.id)}>Retirer</Button>
+          <Button size="xs" color="alternative" onclick={() => unsetTrait(trait.id)}>Retirer</Button
+          >
         </ListgroupItem>
       {/each}
     </Listgroup>
@@ -181,17 +183,25 @@
         {@const trait = catalog.traits.find((t) => t.id === otherTrait)}
         <div class="flex flex-wrap gap-2">
           {#each trait?.allowedPoints ?? [] as points (points)}
-            <Button size="xs" color="alternative" onclick={() => setTrait({ id: otherTrait, points })}>
+            <Button
+              size="xs"
+              color="alternative"
+              onclick={() => setTrait({ id: otherTrait, points })}
+            >
               À {points}
             </Button>
           {/each}
-          <Button size="xs" color="alternative" onclick={() => setTrait({ id: otherTrait })}>Abandonner</Button>
+          <Button size="xs" color="alternative" onclick={() => setTrait({ id: otherTrait })}
+            >Abandonner</Button
+          >
         </div>
       {/if}
     </AccordionItem>
   </Accordion>
 {:else if step === "characteristics"}
-  {@const lines = details.rankFive.filter((line) => line.progression === number && line.choice.length > 0)}
+  {@const lines = details.rankFive.filter(
+    (line) => line.progression === number && line.choice.length > 0,
+  )}
   {#if lines.length > 0}
     {#each lines as line (line.voie)}
       <RankFivePicker bind:choices {catalog} {line} />
