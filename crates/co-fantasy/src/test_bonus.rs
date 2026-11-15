@@ -133,6 +133,34 @@ const EVERY_TEST: &str = "tous les tests";
 /// The scope of Éclectique.
 const ECLECTIQUE: &str = "tous les tests de compétence";
 
+/// How a bonus adds to the others picked for one test
+/// (COF.DER.COMPETENCE, D-58).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Stacking {
+    /// A competence bonus of a voie de profil: the highest counts.
+    Profil,
+    /// A competence bonus of a voie de peuple: the highest counts.
+    Peuple,
+    /// Not a competence bonus of a voie (Tatouages, Éclectique): it adds
+    /// beside the others, outside the cap.
+    Apart,
+}
+
+/// The capacités whose bonus is no competence bonus of a voie: Tatouages
+/// (a magic bonus) and Éclectique (D-58).
+const APART: [(Voie, u8); 2] = [(Voie::Pagne, 3), (Voie::Vagabond, 2)];
+
+/// How `bonus` adds to the others picked for one test.
+pub(crate) fn stacking(bonus: TestBonus) -> Stacking {
+    if APART.contains(&(bonus.voie, bonus.rank.get())) {
+        Stacking::Apart
+    } else if bonus.voie.is_peuple_slot() {
+        Stacking::Peuple
+    } else {
+        Stacking::Profil
+    }
+}
+
 /// The bonus a row of the catalogue gives.
 const fn key(index: u8, effect: &Effect) -> TestBonus {
     TestBonus {
@@ -563,6 +591,23 @@ mod tests {
 
     fn ranks(character: Character, voie: Voie, highest: u8) -> Character {
         (1..=highest).fold(character, |c, rank| c.with_rank(voie, rank))
+    }
+
+    #[test]
+    fn a_die_or_a_bonus_apart_naming_a_characteristic_covers_every_test_of_it() {
+        // What a roll reads to apply them without a circumstance (ADR
+        // ENG-ROLLS): the scope shown says the same.
+        for (characteristics, scope, _) in BONUS_DICE {
+            assert_eq!(!characteristics.is_empty(), *scope == EVERY_TEST);
+        }
+        for bonus in TestBonus::all() {
+            let apart = stacking(bonus) == Stacking::Apart;
+            let scope = bonus.scope();
+            assert_eq!(apart, scope == EVERY_TEST || scope == ECLECTIQUE);
+            if apart && !bonus.characteristics().is_empty() {
+                assert_eq!(scope, EVERY_TEST);
+            }
+        }
     }
 
     #[test]
