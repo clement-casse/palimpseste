@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { unsettled } from "../engines";
-import { amelia, character, lhagva, stubBackend } from "../test/backend";
+import { amelia, character, ionas, lhagva, stubBackend } from "../test/backend";
 import { setTheme } from "../theme.svelte";
 import {
   type Document,
@@ -70,6 +70,16 @@ describe("the COF sheet", () => {
     // Cri de guerre and Murmures dans le vent are free actions, the latter a spell.
     expect(screen.getAllByTitle("Action gratuite")).toHaveLength(2);
     expect(screen.getByText("Sort · 1 PM")).toBeTruthy();
+  });
+
+  it("shows the peuple capacité a mage keeps under the voie du mage", () => {
+    open(ionas(), "Ionas");
+    const kept = catalog("fantasy").abilities.find((a) => a.id === "cof.elfe-haut.1");
+    if (!kept) throw new Error("no cof.elfe-haut.1");
+    const mage = screen.getByText("Voie du mage").closest("li");
+    if (!mage) throw new Error("no row for the voie du mage");
+    expect(within(mage).getByText(`1. ${kept.name}`)).toBeTruthy();
+    expect(screen.queryByText("Voie de l'elfe haut")).toBeNull();
   });
 
   it("lists each capacité's effects, those already in the sheet muted", () => {

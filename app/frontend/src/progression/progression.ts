@@ -128,11 +128,13 @@ export function differences(before: Sheet, after: Sheet): Difference[] {
 
 /**
  * The voies held now and their ranks, from the capacités held: those chosen
- * at creation and those gained since, without the ones forgotten.
+ * at creation and those gained since, without the ones forgotten. A capacité
+ * kept through another holds no rank in its voie.
  */
 export function currentVoies(catalog: Abilities, held: HeldAbility[]): VoieEntry[] {
   const voies = new Map<string, number[]>();
-  for (const { ability } of held) {
+  for (const { ability, keptThrough } of held) {
+    if (keptThrough) continue;
     const entry = catalog.abilities.find((a) => a.id === ability);
     if (!entry) continue;
     voies.set(entry.voie, [...(voies.get(entry.voie) ?? []), entry.rank]);
