@@ -1,22 +1,13 @@
 <script lang="ts">
-  // One roll, from its die to its total (ADR FE-ROLLS). The engine says
-  // what the roll offers and resolves it; the player only says what the
-  // engine cannot know: which circumstances hold, the die the Game Master
-  // grants, the allies helping. Nothing here adds a number.
+  // One roll, from its die to its total (ADR FE-ROLLS). The state and what
+  // is done with it are `RollController`'s: this component only shows them.
   import { Alert, Button, Checkbox, Heading, Helper, Input, Label, Modal, Radio } from "flowbite-svelte";
   import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
   import { untrack } from "svelte";
 
   import { I32_MAX, I32_MIN, integerOf, signed } from "../character/edits";
-  import {
-    type Document,
-    type Mode,
-    type Play,
-    type RollOutcome,
-    attempt,
-    roll as throwDice,
-    rollOffer,
-  } from "../lib/engine";
+  import type { Document, Mode, Play, RollOutcome } from "../lib/engine";
+  import { RollController } from "./rollController.svelte";
   import RollResult from "./RollResult.svelte";
   import { optionText } from "./values";
 
@@ -49,48 +40,18 @@
   ];
 
   // The dialog is one roll: the page recreates it for another.
-  const offered = untrack(() => {
-    const document = $state.snapshot(choices);
-    const state = $state.snapshot(play);
-    return attempt(() => rollOffer(document, state, roll));
-  });
-  const offer = offered.ok ? offered.value : null;
-
-  let picked = $state(offer?.options.map((option) => option.picked) ?? []);
-  let mode = $state<Mode>(offer?.mode ?? "plain");
-  let helpers = $state(0);
-  let modifier = $state(0);
-  let asCritical = $state(untrack(() => critical));
-  let outcome = $state.raw<RollOutcome | null>(null);
-  let failure = $state<string | null>(null);
+  const rolling = untrack(() => new RollController(choices, play, roll, critical, onrolled));
+  const offer = rolling.offer;
 
   function launch(event: SubmitEvent) {
     event.preventDefault();
-    const document = $state.snapshot(choices);
-    const state = $state.snapshot(play);
-    const rolled = attempt(() =>
-      throwDice(document, state, {
-        roll,
-        options: picked.flatMap((isPicked, index) => (isPicked ? [index] : [])),
-        mode,
-        modifier,
-        helpers,
-        critical: asCritical,
-      }),
-    );
-    if (!rolled.ok) {
-      failure = rolled.error;
-      return;
-    }
-    outcome = rolled.value;
-    failure = null;
-    onrolled(rolled.value);
+    rolling.launch();
   }
 </script>
 
 <Modal open title={offer?.name ?? "Jet"} size="md" oncancel={onclose}>
   {#if !offer}
-    <Alert color="red">Ce jet ne peut pas être préparé : {offered.ok ? "" : offered.error}</Alert>
+    <Alert color="red">Ce jet ne peut pas être préparé : {rolling.offered.ok ? "" : rolling.offered.error}</Alert>
   {:else}
     <form class="flex flex-col gap-4" onsubmit={launch}>
       <section aria-label="Base">
@@ -107,7 +68,7 @@
           <legend class="mb-1 font-semibold text-gray-900 dark:text-white">Selon les circonstances</legend>
           <Helper>Cochez ce qui s’applique à ce jet ; le reste sera rappelé avec le résultat.</Helper>
           {#each offer.options as option, i (i)}
-            <Checkbox bind:checked={picked[i]}>
+            <Checkbox bind:checked={rolling.picked[i]}>
               <span>
                 {optionText(option)}
                 <span class="block text-xs text-gray-500 dark:text-gray-400">{option.origin}</span>
@@ -140,7 +101,7 @@
           {/if}
           <div class="flex flex-wrap gap-4">
             {#each MODES as option (option.mode)}
-              <Radio name="roll-mode" bind:group={mode} value={option.mode}>
+              <Radio name="roll-mode" bind:group={rolling.mode} value={option.mode}>
                 {option.label}
               </Radio>
             {/each}
@@ -155,13 +116,13 @@
             color="alternative"
             class="h-11 w-11 p-0"
             aria-label="Un allié de moins"
-            disabled={helpers <= 0}
-            onclick={() => (helpers -= 1)}
+            disabled={rolling.helpers <= 0}
+            onclick={() => (rolling.helpers -= 1)}
           >
             <MinusOutline />
           </Button>
-          <output class="min-w-8 text-center text-xl font-bold tabular-nums">{helpers}</output>
-          <Button color="alternative" class="h-11 w-11 p-0" aria-label="Un allié de plus" onclick={() => (helpers += 1)}>
+          <output class="min-w-8 text-center text-xl font-bold tabular-nums">{rolling.helpers}</output>
+          <Button color="alternative" class="h-11 w-11 p-0" aria-label="Un allié de plus" onclick={() => (rolling.helpers += 1)}>
             <PlusOutline />
           </Button>
           <span class="text-sm text-gray-500 dark:text-gray-400">{signed(offer.helperBonus)} chacun</span>
@@ -173,24 +134,25 @@
         <Input
           type="number"
           step="1"
-          value={modifier}
+          value={rolling.modifier}
           onchange={(event) => {
-            const typed = integerOf(event, modifier, { min: I32_MIN, max: I32_MAX, blank: false });
-            if (typed != null) modifier = typed;
+            const typed = integerOf(event, rolling.modifier, { min: I32_MIN, max: I32_MAX, blank: false });
+            if (typed != null) rolling.modifier = typed;
           }}
         />
       </Label>
 
       {#if offer.critical}
-        <Checkbox bind:checked={asCritical}>Coup critique : {offer.critical}</Checkbox>
+        <Checkbox bind:checked={rolling.critical}>Coup critique : {offer.critical}</Checkbox>
       {/if}
 
-      <Button type="submit" class="min-h-11">{outcome ? "Relancer" : "Lancer"} {offer.kind === "damage" ? "les DM" : "le dé"}</Button>
+      <Button type="submit" class="min-h-11">{rolling.outcome ? "Relancer" : "Lancer"} {offer.kind === "damage" ? "les DM" : "le dé"}</Button>
     </form>
 
-    {#if failure}<Alert color="red" class="mt-3">Le jet a échoué : {failure}</Alert>{/if}
+    {#if rolling.failure}<Alert color="red" class="mt-3">Le jet a échoué : {rolling.failure}</Alert>{/if}
     <div class="mt-4" aria-live="polite">
-      {#if outcome}
+      {#if rolling.outcome}
+        {@const outcome = rolling.outcome}
         <RollResult {outcome} />
         {#if outcome.damageRoll}
           {@const next = outcome.damageRoll}
