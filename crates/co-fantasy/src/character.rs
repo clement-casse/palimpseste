@@ -498,9 +498,10 @@ impl Character {
         step::placement(self, violation)
     }
 
-    /// Returns the capacités held now, in voie and rank order: the ranks
-    /// chosen at creation, then each level-up's, forgetting before
-    /// acquiring.
+    /// Returns the ranks held now, in voie and rank order: those chosen at
+    /// creation, then each level-up's, forgetting before acquiring. A
+    /// capacité kept through another holds no rank:
+    /// [`abilities_held`](Self::abilities_held) lists it too.
     #[must_use]
     pub fn ranks(&self) -> Vec<(Voie, Rank)> {
         self.voies()
@@ -510,24 +511,36 @@ impl Character {
     }
 
     /// Returns every capacité the character has, in voie and rank order: the
-    /// [`ranks`](Self::ranks) held, and the rank-1 capacité of its peuple's
-    /// voie kept through the voie du mage that replaced it, which no rank
-    /// records (COF.CRE.VOIE-DU-MAGE).
+    /// [`ranks`](Self::ranks) held, and the capacité kept
+    /// [through](Self::kept_through) another, which no rank records.
     #[must_use]
     pub fn abilities_held(&self) -> Vec<(Voie, Rank)> {
         let mut held = self.ranks();
-        if let Some(voie) = ability::kept(self) {
-            let rank = Rank::new(1);
-            if !held.contains(&(voie, rank)) {
-                held.push((voie, rank));
-                held.sort();
-            }
+        let first = Rank::new(1);
+        if let Some(voie) = ability::kept(self)
+            && let Err(at) = held.binary_search(&(voie, first))
+        {
+            held.insert(at, (voie, first));
         }
         held
     }
 
+    /// Returns the capacité through which the character keeps the capacité
+    /// at `rank` in `voie` without holding its rank: rank 1 of the voie du
+    /// mage, for the rank-1 capacité of the voie de peuple it replaced
+    /// (COF.CRE.VOIE-DU-MAGE). `None` when a rank records the capacité, or
+    /// when it is not held.
+    #[must_use]
+    pub fn kept_through(&self, voie: Voie, rank: impl Into<Rank>) -> Option<(Voie, Rank)> {
+        let rank = rank.into();
+        let first = Rank::new(1);
+        (rank == first && ability::kept(self) == Some(voie) && !self.has_rank(voie, rank))
+            .then_some((Voie::Mage, first))
+    }
+
     /// Returns the level whose level-up acquired the capacité at `rank` in
-    /// `voie`, the last one when several did; `None` when it comes from
+    /// `voie`, the last one when several did, or acquired the capacité it is
+    /// [kept through](Self::kept_through); `None` when it comes from
     /// creation or is not held.
     #[must_use]
     pub fn acquired_at(&self, voie: Voie, rank: impl Into<Rank>) -> Option<Level> {
@@ -536,6 +549,10 @@ impl Character {
             .filter(|(_, level_up)| level_up.ranks().any(|acquired| acquired == (voie, rank)))
             .map(|(level, _)| level)
             .last()
+            .or_else(|| {
+                self.kept_through(voie, rank)
+                    .and_then(|(keeper, at)| self.acquired_at(keeper, at))
+            })
     }
 
     /// Returns the options the capacité at `rank` in `voie` offers the

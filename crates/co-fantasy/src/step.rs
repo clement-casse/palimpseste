@@ -415,6 +415,37 @@ mod tests {
     }
 
     #[test]
+    fn a_kept_capacite_belongs_where_the_voie_du_mage_was_acquired() {
+        use crate::{Level, LevelUp};
+        let diversity = |character: &Character| {
+            character.violations().into_iter().find(|v| {
+                v.subject() == &co_kernel::Subject::Ability(Voie::Humain.ability(1.into()))
+            })
+        };
+        let creation = Character::new()
+            .with_profil(Profil::Ensorceleur)
+            .with_peuple(crate::Peuple::Humain);
+        let at_creation = creation.clone().with_rank(Voie::Mage, 1);
+        let Some(origin) = diversity(&at_creation) else {
+            panic!("the origin is asked at creation");
+        };
+        assert_eq!(
+            at_creation.placement(&origin),
+            Placement::Creation(Step::Voies)
+        );
+        let two = Level::from(2);
+        let later = creation.with_level_up(LevelUp::new().with_rank(Voie::Mage, 1));
+        assert_eq!(later.acquired_at(Voie::Humain, 1), Some(two));
+        let Some(origin) = diversity(&later) else {
+            panic!("the origin is asked at level 2");
+        };
+        assert_eq!(
+            later.placement(&origin),
+            Placement::Level(two, LevelStep::Options)
+        );
+    }
+
+    #[test]
     fn an_option_belongs_where_its_capacite_was_acquired() {
         use crate::{Level, LevelUp};
         // Combattant héroïque (rank 4) acquired at level 2, out of rules.

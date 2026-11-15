@@ -950,6 +950,17 @@ mod tests {
     }
 
     #[test]
+    fn the_peuple_capacite_is_kept_through_the_voie_du_mage_only_without_its_rank() {
+        let mage = Some((Voie::Mage, Rank::new(1)));
+        let mage_human = zero().with_peuple(Peuple::Humain).with_rank(Voie::Mage, 1);
+        assert_eq!(mage_human.kept_through(Voie::Humain, 1), mage);
+        assert_eq!(mage_human.kept_through(Voie::Humain, 2), None);
+        assert_eq!(mage_human.kept_through(Voie::Mage, 1), None);
+        let both = mage_human.with_rank(Voie::Humain, 1);
+        assert_eq!(both.kept_through(Voie::Humain, 1), None);
+    }
+
+    #[test]
     fn steps_follow_the_rank_reached() {
         // Agile: +1 DEF and Init, +2 at rank 3, +3 at rank 5.
         let defence = |rank| total(&ranks(zero(), Voie::Deplacement, rank), Value::Defence);
