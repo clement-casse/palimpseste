@@ -15,12 +15,21 @@
   import ThemePicker from "../ThemePicker.svelte";
   import { characterPath, characterProgressionPath, follow, friendPath } from "../router.svelte";
   import { keepAwake, wakeLock } from "../wakelock.svelte";
-  import { type Equipment, type Sheet, catalog, evaluateInPlay } from "../wasm/palimpseste_wasm";
+  import {
+    type Equipment,
+    type Play,
+    type Sheet,
+    catalog,
+    evaluateInPlay,
+  } from "../wasm/palimpseste_wasm";
   import ContemporainSheet from "./ContemporainSheet.svelte";
   import { equipmentOf } from "./equipment";
   import FantasySheet from "./FantasySheet.svelte";
   import { notesOf } from "./notes";
   import { PlayState } from "./play.svelte";
+  import RollDialog from "./RollDialog.svelte";
+  import RollJournal from "./RollJournal.svelte";
+  import { RollLog } from "./rolls.svelte";
 
   let {
     character,
@@ -39,6 +48,11 @@
   const choices = initial.document;
   const play = owner ? null : new PlayState(initial.id, initial.engine);
   const creation = equipmentOf(choices);
+  // The rolls are the player's own: a friend's sheet rolls nothing.
+  const log = owner ? null : new RollLog(initial.id);
+  /** The roll open in its dialog, with whether its DM start critical. */
+  let rolling = $state<{ roll: string; critical: boolean } | null>(null);
+  const onroll = play ? (roll: string) => (rolling = { roll, critical: false }) : undefined;
 
   type Evaluation =
     | { sheet: Sheet; equipment: Equipment; unreadable: boolean }
@@ -93,6 +107,18 @@
   // What the level-ups or spendings of XP leave to settle; the next one
   // starts only from a complete character (ADR FE-PROGRESSION).
   const later = $derived(view ? unsettledAll(view.sheet) - open : 0);
+
+  // What the device knows of the character in play, for a roll: the
+  // equipment shown, and the steps of the COC2 échelle de santé filled.
+  const HEALTH = "coc.health-scale";
+  const inPlay = $derived.by((): Play | null => {
+    if ("error" in evaluation) return null;
+    const length = evaluation.sheet.values.find((line) => line.id === HEALTH)?.total;
+    return {
+      equipment: evaluation.equipment,
+      damage: length === undefined ? 0 : (play?.used(HEALTH, length) ?? 0),
+    };
+  });
 
   // Cooking mode: the screen stays on while the user's own sheet is shown.
   $effect(() => {
@@ -188,6 +214,7 @@
         equipment={view.equipment}
         {play}
         {notes}
+        {onroll}
       />
     {:else if view?.engine === "contemporain"}
       <ContemporainSheet
@@ -198,8 +225,26 @@
         equipment={view.equipment}
         {play}
         {notes}
+        {onroll}
         characterId={owner ? undefined : initial.id}
       />
+    {/if}
+    {#if log}
+      <div class="mt-4"><RollJournal {log} /></div>
+      {#if rolling && inPlay}
+        <!-- Another roll is another dialog, started anew. -->
+        {#key rolling}
+          <RollDialog
+            {choices}
+            play={inPlay}
+            roll={rolling.roll}
+            critical={rolling.critical}
+            onrolled={(outcome) => log.add(outcome)}
+            onchain={(roll, critical) => (rolling = { roll, critical })}
+            onclose={() => (rolling = null)}
+          />
+        {/key}
+      {/if}
     {/if}
   {/if}
 </section>

@@ -52,7 +52,14 @@ out-of-scope lists of [AGENTS.md](AGENTS.md)); none is scheduled.
 - [ ] Variants (COC2 3d6, ...) and universe rules (échelle d'évolution)
 - [ ] COF2 hybrid profils, PV per level, prestige voies
 - [ ] Money: prices, purchases, the COC2 era
-- [ ] Dice rolling
+- [x] Rolls: characteristic tests with the help of allies, attack tests
+  and weapon DM, offered with their circumstances and resolved line by
+  line from the dice drawn
+- [ ] Success and failure of a roll, difficulties: they wait for the Game
+  Master in the application
+- [ ] How dés bonus and malus net out; a helper's critical
+- [ ] Other rolls: recovery, the COF2 purse, a capacité's own test, a
+  spell's DM
 
 **Application**
 
@@ -67,11 +74,15 @@ out-of-scope lists of [AGENTS.md](AGENTS.md)); none is scheduled.
 - [x] PWA: the character sheet for play: effects of each capacité,
   situational modifiers, resources counted, equipment in play, screen kept
   on
+- [x] PWA: rolls from the sheet, with every term of the total, what may
+  still apply recalled for the Game Master, and a journal on the device
 - [x] PWA: installable, with a theme per device, and end-to-end tests
 - [x] Container image, Fly.io deployment, CI with coverage
 - [ ] Offline editing: documents kept on the device and synced
 - [ ] Narrative steps beyond the character name
 - [ ] Play state (resources) saved beyond the device
+- [ ] Rolls with physical dice, their faces typed in; rolls shared with
+  the table
 - [ ] Choosing which characters friends see, blocking, unlinking identities
 - [ ] Campaign tracker: campaigns, parties, roles, and the Game Master's
   authority over waivers
@@ -295,7 +306,10 @@ it is complete, it is levelled up (COF2) or spends its XP (COC2), each
 entry prepared as a draft on the device and saved when validated. Its
 sheet (`/characters/{id}/sheet`) is for play: each capacité's effects,
 situational modifiers, resources counted and equipment in play kept on the
-device, the screen kept on. Friends are made through invitation links, and
+device, the screen kept on, and a die beside each characteristic, attack
+and weapon to roll it: the dialog shows what the engine offers, the dice
+drawn and every term of the total, and the rolls stay in a journal on the
+device. Friends are made through invitation links, and
 read each other's sheets. The theme is chosen per device. The rules run
 locally through the WebAssembly bindings. Tests use Vitest, happy-dom and
 Testing Library, and sit next to the code; end-to-end tests use Playwright

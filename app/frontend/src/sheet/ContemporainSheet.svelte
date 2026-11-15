@@ -32,6 +32,7 @@
   import { type Note, marksAt, steps } from "./notes";
   import type { PlayState } from "./play.svelte";
   import Restore from "./Restore.svelte";
+  import RollButton from "./RollButton.svelte";
   import SituationalList from "./SituationalList.svelte";
   import Tile from "./Tile.svelte";
   import { damage, range, shown, situationalText, weaponSlugs } from "./values";
@@ -47,6 +48,7 @@
     play,
     notes,
     equipment,
+    onroll,
     characterId,
   }: {
     /** The user's own character, to record what play brings; none for a friend's. */
@@ -58,6 +60,8 @@
     /** What is kept on the device; none for a sheet only read. */
     play: PlayState | null;
     notes: Note[];
+    /** Opens a roll by its identifier; none for a sheet only read. */
+    onroll?: (roll: string) => void;
     /** The equipment in play, or the creation one. */
     equipment: ContemporainEquipment;
   } = $props();
@@ -152,6 +156,7 @@
       scale={catalog.healthScale}
       length={health}
       damage={play?.used(HEALTH, health) ?? 0}
+      reached={details.healthStates}
       notes={valueMarks(HEALTH)}
       onchange={play ? (damage) => play.set(HEALTH, damage, health) : undefined}
     />
@@ -169,7 +174,7 @@
 <div class="mt-4 grid items-start gap-4 md:grid-cols-2 lg:grid-cols-12">
   <div class="grid gap-4 lg:col-span-3">
     <Block title="Caractéristiques" notes={marksAt(notes, ...steps("characteristics"))}>
-      <Characteristics characteristics={sheet.characteristics} {notes} {catalog} />
+      <Characteristics characteristics={sheet.characteristics} {notes} {catalog} {onroll} />
     </Block>
   </div>
 
@@ -206,6 +211,7 @@
               notes={valueMarks(attack.id)}
               contributions={attack.contributions}
               situational={attack.situational}
+              onroll={onroll && attack.roll ? () => onroll(attack.roll ?? "") : undefined}
             />
           {/if}
         {/each}
@@ -220,9 +226,9 @@
           {#each weapons as w (w.weapon.id)}
             <TableBodyRow>
               <TableHeadCell scope="row" class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">{w.weapon.name}{#if w.quantity > 1}{` ×${w.quantity}`}{/if}</TableHeadCell>
-              <TableBodyCell title={w.attack?.label} class="px-2 py-2">{shown(w.attack, true)}</TableBodyCell>
+              <TableBodyCell title={w.attack?.label} class="px-2 py-2">{shown(w.attack, true)}{#if onroll && w.damage?.attackRoll}{@const attackRoll = w.damage.attackRoll} <RollButton label="attaque, {w.weapon.name}" onclick={() => onroll(attackRoll)} />{/if}</TableBodyCell>
               <TableBodyCell class="px-2 py-2">
-                {damage(w.damage)}{#if w.damage}<Marks notes={valueMarks(w.damage.id)} />{/if}{#each w.damage?.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}
+                {damage(w.damage)}{#if w.damage}<Marks notes={valueMarks(w.damage.id)} />{/if}{#if onroll && w.damage?.roll}{@const dmRoll = w.damage.roll} <RollButton label="DM, {w.weapon.name}" onclick={() => onroll(dmRoll)} />{/if}{#each w.damage?.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}
               </TableBodyCell>
               <TableBodyCell class="px-2 py-2">
                 {range(w.range)}{#if w.bonus?.total !== undefined}{` · ${signed(w.bonus.total)}`}{/if}
