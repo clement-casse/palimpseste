@@ -41,6 +41,9 @@ function fixture(name: string): Document {
 /** The choices of Lhagva, the book's worked COF2 character. */
 export const lhagva = () => fixture("lhagva");
 
+/** The choices of Ionas, the book's worked COF2 mage (a haut-elfe ensorceleur). */
+export const ionas = () => fixture("ionas");
+
 /** The choices of Amelia Steele, the book's worked COC2 character. */
 export const amelia = () => fixture("amelia-steele");
 

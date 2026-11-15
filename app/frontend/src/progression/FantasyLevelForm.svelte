@@ -50,7 +50,10 @@
   const offer = $derived(details.levels.find((line) => line.level === number));
   const acquired = $derived(levelUp.abilities ?? []);
   const forgotten = $derived(levelUp.forgotten ?? []);
-  const held = $derived(new Set(details.abilitiesHeld.map((h) => h.ability)));
+  // The ranks held: a capacité kept through another holds none, so it is
+  // neither forgotten nor kept from being acquired.
+  const ranksHeld = $derived(details.abilitiesHeld.filter((h) => !h.keptThrough));
+  const held = $derived(new Set(ranksHeld.map((h) => h.ability)));
   const exchanges = $derived(new Map(catalog.orphanExchanges.map((e) => [e.id, e.name])));
 
   /** Changes the level-up prepared, through the document. */
@@ -175,7 +178,7 @@
       {#snippet header()}Hors règles : oublier une autre capacité{/snippet}
       <Select placeholder="" aria-label="Oublier hors règles" onchange={(e) => picked(e, forget)}>
         <option value="">Oublier une autre capacité…</option>
-        {#each details.abilitiesHeld.filter((h) => !forgotten.includes(h.ability)) as h (h.ability)}
+        {#each ranksHeld.filter((h) => !forgotten.includes(h.ability)) as h (h.ability)}
           <option value={h.ability}>{catalog.abilities.find((a) => a.id === h.ability)?.label ?? h.ability}</option>
         {/each}
       </Select>

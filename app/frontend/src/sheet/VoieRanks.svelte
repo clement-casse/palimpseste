@@ -38,9 +38,12 @@
     return catalog?.abilities.find((a) => a.id === id);
   }
 
-  /** The capacités held in voie `id`, with where each was gained. */
+  /**
+   * The capacités held in voie `id`, with where each was gained: a capacité
+   * kept through another shows in the voie of the one keeping it.
+   */
   function heldIn(id: string): HeldAbility[] {
-    return held.filter((h) => catalog?.abilities.find((a) => a.id === h.ability)?.voie === id);
+    return held.filter((h) => entryOf(h.keptThrough ?? h.ability)?.voie === id);
   }
 
   const RANKS = [1, 2, 3, 4, 5];

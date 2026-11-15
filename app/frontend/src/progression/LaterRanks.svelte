@@ -25,7 +25,9 @@
   const later = $derived(
     held.filter(
       (h) =>
-        h.progression != null && catalog.abilities.find((a) => a.id === h.ability)?.voie === voie,
+        h.progression != null &&
+        !h.keptThrough &&
+        catalog.abilities.find((a) => a.id === h.ability)?.voie === voie,
     ),
   );
   const rankOf = (id: string) => catalog.abilities.find((a) => a.id === id)?.rank ?? "?";

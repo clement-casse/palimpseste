@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { navigate, route } from "../router.svelte";
 import { signedIn } from "../session.svelte";
-import { type Sent, amelia, character, lhagva, stubBackend } from "../test/backend";
+import { type Sent, amelia, character, ionas, lhagva, stubBackend } from "../test/backend";
 import { type Document, emptyDocument } from "../wasm/palimpseste_wasm";
 import { loadDraft } from "./drafts";
 import ProgressionEditor from "./ProgressionEditor.svelte";
@@ -120,6 +120,22 @@ describe("a COF level-up", () => {
         },
       ],
     });
+  });
+
+  it("neither forgets nor withholds the capacité a mage keeps through the voie du mage", async () => {
+    stubBackend(storing());
+    open(ionas(), "new", "orientation");
+    await fireEvent.click(screen.getByRole("button", { name: /Hors règles : oublier/ }));
+    const forget = screen.getByRole("combobox", { name: "Oublier hors règles" });
+    const forgettable = [...forget.querySelectorAll("option")].map((o) => o.value);
+    expect(forgettable).toContain("cof.mage.1");
+    expect(forgettable).not.toContain("cof.elfe-haut.1");
+    navigate("/characters/1/progression/new#abilities");
+    await fireEvent.click(await screen.findByRole("button", { name: /Hors règles : autres capacités/ }));
+    const acquire = await screen.findByRole("combobox", { name: "Acquérir hors règles" });
+    const acquirable = [...acquire.querySelectorAll("option")].map((o) => o.value);
+    expect(acquirable).toContain("cof.elfe-haut.1");
+    expect(acquirable).not.toContain("cof.mage.1");
   });
 
   it("starts only from a complete character", () => {

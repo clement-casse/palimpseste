@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { amelia, lhagva } from "../test/backend";
+import { amelia, ionas, lhagva } from "../test/backend";
 import { catalog, emptyDocument, evaluate } from "../wasm/palimpseste_wasm";
 import { clearDraft, loadDraft, saveDraft } from "./drafts";
 import {
@@ -78,6 +78,15 @@ describe("the progression of a document", () => {
     const content = catalog("fantasy");
     expect(abilityLabel(content, "cof.rage.2")).toBe("Défier la mort (Voie de la rage, rang 2)");
     expect(abilityLabel(content, "cof.unknown.1")).toBe("cof.unknown.1");
+  });
+
+  it("gives no voie de peuple to a mage keeping its capacité through the voie du mage", () => {
+    const sheet = evaluate(ionas());
+    if (sheet.details.engine !== "fantasy") throw new Error("fantasy expected");
+    const kept = sheet.details.abilitiesHeld.find((h) => h.ability === "cof.elfe-haut.1");
+    expect(kept?.keptThrough).toBe("cof.mage.1");
+    const voies = currentVoies(catalog("fantasy"), sheet.details.abilitiesHeld).map((v) => v.id);
+    expect(voies).toEqual(["cof.air", "cof.invocation", "cof.mage"]);
   });
 
   it("gives the voies held now and what a change brings", () => {
