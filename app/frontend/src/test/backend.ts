@@ -6,8 +6,8 @@ import { join } from "node:path";
 
 import { vi } from "vitest";
 
-import type { Character } from "../api";
-import type { Document } from "../lib/engine";
+import type { Character } from "$lib/api";
+import type { Document } from "$lib/engine";
 
 /** A request the front end sent. */
 export type Sent = { method: string; url: string; headers: Record<string, string>; body?: unknown };

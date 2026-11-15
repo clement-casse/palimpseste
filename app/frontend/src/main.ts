@@ -1,12 +1,12 @@
 import { mount } from "svelte";
 import { registerSW } from "virtual:pwa-register";
 
-import App from "./App.svelte";
+import App from "./app/App.svelte";
 import "./index.css";
-import { newVersion } from "./pwa.svelte";
+import { newVersion } from "./app/pwa.svelte";
 // Applies the theme chosen on this device before the app shows.
-import "./theme.svelte";
-import { loadEngines } from "./lib/engine";
+import "$lib/theme.svelte";
+import { loadEngines } from "$lib/engine";
 
 /** How often an open app asks for a new version, in milliseconds. */
 const UPDATE_CHECK = 60 * 60 * 1000;
