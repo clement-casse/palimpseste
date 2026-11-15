@@ -22,6 +22,7 @@
     XpSpendingEntry,
     WrittenEffects,
   } from "../lib/engine";
+  import { COC_TOXICOMANE } from "../lib/engine/ids";
   import Ability from "./Ability.svelte";
   import AbilityEffects from "./AbilityEffects.svelte";
   import { askingSpeciality } from "./progression";
@@ -159,7 +160,7 @@
       </Button>
     {/if}
     {#if offer?.cure !== undefined && offer?.cure !== null}
-      <Button size="sm" onclick={() => setTrait({ id: "coc.trait.toxicomane" })}>
+      <Button size="sm" onclick={() => setTrait({ id: COC_TOXICOMANE })}>
         Guérir la toxicomanie ({offer.cure} XP)
       </Button>
     {/if}

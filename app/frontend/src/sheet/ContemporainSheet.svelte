@@ -20,8 +20,8 @@
     ContemporainDocument,
     ContemporainEquipment,
     Sheet,
-    ValueLine,
   } from "../lib/engine";
+  import { COC } from "../lib/engine/ids";
   import Block from "./Block.svelte";
   import Characteristics from "./Characteristics.svelte";
   import EquipmentSection from "./EquipmentSection.svelte";
@@ -35,8 +35,8 @@
   import RollButton from "./RollButton.svelte";
   import SituationalList from "./SituationalList.svelte";
   import Tile from "./Tile.svelte";
-  import { damage, range, shown, situationalText, weaponSlugs } from "./values";
-  import { currentVoies } from "../progression/progression";
+  import { contemporainSheetModel } from "./model/contemporain";
+  import { damage, range, shown, situationalText } from "./values";
   import { characterPath, follow } from "../router.svelte";
   import VoieRanks from "./VoieRanks.svelte";
 
@@ -66,33 +66,10 @@
     equipment: ContemporainEquipment;
   } = $props();
 
-  const HEALTH = "coc.health-scale";
-  const ATTACKS = ["unarmed", "contact-weapon", "ranged-weapon", "heavy-weapon"];
+  const HEALTH = COC.healthScale;
 
-  const domaine = $derived(catalog.domaines.find((d) => d.id === choices.domaine));
-  const health = $derived(line(HEALTH)?.total);
-  const identity = $derived([
-    {
-      label: "Âge",
-      value:
-        choices.age === undefined
-          ? "À choisir"
-          : `${choices.age} ans${details.ageBracket ? ` (${details.ageBracket})` : ""}`,
-    },
-    { label: "Domaine", value: domaine?.name ?? "À choisir" },
-    { label: "Classe sociale", value: details.socialClass ?? "contradictoire" },
-  ]);
-  const protections = $derived(namesOf(catalog.protections));
-  const traits = $derived(
-    (choices.traits ?? []).flatMap((taken) => {
-      const option = catalog.traits.find((t) => t.id === taken.id);
-      return option ? [{ ...option, points: option.advantage ? taken.points : -taken.points }] : [];
-    }),
-  );
-
-  function line(id: string): ValueLine | undefined {
-    return sheet.values.find((l) => l.id === id);
-  }
+  const model = $derived(contemporainSheetModel({ choices, catalog, sheet, details, equipment }));
+  const health = $derived(model.health);
 
   function valueMarks(id: string): Note[] {
     return marksAt(notes, { kind: "value", id });
@@ -107,45 +84,10 @@
     const others = (equipment.protections ?? []).filter((p) => p !== id);
     equip({ protections: worn ? [...others, id] : others });
   }
-
-  const COMBAT = [
-    { id: "coc.initiative", label: "Init", title: "Initiative", signed: false },
-    { id: "coc.defence", label: "DEF", title: "Défense", signed: false },
-    { id: "coc.damage-reduction", label: "RD", title: "Réduction des dommages", signed: false },
-    {
-      id: "coc.healing-capacity",
-      label: "CG / sem.",
-      title: "Capacité de guérison : DM soignés par semaine",
-      signed: false,
-    },
-    { id: "coc.contact-damage-bonus", label: "DM contact", title: "Bonus aux DM au contact", signed: true },
-  ];
-
-  // Bare hands, then the weapons carried, from the engine's damage lines
-  // (`coc.damage.<weapon>`), each rolled against its attack value.
-  const weapons = $derived(
-    weaponSlugs(sheet.values, "coc.damage").flatMap((slug) => {
-      const weapon = catalog.weapons.find((w) => w.id === `coc.weapon.${slug}`);
-      if (!weapon) return [];
-      const quantity = (equipment.items ?? [])
-        .filter((item) => item.kind === "weapon" && item.id === weapon.id)
-        .reduce((sum, item) => sum + item.quantity, 0);
-      return [
-        {
-          weapon,
-          quantity,
-          attack: line(`coc.attack.${weapon.attackMode.id}`),
-          damage: line(`coc.damage.${slug}`),
-          bonus: line(`coc.critical-bonus.${slug}`),
-          range: line(`coc.critical-range.${slug}`),
-        },
-      ];
-    }),
-  );
 </script>
 
 <div class="my-3">
-  <Identity fields={identity} notes={marksAt(notes, ...steps("domaine-and-age"))} />
+  <Identity fields={model.identity} notes={marksAt(notes, ...steps("domaine-and-age"))} />
 </div>
 
 <div
@@ -182,48 +124,27 @@
 
     <Block title="Combat" notes={marksAt(notes, ...steps("secondary"))}>
       <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
-        {#each COMBAT as tile (tile.id)}
-          {@const value = line(tile.id)}
+        {#each model.combat as tile (tile.id)}
+          {@const roll = tile.roll}
           <Tile
             label={tile.label}
             title={tile.title}
-            value={shown(value, tile.signed)}
+            value={tile.text}
             notes={valueMarks(tile.id)}
-            contributions={value?.contributions}
-            situational={value?.situational}
+            contributions={tile.contributions}
+            situational={tile.situational}
+            onroll={onroll && roll ? () => onroll(roll) : undefined}
           />
-        {/each}
-        {#if line("coc.agi-test-modifier")?.total}
-          {@const agi = line("coc.agi-test-modifier")}
-          <Tile
-            label="Tests d'AGI"
-            value={shown(agi, true)}
-            notes={valueMarks("coc.agi-test-modifier")}
-            contributions={agi?.contributions}
-          />
-        {/if}
-        {#each ATTACKS as mode (mode)}
-          {@const attack = line(`coc.attack.${mode}`)}
-          {#if attack}
-            <Tile
-              label={attack.label}
-              value={shown(attack, true)}
-              notes={valueMarks(attack.id)}
-              contributions={attack.contributions}
-              situational={attack.situational}
-              onroll={onroll && attack.roll ? () => onroll(attack.roll ?? "") : undefined}
-            />
-          {/if}
         {/each}
       </ul>
       <!-- Weapons show theirs in their row. -->
-      <SituationalList {catalog} entries={sheet.values.filter((v) => !v.id.startsWith("coc.damage."))} />
+      <SituationalList {catalog} entries={model.situational} />
       <Table class="mt-3">
         <TableHead>
           <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Att.</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
         </TableHead>
         <TableBody>
-          {#each weapons as w (w.weapon.id)}
+          {#each model.weapons as w (w.weapon.id)}
             <TableBodyRow>
               <TableHeadCell scope="row" class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">{w.weapon.name}{#if w.quantity > 1}{` ×${w.quantity}`}{/if}</TableHeadCell>
               <TableBodyCell title={w.attack?.label} class="px-2 py-2">{shown(w.attack, true)}{#if onroll && w.damage?.attackRoll}{@const attackRoll = w.damage.attackRoll} <RollButton label="attaque, {w.weapon.name}" onclick={() => onroll(attackRoll)} />{/if}</TableBodyCell>
@@ -243,7 +164,7 @@
   <div class="grid gap-4 md:col-span-2 lg:col-span-4">
     <Block title="Voies" notes={marksAt(notes, ...steps("voies"))}>
       <VoieRanks
-        voies={currentVoies(catalog, details.abilitiesHeld)}
+        voies={model.voies}
         names={namesOf(catalog.voies)}
         {notes}
         {catalog}
@@ -251,7 +172,7 @@
         written={sheet.writtenEffects}
       />
       <p class="mt-2 text-sm">
-        XP restante : {line("coc.experience")?.total ?? "—"}
+        XP restante : {model.experience ?? "—"}
         {#if play && characterId !== undefined}
           · <a class="underline" href={`${characterPath(characterId)}#progression`} onclick={follow}>
             Fin de séance : inscrire l’XP gagnée
@@ -261,15 +182,14 @@
     </Block>
 
     <Block title="Traits distinctifs" notes={marksAt(notes, ...steps("traits"))}>
-      {#each [true, false] as advantage (advantage)}
-        {@const listed = traits.filter((t) => t.advantage === advantage)}
+      {#each [{ title: "Avantages", group: model.advantages }, { title: "Désavantages", group: model.disadvantages }] as { title, group } (title)}
         <Heading tag="h4" class="text-base text-gray-500 dark:text-gray-400">
-          {advantage ? "Avantages" : "Désavantages"}
-          {signed(advantage ? details.advantages : details.disadvantages)}
+          {title}
+          {signed(group.total)}
         </Heading>
-        {#if listed.length > 0}
+        {#if group.traits.length > 0}
           <ul class="space-y-1">
-            {#each listed as t (t.id)}
+            {#each group.traits as t (t.id)}
               <li>{t.name} ({signed(t.points)})</li>
             {/each}
           </ul>
@@ -277,11 +197,11 @@
           <p class="text-sm text-gray-500 dark:text-gray-400">Aucun.</p>
         {/if}
       {/each}
-      {#if (choices.acquiredSequels ?? []).length > 0}
+      {#if model.sequels.length > 0}
         <Heading tag="h4" class="text-base text-gray-500 dark:text-gray-400">Séquelles subies</Heading>
         <ul class="space-y-1">
-          {#each choices.acquiredSequels ?? [] as id (id)}
-            <li>{catalog.sequels.find((s) => s.id === id)?.name ?? id}</li>
+          {#each model.sequels as sequel (sequel.id)}
+            <li>{sequel.name}</li>
           {/each}
         </ul>
       {/if}
@@ -315,7 +235,7 @@
         {:else}
           <li>
             Protections :
-            {(equipment.protections ?? []).map((id) => protections.get(id) ?? id).join(", ") || "aucune"}
+            {model.protections.join(", ") || "aucune"}
           </li>
         {/if}
       {/snippet}
