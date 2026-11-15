@@ -7,7 +7,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use co_kernel::{DerivedValue, Dice, Quantity};
 
-use crate::{Character, Item, Protection, Situational, Target, Value, Weapon};
+use crate::{
+    Character, HealthState, Item, Protection, Roll, RollOffer, Situational, Target, Value, Weapon,
+    roll,
+};
 
 /// What a character wears and carries: protections and items.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -77,6 +80,22 @@ impl InPlay {
     #[must_use]
     pub fn damage_dice(&self, weapon: Weapon) -> Dice {
         self.character.damage_dice(weapon)
+    }
+
+    /// Returns the state of health reached with `damage` steps of the
+    /// échelle de santé filled: the last state whose step is filled, never
+    /// one on a blackened step (COC.CNT.SCALES).
+    #[must_use]
+    pub fn health_state(&self, damage: i32) -> Option<HealthState> {
+        roll::health_state(&self.character, damage)
+    }
+
+    /// Returns what `roll` offers within the rules, in the state of health
+    /// `state` (ADR ENG-ROLLS): its base, the options to pick, the dice;
+    /// [`RollOffer::resolve`] then resolves it from the dice rolled.
+    #[must_use]
+    pub fn roll_offer(&self, roll: Roll, state: Option<HealthState>) -> RollOffer {
+        roll::offer(&self.character, roll, state)
     }
 }
 

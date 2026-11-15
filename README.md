@@ -197,6 +197,9 @@ rules of *Chroniques Oubliées Contemporain*:
   goes to, sequels acquired in play.
 - **Capacités**: the effects of the 90 capacités, test bonuses (with their
   dé bonus), situational modifiers, and the equipment in play.
+- **Rolls**: what a characteristic test, an attack test or a weapon's DM
+  offers (base, options to pick, critical range, help) and its resolution
+  from the dice rolled, line by line; never success or failure.
 
 Decisions: [docs/adr/engines.md](docs/adr/engines.md).
 

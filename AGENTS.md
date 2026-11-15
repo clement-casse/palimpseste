@@ -49,16 +49,17 @@ In scope:
 - **Situational modifiers** (ADR ENG-SITUATIONAL): `Situation` and `Situational`, the capacités' modifiers to DEF, RD and attacks that hold only in a situation, and notes (a manoeuvre's malus, a characteristic tested in place of another), listed by `Character::situational(target)` and `InPlay::situational`, never added to a total.
 - **Health-scale states** (ADR ENG-HEALTH-STATES): the steps of a full échelle de santé and its states (step, name, malus), content the character sheet displays. The damage taken is not the engine's.
 - **Equipment in play** (ADR ENG-IN-PLAY): `Equipment` (protections, items), `Character::in_play` and the values of `InPlay`, computed from the equipment it is given; nothing is stored.
+- **Rolls** (ADR ENG-ROLLS): `Roll` (a characteristic test, an attack test with a weapon category or a weapon, the DM of a weapon), what it offers (`InPlay::roll_offer`: the base with the equipment in play, the test bonuses to pick, the situational notes, the malus of the state of health reached, D-56, the dé bonus to show, the critical range, +2 per ally helping) and its resolution from the dice rolled (`InPlay::resolve_roll`: every line of the total, the options left unpicked, the bonus critique of a critical DM). Never whether it succeeds, never the faces drawn.
 - **Catalogue and steps** (ADR ENG-CATALOGUE, ADR ENG-STEPS): each content enum named by the choices document has `ALL`, `id()`, `from_id()` and `name()` (French display name); `Voie::ability_name(rank)` names each capacité (D-45), `Voie::ability_effects(rank)` lists its effects in our own words, computed or described, and `Character::written_effects(voie, rank)` pairs each with its formulas' values for the character (ADR ENG-ABILITY-EFFECTS); the content tables the creation rules read are public read-only accessors; `Value::FIXED` lists the values in the book order and `Value::name()` names them; `label` and `term_label` name every identifier the engine emits; `Step` gives the creation steps in the book order and places each violation in one.
 
 Out of scope, do not implement or prepare for:
 
 - variants (COC2 3d6, ...) and universe rules (échelle d'évolution);
-- combat resolution, arme de prédilection, weapon range, magazine and reach, items without a rule (they stay free text);
+- combat resolution, success and failure of a roll and difficulties, the net count of dés bonus and malus, rolls other than tests, attacks and weapon DM (healing, a capacité's own test), taking one's time, the mode rapide et furieux, arme de prédilection, weapon range, magazine and reach, items without a rule (they stay free text);
 - money, prices, purchases and the era: spending waits for campaign initialization (D-25);
 - psychic sequels and traumatismes (not in the co-rules skill), aging after creation;
 - data files and data formats, persistence, serialization, `serde`;
-- user interface, networking, users, campaigns, play state (health scale damage, resources), dice rolling.
+- user interface, networking, users, campaigns, play state (health scale damage, resources), drawing the faces of the dice.
 
 ## Current scope: `co-fantasy`
 
