@@ -46,7 +46,11 @@
   <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
     <span class="font-bold">Santé<Marks {notes} /></span>
     <output class="text-xl font-bold tabular-nums">{damage} / {length} DM</output>
-    <span class={state ? "font-bold text-red-700 dark:text-red-500" : "text-gray-500 dark:text-gray-400"}>
+    <span
+      class={state
+        ? "font-bold text-red-700 dark:text-red-500"
+        : "text-gray-500 dark:text-gray-400"}
+    >
       {state ? `${state.name} ${signed(state.malus)}` : "Aucun état"}
     </span>
     {#if onchange}
@@ -72,7 +76,10 @@
       </span>
     {/if}
   </div>
-  <div class="mt-1.5 grid grid-cols-[repeat(var(--steps),minmax(0,1fr))] gap-0.5" style:--steps={steps}>
+  <div
+    class="mt-1.5 grid grid-cols-[repeat(var(--steps),minmax(0,1fr))] gap-0.5"
+    style:--steps={steps}
+  >
     {#each { length: steps }, i (i)}
       {@const step = i + 1}
       {#if step <= blackened}
@@ -82,7 +89,8 @@
           title="Case {step} noircie"
         ></span>
       {:else if !onchange}
-        <span class="h-8 rounded-sm border border-gray-400 nth-[5n]:border-2 dark:border-gray-500"></span>
+        <span class="h-8 rounded-sm border border-gray-400 nth-[5n]:border-2 dark:border-gray-500"
+        ></span>
       {:else}
         <!-- Every fifth step ends a state. -->
         <button
@@ -105,7 +113,8 @@
         ]}
         style:grid-column="{(scale.states[i - 1]?.step ?? 0) + 1} / {s.step + 1}"
       >
-        {s.name} {signed(s.malus)}
+        {s.name}
+        {signed(s.malus)}
       </span>
     {/each}
   </div>

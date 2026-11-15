@@ -44,18 +44,42 @@
     <div class="grid items-start gap-6 md:grid-cols-[16rem_1fr]">
       <StepNav steps={editor.statuses} current={step} onselect={editor.select} />
       <div class="flex min-w-0 flex-col gap-4">
-        <Heading tag="h2" class="text-2xl">{editor.statuses.find((s) => s.id === step)?.name}</Heading>
+        <Heading tag="h2" class="text-2xl"
+          >{editor.statuses.find((s) => s.id === step)?.name}</Heading
+        >
         {#if step === PROGRESSION}
-          <ProgressionSection bind:choices={editor.choices} catalog={content} {sheet} characterId={id} />
+          <ProgressionSection
+            bind:choices={editor.choices}
+            catalog={content}
+            {sheet}
+            characterId={id}
+          />
         {:else if editor.choices.engine === "fantasy" && content.engine === "fantasy" && sheet.details.engine === "fantasy"}
-          <FantasyEditor bind:choices={editor.choices} catalog={content} details={sheet.details} {step} characterId={id} written={sheet.writtenEffects} />
+          <FantasyEditor
+            bind:choices={editor.choices}
+            catalog={content}
+            details={sheet.details}
+            {step}
+            characterId={id}
+            written={sheet.writtenEffects}
+          />
         {:else if editor.choices.engine === "contemporain" && content.engine === "contemporain" && sheet.details.engine === "contemporain"}
-          <ContemporainEditor bind:choices={editor.choices} catalog={content} {sheet} details={sheet.details} {step} characterId={id} />
+          <ContemporainEditor
+            bind:choices={editor.choices}
+            catalog={content}
+            {sheet}
+            details={sheet.details}
+            {step}
+            characterId={id}
+          />
         {/if}
 
         {#if step === "characteristics"}
           <Heading tag="h3" class="text-lg">Caractéristiques</Heading>
-          <CharacteristicSheet characteristics={sheet.characteristics} onadjust={overrides.adjust} />
+          <CharacteristicSheet
+            characteristics={sheet.characteristics}
+            onadjust={overrides.adjust}
+          />
         {/if}
         {#if step === editor.lastStep}
           <ValueSheet values={sheet.values} onadjust={overrides.adjust} />
@@ -79,4 +103,9 @@
   {/if}
 </section>
 
-<OverrideDialog request={overrides.request} author={overrides.author} onconfirm={overrides.confirm} oncancel={overrides.cancel} />
+<OverrideDialog
+  request={overrides.request}
+  author={overrides.author}
+  onconfirm={overrides.confirm}
+  oncancel={overrides.cancel}
+/>

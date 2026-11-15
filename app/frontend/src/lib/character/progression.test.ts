@@ -34,8 +34,15 @@ describe("the tests a dé bonus goes to", () => {
   const die = { scope: "véhicule choisi", onSpeciality: false, characteristics: [] };
 
   it("names the capacité chosen, its tests first", () => {
-    const line = { ...die, onChosenAbility: true, target: "coc.vehicules.2", targetScope: undefined };
-    expect(bonusDieLabel(abilities, line, undefined)).toBe(abilityLabel(abilities, "coc.vehicules.2"));
+    const line = {
+      ...die,
+      onChosenAbility: true,
+      target: "coc.vehicules.2",
+      targetScope: undefined,
+    };
+    expect(bonusDieLabel(abilities, line, undefined)).toBe(
+      abilityLabel(abilities, "coc.vehicules.2"),
+    );
     const scoped = { ...line, targetScope: "moto — conduite du véhicule" };
     expect(bonusDieLabel(abilities, scoped, undefined)).toBe("moto — conduite du véhicule");
     const none = { ...line, target: undefined };

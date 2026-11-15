@@ -19,7 +19,11 @@
 </script>
 
 {#if listed.length > 0}
-  <List tag="ul" aria-label="Selon la situation" class="mt-3 space-y-1 text-sm text-gray-500 dark:text-gray-400">
+  <List
+    tag="ul"
+    aria-label="Selon la situation"
+    class="mt-3 space-y-1 text-sm text-gray-500 dark:text-gray-400"
+  >
     {#each listed as entry (entry.label)}
       {#each entry.situational as line, i (i)}
         <Li>{entry.label} {situationalText(line)} ({nameOf(line.ability)})</Li>

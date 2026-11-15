@@ -84,7 +84,12 @@ describe("the URL", () => {
     link.dispatchEvent(click);
     expect(click.defaultPrevented).toBe(true);
     expect(location.pathname + location.search + location.hash).toBe("/characters/4?q=1#profil");
-    const newTab = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, ctrlKey: true });
+    const newTab = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      ctrlKey: true,
+    });
     link.dispatchEvent(newTab);
     expect(newTab.defaultPrevented).toBe(false);
     link.remove();

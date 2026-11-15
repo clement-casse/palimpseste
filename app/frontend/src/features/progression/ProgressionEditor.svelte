@@ -4,7 +4,17 @@
   // `ProgressionController`'s: this component only shows them. A rule
   // broken is accepted only by a waiver the user grants on that one
   // violation (ADR FE-OVERRIDES).
-  import { A, Alert, Button, Heading, Helper, Listgroup, ListgroupItem, Modal, P } from "flowbite-svelte";
+  import {
+    A,
+    Alert,
+    Button,
+    Heading,
+    Helper,
+    Listgroup,
+    ListgroupItem,
+    Modal,
+    P,
+  } from "flowbite-svelte";
   import { ArrowLeftOutline } from "flowbite-svelte-icons";
   import { untrack } from "svelte";
 
@@ -38,17 +48,27 @@
 
 <section class="flex flex-col gap-4">
   <header class="flex flex-wrap items-center gap-x-4 gap-y-2">
-    <A href={editor} onclick={follow} class="gap-1"><ArrowLeftOutline size="sm" /> {initial.name}</A>
-    {#if form.started.kind === "draft"}<Heading tag="h2" class="w-auto text-2xl">{form.title}</Heading>{/if}
+    <A href={editor} onclick={follow} class="gap-1"><ArrowLeftOutline size="sm" /> {initial.name}</A
+    >
+    {#if form.started.kind === "draft"}<Heading tag="h2" class="w-auto text-2xl"
+        >{form.title}</Heading
+      >{/if}
   </header>
 
   {#if form.started.kind === "blocked"}
-    <Alert color="yellow">{form.started.reason} <A href={characterPath(initial.id)} onclick={follow}>Reprendre le personnage</A></Alert>
+    <Alert color="yellow"
+      >{form.started.reason}
+      <A href={characterPath(initial.id)} onclick={follow}>Reprendre le personnage</A></Alert
+    >
   {:else if form.started.kind === "other"}
     <Alert color="yellow" class="flex flex-wrap items-center gap-2">
-      Un brouillon de {form.started.draft.document.engine === "fantasy" ? `niveau ${form.started.draft.number}` : `dépense d’XP ${form.started.draft.number}`}
+      Un brouillon de {form.started.draft.document.engine === "fantasy"
+        ? `niveau ${form.started.draft.number}`
+        : `dépense d’XP ${form.started.draft.number}`}
       est en cours sur cet appareil.
-      <Button size="xs" href={form.otherPath(form.started.draft)} onclick={follow}>Le reprendre</Button>
+      <Button size="xs" href={form.otherPath(form.started.draft)} onclick={follow}
+        >Le reprendre</Button
+      >
       <Button size="xs" color="alternative" onclick={form.restart}>L’abandonner</Button>
     </Alert>
   {:else if form.sheet === null}
@@ -72,7 +92,12 @@
       Brouillon gardé sur cet appareil : rien n’est enregistré avant « {validateLabel(form.choices)} ».
     </Helper>
     <div class="grid items-start gap-6 md:grid-cols-[16rem_1fr]">
-      <StepNav steps={form.statuses} current={step} onselect={form.select} label={`Étapes : ${form.title}`} />
+      <StepNav
+        steps={form.statuses}
+        current={step}
+        onselect={form.select}
+        label={`Étapes : ${form.title}`}
+      />
       <div class="flex min-w-0 flex-col gap-4">
         <Heading tag="h3" class="text-xl">{form.statuses.find((s) => s.id === step)?.name}</Heading>
         {#if step === SUMMARY.id}
@@ -81,7 +106,9 @@
             <P size="sm">Capacités acquises :</P>
             <Listgroup class="flex-col">
               {#each levelUp?.abilities ?? [] as id (id)}
-                <ListgroupItem class="text-gray-900 dark:text-white"><Ability catalog={content} {id} /></ListgroupItem>
+                <ListgroupItem class="text-gray-900 dark:text-white"
+                  ><Ability catalog={content} {id} /></ListgroupItem
+                >
               {:else}
                 <ListgroupItem class="text-gray-500 dark:text-gray-400">Aucune.</ListgroupItem>
               {/each}
@@ -90,7 +117,9 @@
               <P size="sm">Capacités oubliées :</P>
               <Listgroup class="flex-col">
                 {#each levelUp?.forgotten ?? [] as id (id)}
-                  <ListgroupItem class="text-gray-900 dark:text-white"><Ability catalog={content} {id} /></ListgroupItem>
+                  <ListgroupItem class="text-gray-900 dark:text-white"
+                    ><Ability catalog={content} {id} /></ListgroupItem
+                  >
                 {/each}
               </Listgroup>
             {/if}
@@ -99,7 +128,9 @@
             <P size="sm">Rangs achetés :</P>
             <Listgroup class="flex-col">
               {#each spending?.abilities ?? [] as id (id)}
-                <ListgroupItem class="text-gray-900 dark:text-white"><Ability catalog={content} {id} /></ListgroupItem>
+                <ListgroupItem class="text-gray-900 dark:text-white"
+                  ><Ability catalog={content} {id} /></ListgroupItem
+                >
               {:else}
                 <ListgroupItem class="text-gray-500 dark:text-gray-400">Aucun.</ListgroupItem>
               {/each}
@@ -108,9 +139,23 @@
           <Heading tag="h4" class="text-lg">Ce qui change sur la fiche</Heading>
           <Differences differences={form.changes} />
         {:else if form.choices.engine === "fantasy" && content.engine === "fantasy" && sheet.details.engine === "fantasy"}
-          <FantasyLevelForm bind:choices={form.choices} catalog={content} details={sheet.details} number={entry} {step} written={sheet.writtenEffects} />
+          <FantasyLevelForm
+            bind:choices={form.choices}
+            catalog={content}
+            details={sheet.details}
+            number={entry}
+            {step}
+            written={sheet.writtenEffects}
+          />
         {:else if form.choices.engine === "contemporain" && content.engine === "contemporain" && sheet.details.engine === "contemporain"}
-          <ContemporainSpendingForm bind:choices={form.choices} catalog={content} details={sheet.details} number={entry} {step} written={sheet.writtenEffects} />
+          <ContemporainSpendingForm
+            bind:choices={form.choices}
+            catalog={content}
+            details={sheet.details}
+            number={entry}
+            {step}
+            written={sheet.writtenEffects}
+          />
         {/if}
 
         <Heading tag="h4" class="text-lg">À régler</Heading>
@@ -124,7 +169,9 @@
           <Listgroup class="flex-col">
             {#each form.waivers as waiver, i (i)}
               <ListgroupItem class="text-gray-900 dark:text-white">
-                <span><code class="text-xs">{waiver.rule}</code> — {waiver.author} : {waiver.reason}</span>
+                <span
+                  ><code class="text-xs">{waiver.rule}</code> — {waiver.author} : {waiver.reason}</span
+                >
               </ListgroupItem>
             {/each}
           </Listgroup>
@@ -142,10 +189,15 @@
             {/if}
           {/if}
           <div class="flex flex-wrap gap-2">
-            <Button onclick={form.validate} disabled={!form.complete || form.saving || form.started.stale}>
+            <Button
+              onclick={form.validate}
+              disabled={!form.complete || form.saving || form.started.stale}
+            >
               {validateLabel(form.choices)}
             </Button>
-            <Button color="alternative" onclick={form.abandon} disabled={form.saving}>Abandonner le brouillon</Button>
+            <Button color="alternative" onclick={form.abandon} disabled={form.saving}
+              >Abandonner le brouillon</Button
+            >
             {#if form.removable}
               <Button color="red" outline onclick={() => (removing = true)} disabled={form.saving}>
                 Supprimer {form.choices.engine === "fantasy" ? "ce niveau" : "cette dépense"}
@@ -164,11 +216,18 @@
   {/if}
 </section>
 
-<OverrideDialog request={overrides.request} author={overrides.author} onconfirm={overrides.confirm} oncancel={overrides.cancel} />
+<OverrideDialog
+  request={overrides.request}
+  author={overrides.author}
+  onconfirm={overrides.confirm}
+  oncancel={overrides.cancel}
+/>
 
 <Modal
   open={removing}
-  title={form.choices.engine === "fantasy" ? `Supprimer le niveau ${form.entry} ?` : `Supprimer la dépense ${form.entry} ?`}
+  title={form.choices.engine === "fantasy"
+    ? `Supprimer le niveau ${form.entry} ?`
+    : `Supprimer la dépense ${form.entry} ?`}
   size="sm"
   oncancel={() => (removing = false)}
 >

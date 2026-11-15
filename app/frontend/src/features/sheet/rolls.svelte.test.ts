@@ -60,7 +60,12 @@ describe("the journal of rolls", () => {
     expect(new RollLog(1).entries).toEqual([]);
     localStorage.setItem(
       "palimpseste.rolls.1",
-      JSON.stringify([{ at: 1, outcome: outcome(9) }, { at: "soon" }, 4, { at: 2, outcome: { name: "?" } }]),
+      JSON.stringify([
+        { at: 1, outcome: outcome(9) },
+        { at: "soon" },
+        4,
+        { at: 2, outcome: { name: "?" } },
+      ]),
     );
     expect(new RollLog(1).entries.map((entry) => entry.outcome.total)).toEqual([9]);
   });

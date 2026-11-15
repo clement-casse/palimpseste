@@ -49,7 +49,11 @@ describe("the COF sheet", () => {
     open(lhagva());
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Lhagva");
     const identity = screen.getAllByRole("definition").map((field) => field.textContent);
-    expect(identity).toEqual(["Barbare (Combattants)", "Humain", expect.stringMatching(/^1 \(d4° : /)]);
+    expect(identity).toEqual([
+      "Barbare (Combattants)",
+      "Humain",
+      expect.stringMatching(/^1 \(d4° : /),
+    ]);
     expect(screen.getByRole("rowheader", { name: "Épée longue" })).toBeTruthy();
     expect(screen.getByRole("rowheader", { name: "Javelot ×2" })).toBeTruthy();
     expect(screen.getByText("adventurer's bag")).toBeTruthy();
@@ -190,7 +194,9 @@ describe("the COF sheet", () => {
     const voies = screen.getByRole("heading", { name: "Voies" }).closest("section");
     if (!voies) throw new Error("no voies section");
     expect(within(voies).getByRole("button", { name: "Note 1" })).toBeTruthy();
-    const list = screen.getByRole("heading", { name: "Dérogations et ajustements" }).closest("section");
+    const list = screen
+      .getByRole("heading", { name: "Dérogations et ajustements" })
+      .closest("section");
     if (!list) throw new Error("no notes section");
     expect(within(list).getByText(/Ana : Vétéran/)).toBeTruthy();
   });
@@ -202,7 +208,9 @@ describe("the COF sheet", () => {
     sheet.unmount();
 
     open(emptyDocument("fantasy"), "Nouveau");
-    expect(screen.getByRole("note").textContent).toMatch(/Création inachevée : \d+ points à régler/);
+    expect(screen.getByRole("note").textContent).toMatch(
+      /Création inachevée : \d+ points à régler/,
+    );
     expect(screen.getByRole("link", { name: "Reprendre la création" }).getAttribute("href")).toBe(
       "/characters/1",
     );
@@ -270,7 +278,9 @@ describe("the COC sheet", () => {
     // Chauffeur's +2 becomes +5 with Conducteur expérimenté's.
     expect(screen.getByText(line(/\+5\s*invented — conduite du véhicule/))).toBeTruthy();
     expect(screen.getByText(line(/\+2\s*invented — conduite du véhicule/))).toBeTruthy();
-    expect(screen.getByText(line(/\+5\s*invented — discipline scientifique\s*\(INT\)/))).toBeTruthy();
+    expect(
+      screen.getByText(line(/\+5\s*invented — discipline scientifique\s*\(INT\)/)),
+    ).toBeTruthy();
   });
 
   it("fills the échelle de santé, kept on the device", async () => {
@@ -323,7 +333,9 @@ describe("a shorter échelle de santé", () => {
     track(16, 1, [undefined, "coc.health-state.contusionne"]);
     expect(screen.getAllByTitle(/noircie$/)).toHaveLength(4);
     expect(screen.getAllByRole("button", { name: /^Case/ })).toHaveLength(16);
-    expect(screen.getByRole("button", { name: "Case 5" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Case 5" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
     expect(screen.queryByText("Aucun état")).toBeNull();
   });
 
@@ -342,7 +354,13 @@ describe("a friend's sheet", () => {
     expect(screen.getByText("Personnage de Ben")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Ben" }).getAttribute("href")).toBe("/friends/3");
     expect(left("Points de vigueur (PV)")).toBe(`${pv} / ${pv}`);
-    for (const name of ["Modifier", "Retirer 1 PV", "Tout restaurer", "Modifier l’équipement", "Retirer 1 Javelot"]) {
+    for (const name of [
+      "Modifier",
+      "Retirer 1 PV",
+      "Tout restaurer",
+      "Modifier l’équipement",
+      "Retirer 1 Javelot",
+    ]) {
       expect(screen.queryByRole("button", { name }), name).toBeNull();
     }
     expect(screen.queryByRole("link", { name: "Modifier" })).toBeNull();
@@ -372,7 +390,8 @@ describe("the sheet page", () => {
 
 describe("the equipment in play", () => {
   /** The value of the combat tile named `title`, which opens its breakdown. */
-  const tile = (title: string) => screen.getByRole("button", { name: new RegExp(`^${title} -?\\d+, détail$`) });
+  const tile = (title: string) =>
+    screen.getByRole("button", { name: new RegExp(`^${title} -?\\d+, détail$`) });
 
   function engineValue(document: Document, equipment: Equipment, id: string) {
     return evaluateInPlay(document, equipment).values.find((line) => line.id === id)?.total;
@@ -397,7 +416,9 @@ describe("the equipment in play", () => {
     await edit();
     await choose("Armure", "cof.armour.cuir-renforce");
     const worn = { ...equipmentOf(lhagva()), armour: "cof.armour.cuir-renforce" };
-    expect(tile("Défense").textContent?.trim()).toBe(String(engineValue(lhagva(), worn, "cof.defence")));
+    expect(tile("Défense").textContent?.trim()).toBe(
+      String(engineValue(lhagva(), worn, "cof.defence")),
+    );
     await fireEvent.mouseEnter(tile("Défense"));
     expect(await screen.findByText(/^Cuir renforcé/, {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "À savoir" })).toBeNull();
@@ -432,7 +453,9 @@ describe("the equipment in play", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Retirer 1 Javelot" }));
     expect(screen.queryByRole("rowheader", { name: /^Javelot/ })).toBeNull();
     // Used up, it stays listed until removed.
-    expect(screen.getByRole("button", { name: "Retirer 1 Javelot" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Retirer 1 Javelot" }).hasAttribute("disabled")).toBe(
+      true,
+    );
   });
 
   it("keeps the equipment on the device until the creation one is taken back", async () => {
@@ -444,7 +467,9 @@ describe("the equipment in play", () => {
     render(CharacterSheet, { character: character(lhagva()) });
     expect(screen.getByText(/Armure : Cuir renforcé/)).toBeTruthy();
     vi.stubGlobal("confirm", () => true);
-    await fireEvent.click(screen.getByRole("button", { name: "Reprendre l’équipement de création" }));
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Reprendre l’équipement de création" }),
+    );
     expect(screen.getByText(/Armure : Cuir simple/)).toBeTruthy();
     expect(screen.queryByText(/Équipement de la partie/)).toBeNull();
   });

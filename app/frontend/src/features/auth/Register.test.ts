@@ -61,7 +61,9 @@ describe("creating an account", () => {
       }
     });
     await fireEvent.click(await screen.findByRole("button", { name: "Créer le compte" }));
-    expect((await screen.findByRole("alert")).textContent?.trim()).toBe("Ce pseudonyme est déjà pris.");
+    expect((await screen.findByRole("alert")).textContent?.trim()).toBe(
+      "Ce pseudonyme est déjà pris.",
+    );
     expect(location.pathname).toBe("/register");
   });
 
@@ -73,9 +75,9 @@ describe("creating an account", () => {
 
     expect(await screen.findByRole("heading", { name: "Connexion" })).toBeTruthy();
     expect(location.pathname).toBe("/login");
-    expect(sent.some((request) => request.method === "DELETE" && request.url === REGISTRATION)).toBe(
-      true,
-    );
+    expect(
+      sent.some((request) => request.method === "DELETE" && request.url === REGISTRATION),
+    ).toBe(true);
     expect(sent.some((request) => request.method === "POST")).toBe(false);
   });
 

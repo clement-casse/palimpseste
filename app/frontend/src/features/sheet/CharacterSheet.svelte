@@ -50,10 +50,13 @@
     <header class="flex flex-wrap items-center gap-x-4 gap-y-2">
       {#if owner}
         <A href={friendPath(owner.id)} onclick={follow} class="gap-1 print:hidden">
-          <ArrowLeftOutline size="sm" /> {owner.nickname}
+          <ArrowLeftOutline size="sm" />
+          {owner.nickname}
         </A>
       {:else}
-        <A href="/" onclick={follow} class="gap-1 print:hidden"><ArrowLeftOutline size="sm" /> Personnages</A>
+        <A href="/" onclick={follow} class="gap-1 print:hidden"
+          ><ArrowLeftOutline size="sm" /> Personnages</A
+        >
       {/if}
       <span class="ms-auto flex flex-wrap items-center gap-2 print:hidden">
         <ThemePicker />
@@ -71,22 +74,34 @@
       </span>
     </header>
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <Heading tag="h2" class="w-auto text-3xl font-bold tracking-wide text-primary-900 dark:text-primary-200"
+      <Heading
+        tag="h2"
+        class="w-auto text-3xl font-bold tracking-wide text-primary-900 dark:text-primary-200"
         >{initial.name}</Heading
       >
       <Badge color="gray">{ENGINES[initial.engine]}</Badge>
-      {#if owner}<span class="text-gray-500 dark:text-gray-400">Personnage de {owner.nickname}</span>{/if}
+      {#if owner}<span class="text-gray-500 dark:text-gray-400">Personnage de {owner.nickname}</span
+        >{/if}
       {#if !owner}
         <span class="ms-auto flex flex-wrap items-center gap-2 print:hidden">
-          <Button color="alternative" class="min-h-11" href={characterPath(initial.id)} onclick={follow}
-            >Modifier</Button
+          <Button
+            color="alternative"
+            class="min-h-11"
+            href={characterPath(initial.id)}
+            onclick={follow}>Modifier</Button
           >
           {#if open + later === 0}
-            <Button class="min-h-11" href={characterProgressionPath(initial.id, "new")} onclick={follow}>
+            <Button
+              class="min-h-11"
+              href={characterProgressionPath(initial.id, "new")}
+              onclick={follow}
+            >
               {nextLabel(choices)}
             </Button>
           {:else}
-            <Button class="min-h-11" disabled title="Terminez d’abord le personnage">{nextLabel(choices)}</Button>
+            <Button class="min-h-11" disabled title="Terminez d’abord le personnage"
+              >{nextLabel(choices)}</Button
+            >
           {/if}
         </span>
       {/if}
@@ -96,12 +111,15 @@
   {#if open > 0}
     <Alert color="yellow" role="note" class="my-3">
       Création inachevée : {open} point{open > 1 ? "s" : ""} à régler.
-      {#if !owner}<A href={characterPath(initial.id)} onclick={follow}>Reprendre la création</A>{/if}
+      {#if !owner}<A href={characterPath(initial.id)} onclick={follow}>Reprendre la création</A
+        >{/if}
     </Alert>
   {:else if later > 0}
     <Alert color="yellow" role="note" class="my-3">
       Progression inachevée : {later} point{later > 1 ? "s" : ""} à régler.
-      {#if !owner}<A href={`${characterPath(initial.id)}#progression`} onclick={follow}>Reprendre la progression</A>{/if}
+      {#if !owner}<A href={`${characterPath(initial.id)}#progression`} onclick={follow}
+          >Reprendre la progression</A
+        >{/if}
     </Alert>
   {/if}
 
@@ -160,4 +178,3 @@
     {/if}
   {/if}
 </section>
-

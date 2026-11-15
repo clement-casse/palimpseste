@@ -65,14 +65,17 @@
         Enregistrer
       </Button>
     </form>
-    {#if status}<Alert role="status" color={status.error ? "red" : "green"}>{status.text}</Alert>{/if}
+    {#if status}<Alert role="status" color={status.error ? "red" : "green"}>{status.text}</Alert
+      >{/if}
   </Card>
 
   <Card size="xl" class="gap-4 p-6">
     <Heading tag="h3" class="text-lg">Comptes associés</Heading>
-    {#if outcome}<Alert role="status" color={outcome.error ? "red" : "green"}>{outcome.text}</Alert>{/if}
+    {#if outcome}<Alert role="status" color={outcome.error ? "red" : "green"}>{outcome.text}</Alert
+      >{/if}
     <P size="sm" class="text-gray-500 dark:text-gray-400">
-      Chacun de ces comptes, un par fournisseur, vous connecte à ce même profil. Vous seul les voyez.
+      Chacun de ces comptes, un par fournisseur, vous connecte à ce même profil. Vous seul les
+      voyez.
     </P>
     <Loader load={accounts}>
       {#snippet children([identities, providers])}
@@ -82,10 +85,14 @@
             <ListgroupItem class="flex-wrap justify-between text-gray-900 dark:text-white">
               <strong>{provider.name}</strong>
               {#if linked}
-                <span class="text-gray-500 dark:text-gray-400">{linked.label || "compte associé"}</span>
+                <span class="text-gray-500 dark:text-gray-400"
+                  >{linked.label || "compte associé"}</span
+                >
               {:else}
                 <!-- Linking leaves the app for the provider: a link, not a script. -->
-                <Button size="xs" href={linkUrl(provider.id)}>Associer un compte {provider.name}</Button>
+                <Button size="xs" href={linkUrl(provider.id)}
+                  >Associer un compte {provider.name}</Button
+                >
               {/if}
             </ListgroupItem>
           {/each}

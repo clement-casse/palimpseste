@@ -35,7 +35,13 @@
   {:else}
     <Badge color="yellow">{open} point{open > 1 ? "s" : ""} à régler</Badge>
   {/if}
-  <Button size="xs" color="alternative" class="ms-auto" href={characterSheetPath(character.id)} onclick={follow}>
+  <Button
+    size="xs"
+    color="alternative"
+    class="ms-auto"
+    href={characterSheetPath(character.id)}
+    onclick={follow}
+  >
     Fiche
   </Button>
 </ListgroupItem>

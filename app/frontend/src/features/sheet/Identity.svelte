@@ -11,7 +11,9 @@
   <dl class="grid flex-1 grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2">
     {#each fields as field (field.label)}
       <div class="rounded-lg border border-primary-700 px-3 py-1.5 dark:border-primary-400">
-        <dt class="text-xs tracking-wider text-gray-500 uppercase dark:text-gray-400">{field.label}</dt>
+        <dt class="text-xs tracking-wider text-gray-500 uppercase dark:text-gray-400">
+          {field.label}
+        </dt>
         <dd class="font-semibold text-gray-900 dark:text-white">{field.value}</dd>
       </div>
     {/each}

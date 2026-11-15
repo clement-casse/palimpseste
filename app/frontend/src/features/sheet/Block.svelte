@@ -7,7 +7,11 @@
   import Marks from "$lib/components/Marks.svelte";
   import type { Note } from "$lib/character/notes";
 
-  let { title, notes = [], children }: { title: string; notes?: Note[]; children: Snippet } = $props();
+  let {
+    title,
+    notes = [],
+    children,
+  }: { title: string; notes?: Note[]; children: Snippet } = $props();
 </script>
 
 <section class="break-inside-avoid">

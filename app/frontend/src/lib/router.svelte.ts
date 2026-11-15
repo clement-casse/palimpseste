@@ -131,7 +131,10 @@ const ROUTES: { pattern: string; page: (held: Record<string, string>) => Page }[
       number: held.number === "new" ? "new" : Number(held.number),
     }),
   },
-  { pattern: PATHS.characterSheet, page: (held) => ({ name: "character-sheet", id: Number(held.id) }) },
+  {
+    pattern: PATHS.characterSheet,
+    page: (held) => ({ name: "character-sheet", id: Number(held.id) }),
+  },
   { pattern: PATHS.friend, page: (held) => ({ name: "friend", id: Number(held.id) }) },
   {
     pattern: PATHS.friendSheet,
@@ -198,7 +201,8 @@ export function takeReturn(): string | null {
 
 /** Follows a link inside the app without reloading the page. */
 export function follow(event: MouseEvent) {
-  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+    return;
   const link = event.currentTarget;
   if (link instanceof HTMLAnchorElement && link.origin === location.origin) {
     event.preventDefault();

@@ -39,16 +39,22 @@
 
 <li {title}>
   <Card class="h-full items-center px-1 py-2 text-center">
-    <span class="text-xs leading-tight text-gray-500 dark:text-gray-400">{label}<Marks {notes} /></span>
+    <span class="text-xs leading-tight text-gray-500 dark:text-gray-400"
+      >{label}<Marks {notes} /></span
+    >
     {#if contributions && contributions.length > 0}
       <Button
         {id}
         color="light"
         class="min-w-11 border-0 px-1 py-0 text-2xl font-bold underline decoration-dotted underline-offset-4"
-        aria-label="{title ?? label} {value}, détail"
-      >{value}</Button
+        aria-label="{title ?? label} {value}, détail">{value}</Button
       >
-      <BreakdownPopover triggeredBy="#{id}" title="{title ?? label} : {value}" {contributions} {situational} />
+      <BreakdownPopover
+        triggeredBy="#{id}"
+        title="{title ?? label} : {value}"
+        {contributions}
+        {situational}
+      />
     {:else}
       <strong class="text-2xl font-bold text-gray-900 dark:text-white">{value}</strong>
     {/if}

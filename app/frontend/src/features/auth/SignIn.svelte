@@ -24,7 +24,11 @@
       <ul class="flex flex-col gap-2">
         {#each providers as provider (provider.id)}
           <!-- Signing in leaves the app for the provider: a link, not a script. -->
-          <li><Button class="w-full" href={signInUrl(provider.id)}>Se connecter avec {provider.name}</Button></li>
+          <li>
+            <Button class="w-full" href={signInUrl(provider.id)}
+              >Se connecter avec {provider.name}</Button
+            >
+          </li>
         {/each}
       </ul>
     {/snippet}

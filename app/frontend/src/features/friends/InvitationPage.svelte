@@ -42,7 +42,10 @@
       {#snippet children(invitation)}
         <Card size="xl" class="gap-4 p-6">
           {#if invitation.status === "own"}
-            <P>C’est votre propre lien d’invitation : envoyez-le à la personne que vous voulez inviter.</P>
+            <P
+              >C’est votre propre lien d’invitation : envoyez-le à la personne que vous voulez
+              inviter.</P
+            >
             <A href={FRIENDS} onclick={follow}>Vos amis</A>
           {:else if invitation.status === "friends" && invitation.friend !== null}
             <P>Vous êtes déjà amis avec {invitation.nickname}.</P>
@@ -50,7 +53,9 @@
               Voir {invitation.nickname}
             </Button>
           {:else}
-            <Heading tag="h3" class="text-lg">{invitation.nickname} vous invite à devenir amis</Heading>
+            <Heading tag="h3" class="text-lg"
+              >{invitation.nickname} vous invite à devenir amis</Heading
+            >
             {#if invitation.profile}<P class="whitespace-pre-line">{invitation.profile}</P>{/if}
             <P size="sm" class="text-gray-500 dark:text-gray-400">
               Amis, vous voyez les fiches de vos personnages respectifs, sans pouvoir les modifier.
@@ -59,7 +64,9 @@
             {#if failure}<ErrorMessage error={failure} />{/if}
             <div class="flex flex-wrap gap-2">
               <Button disabled={accepting} onclick={accept}>Accepter</Button>
-              <Button color="alternative" onclick={() => navigate("/", { replace: true })}>Ignorer</Button>
+              <Button color="alternative" onclick={() => navigate("/", { replace: true })}
+                >Ignorer</Button
+              >
             </div>
           {/if}
         </Card>
@@ -67,7 +74,8 @@
       {#snippet failed(error)}
         {#if expired(error)}
           <Alert color="yellow">
-            Ce lien n’est plus valable : il a expiré, a déjà servi ou a été révoqué. Demandez-en un nouveau.
+            Ce lien n’est plus valable : il a expiré, a déjà servi ou a été révoqué. Demandez-en un
+            nouveau.
           </Alert>
         {:else}
           <ErrorMessage {error} />

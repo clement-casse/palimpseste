@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "check": "svelte-check --tsconfig ./tsconfig.json && eslint .",
+    "check": "svelte-check --tsconfig ./tsconfig.json && eslint . && prettier --check .",
     "lint": "eslint .",
+    "format": "prettier --write .",
     "build": "pnpm run check && vite build",
     "preview": "vite preview",
     "test": "vitest run"
