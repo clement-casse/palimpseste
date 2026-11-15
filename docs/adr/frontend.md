@@ -28,7 +28,70 @@ accepted: about 60 kB gzipped more JavaScript (the components,
 tailwind-variants and tailwind-merge) and 30 kB more CSS, as Tailwind
 scans every flowbite-svelte component.
 
+**FE-LINT: ESLint and Prettier, run with the type check.** `pnpm run
+check` (so `mise run frontend:check`, and the build) runs `svelte-check`,
+then ESLint (`eslint.config.js`: the recommended rules for TypeScript and
+Svelte, and the layout of ADR FE-LAYOUT as `no-restricted-imports` and
+`no-restricted-globals` rules), then `prettier --check` (100 columns,
+`prettier-plugin-svelte`; Markdown is left alone). `pnpm run format`
+formats. *Why in `check`:* one task says whether the front end is sound,
+and the layout holds because a wrong import fails it.
+
 ## Structure
+
+**FE-LAYOUT: `app`, `lib` and `features`.** `src/app/` is the shell: the
+top bar, who is signed in, the page of the current path. `src/lib/` is
+what every page shares and knows no page: the REST client (`api.ts`), the
+engines (`engine/`, ADR FE-ENGINE), the router, the session and the other
+shared state (ADR FE-SHARED-STATE), the device's storage (ADR
+FE-STORAGE), the helpers over a choices document and the saver
+(`character/`), the violation messages and the components several
+features show (`components/`). `src/features/` has one folder per group
+of pages: `auth`, `characters`, `editor`, `progression`, `sheet`,
+`friends`. Imports go one way: `app` imports the features, a feature
+imports `lib` (as `$lib/…`, an alias of Vite and TypeScript) and its own
+files, `lib` imports neither. Two features are built on another one, and
+only they import it: `editor` on `progression` (its last step), `friends`
+on `sheet` (a friend's character). What two features need moves to
+`lib`. Tests may cross: one shows a whole page to check a part of it.
+*Why:* the folders imported each other in circles, so no page could be
+redrawn or moved alone.
+
+**FE-ENGINE: The engines behind one module.** `lib/engine/index.ts` is
+the only module to import the generated bindings (`src/wasm/`): it
+re-exports their types and calls, loads them (`loadEngines`), gives what
+an engine refuses as a `Result` in place of an exception (`attempt`), and
+narrows a document, its catalogue, its details and its equipment to one
+engine together (`narrow`, `withEquipment`), so nothing is cast.
+`lib/engine/ids.ts` names the few identifiers the interface places
+itself (a resource in the bar, a combat tile, a budget beside a form)
+and how a weapon's values are named after it; a test checks that the
+engines still emit each. Everything else is read from what the engines
+list.
+
+**FE-CONTROLLERS: State in controllers, data in view-models, markup in
+components.** A page with state of its own keeps it, and what is done
+with it, in a class of a `.svelte.ts` module: `EditorController`,
+`ProgressionController`, `SheetController`, `RollController`, beside
+`DocumentSaver`, `PlayState`, `RollLog` and `Overriding` (the waivers and
+adjustments asked for and recorded). A controller is created while its
+component initialises, since it may register an effect that syncs with
+the outside world (saving, the draft, the wake lock). What a sheet shows
+is shaped by a pure function of what the engine computed
+(`fantasySheetModel`, `contemporainSheetModel` in
+`features/sheet/model/`): labelled fields, resources, tiles, weapon rows,
+tested without a DOM. A component reads a controller or a model and lays
+it out; it holds only what is purely of the display (a dialog open).
+*Why:* the pages will be redrawn by a designer with the same data, which
+must not be rewritten with them.
+
+**FE-STORAGE: The device's storage behind one module.** `lib/storage.ts`
+is the only module to touch `localStorage` and `sessionStorage`: `KEYS`
+names everything the app keeps (the theme, the page to come back to, a
+progression draft, the play state, the equipment in play, the rolls), and
+`readText`, `readJson`, `writeText`, `writeJson` and `remove` go on when
+storage is refused. What is read may be anything: its reader checks its
+shape.
 
 **FE-PAGES: One page per path.** `/` lists the user's characters,
 `/characters/{id}` edits one (the current step in the hash),
@@ -41,6 +104,8 @@ invitations, `/friends/{id}` a friend and their characters,
 `/friends/{id}/characters/{character}` a friend's character read only,
 `/invitation` an invitation link (ADR FE-FRIENDS), `/login` the sign-in
 page, `/register` creates an account; any other path is `NotFound.svelte`.
+Each path is written once, as a pattern in `lib/router.svelte.ts`, which
+both reads it (`match`) and writes it (`characterPath`, …).
 
 **FE-SHARED-STATE: Shared state in `.svelte.ts` modules.** The session
 (`session.svelte.ts`), the URL and the page to come back to after
@@ -51,9 +116,13 @@ names the page of a path, `takeQuery` reads once a message the backend
 sent back (`?signin=failed`, `?link=…`). A child changes its parent's
 state through `$bindable` props or callbacks.
 
-**FE-LOADING: `{#await}` for reads, `$effect` never fetches.** One-shot
-reads use `{#await}` blocks, with loading and empty states; `$effect` only
-syncs with the outside world. `describe` (`errors.ts`) says in French what
+**FE-LOADING: `Loader` for reads, `$effect` never fetches.** One-shot
+reads are promises shown by `Loader.svelte` (an `{#await}` block: a
+spinner, then what was read, or the error, which a page may replace
+through `failed`), with empty states; `$effect` only syncs with the
+outside world. A page reads the user's characters through
+`lib/character/load.ts` (`loadCharacter`, `loadCharacters`), which waits
+for the saves of an editor just left (ADR FE-EDITOR). `describe` (`errors.ts`) says in French what
 an error means, and `ErrorMessage.svelte` shows it, the technical detail
 on hover.
 
@@ -103,6 +172,8 @@ change, at the version it was loaded at, one save in flight, a conflict
 is left. A
 page reading characters waits for that last save (`settled`), so it
 never shows the document from before it.
+`EditorController` holds the document, its evaluation, the step shown and
+the overrides (ADR FE-CONTROLLERS).
 `EditorHeader.svelte` owns the name, the save status and deletion. Engine
 editors receive the document as a `$bindable` prop (`bind:choices`) and
 change it directly; the parent narrows the document, catalog and details
