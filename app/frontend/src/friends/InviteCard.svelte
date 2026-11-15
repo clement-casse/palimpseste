@@ -11,9 +11,9 @@
     Listgroup,
     ListgroupItem,
     P,
-    Spinner,
   } from "flowbite-svelte";
 
+  import Loader from "../lib/components/Loader.svelte";
   import { type CreatedInvitation, createInvitation, listInvitations, revokeInvitation } from "../api";
   import ErrorMessage from "../ErrorMessage.svelte";
   import { invitationLink } from "../router.svelte";
@@ -93,21 +93,19 @@
   </Button>
   {#if failure}<ErrorMessage error={failure} />{/if}
 
-  {#await waiting}
-    <p class="flex items-center gap-2"><Spinner size="4" /> Chargement…</p>
-  {:then waiting}
-    {#if waiting.length > 0}
-      <Heading tag="h4" class="text-base">Liens en attente</Heading>
-      <Listgroup class="flex-col">
-        {#each waiting as invitation (invitation.id)}
-          <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
-            <span>Expire le {when(invitation.expires)}</span>
-            <Button size="xs" color="alternative" onclick={() => revoke(invitation.id)}>Révoquer</Button>
-          </ListgroupItem>
-        {/each}
-      </Listgroup>
-    {/if}
-  {:catch error}
-    <ErrorMessage {error} />
-  {/await}
+  <Loader load={waiting}>
+    {#snippet children(waiting)}
+      {#if waiting.length > 0}
+        <Heading tag="h4" class="text-base">Liens en attente</Heading>
+        <Listgroup class="flex-col">
+          {#each waiting as invitation (invitation.id)}
+            <ListgroupItem class="flex-wrap justify-between gap-2 text-gray-900 dark:text-white">
+              <span>Expire le {when(invitation.expires)}</span>
+              <Button size="xs" color="alternative" onclick={() => revoke(invitation.id)}>Révoquer</Button>
+            </ListgroupItem>
+          {/each}
+        </Listgroup>
+      {/if}
+    {/snippet}
+  </Loader>
 </Card>

@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { Button, Heading, Input, Listgroup, P, Select, Spinner } from "flowbite-svelte";
+  import { Button, Heading, Input, Listgroup, P, Select } from "flowbite-svelte";
 
-  import { type User, createCharacter, listCharacters } from "./api";
-  import { settled } from "./character/saver.svelte";
+  import Loader from "./lib/components/Loader.svelte";
+  import { type User, createCharacter } from "./api";
+  import { loadCharacters } from "./lib/characters";
   import CharacterItem from "./CharacterItem.svelte";
   import { ENGINES } from "./engines";
   import ErrorMessage from "./ErrorMessage.svelte";
@@ -11,7 +12,7 @@
 
   let { user }: { user: User } = $props();
 
-  const characters = settled().then(listCharacters);
+  const characters = loadCharacters();
   const engines = Object.entries(ENGINES).map(([value, name]) => ({ value: value as Engine, name }));
   let name = $state("");
   let engine = $state<Engine>("fantasy");
@@ -28,21 +29,19 @@
 
 <section class="flex flex-col gap-4">
   <Heading tag="h2" class="text-2xl">Personnages de {user.nickname}</Heading>
-  {#await characters}
-    <p class="flex items-center gap-2"><Spinner size="4" /> Chargement…</p>
-  {:then characters}
-    {#if characters.length === 0}
-      <P class="text-gray-500 dark:text-gray-400">Aucun personnage pour l'instant : créez le premier.</P>
-    {:else}
-      <Listgroup class="flex-col">
-        {#each characters as character (character.id)}
-          <CharacterItem {character} />
-        {/each}
-      </Listgroup>
-    {/if}
-  {:catch error}
-    <ErrorMessage {error} />
-  {/await}
+  <Loader load={characters}>
+    {#snippet children(characters)}
+      {#if characters.length === 0}
+        <P class="text-gray-500 dark:text-gray-400">Aucun personnage pour l'instant : créez le premier.</P>
+      {:else}
+        <Listgroup class="flex-col">
+          {#each characters as character (character.id)}
+            <CharacterItem {character} />
+          {/each}
+        </Listgroup>
+      {/if}
+    {/snippet}
+  </Loader>
   {#if failure}<ErrorMessage error={failure} />{/if}
   <form class="flex flex-wrap gap-2" onsubmit={submit}>
     <Input

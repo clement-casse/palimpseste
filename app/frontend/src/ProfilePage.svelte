@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { Alert, Button, Card, Heading, Listgroup, ListgroupItem, P, Spinner } from "flowbite-svelte";
+  import { Alert, Button, Card, Heading, Listgroup, ListgroupItem, P } from "flowbite-svelte";
 
+  import Loader from "./lib/components/Loader.svelte";
   import { ApiError, type User, linkUrl, listIdentities, listProviders, updateMe } from "./api";
-  import ErrorMessage from "./ErrorMessage.svelte";
   import { describe } from "./errors";
   import ProfileFields from "./ProfileFields.svelte";
   import { takeQuery } from "./router.svelte";
@@ -74,32 +74,30 @@
     <P size="sm" class="text-gray-500 dark:text-gray-400">
       Chacun de ces comptes, un par fournisseur, vous connecte à ce même profil. Vous seul les voyez.
     </P>
-    {#await accounts}
-      <p class="flex items-center gap-2"><Spinner size="4" /> Chargement…</p>
-    {:then [identities, providers]}
-      <Listgroup class="flex-col">
-        {#each providers as provider (provider.id)}
-          {@const linked = identities.find((identity) => identity.provider === provider.id)}
-          <ListgroupItem class="flex-wrap justify-between text-gray-900 dark:text-white">
-            <strong>{provider.name}</strong>
-            {#if linked}
-              <span class="text-gray-500 dark:text-gray-400">{linked.label || "compte associé"}</span>
-            {:else}
-              <!-- Linking leaves the app for the provider: a link, not a script. -->
-              <Button size="xs" href={linkUrl(provider.id)}>Associer un compte {provider.name}</Button>
-            {/if}
-          </ListgroupItem>
-        {/each}
-        {#each identities.filter((identity) => identity.provider === null) as identity, index (index)}
-          <ListgroupItem class="flex-wrap justify-between text-gray-900 dark:text-white">
-            <strong>{identity.name}</strong>
-            {#if identity.label}<span>{identity.label}</span>{/if}
-            <span class="text-gray-500 dark:text-gray-400">(fournisseur retiré)</span>
-          </ListgroupItem>
-        {/each}
-      </Listgroup>
-    {:catch error}
-      <ErrorMessage {error} />
-    {/await}
+    <Loader load={accounts}>
+      {#snippet children([identities, providers])}
+        <Listgroup class="flex-col">
+          {#each providers as provider (provider.id)}
+            {@const linked = identities.find((identity) => identity.provider === provider.id)}
+            <ListgroupItem class="flex-wrap justify-between text-gray-900 dark:text-white">
+              <strong>{provider.name}</strong>
+              {#if linked}
+                <span class="text-gray-500 dark:text-gray-400">{linked.label || "compte associé"}</span>
+              {:else}
+                <!-- Linking leaves the app for the provider: a link, not a script. -->
+                <Button size="xs" href={linkUrl(provider.id)}>Associer un compte {provider.name}</Button>
+              {/if}
+            </ListgroupItem>
+          {/each}
+          {#each identities.filter((identity) => identity.provider === null) as identity, index (index)}
+            <ListgroupItem class="flex-wrap justify-between text-gray-900 dark:text-white">
+              <strong>{identity.name}</strong>
+              {#if identity.label}<span>{identity.label}</span>{/if}
+              <span class="text-gray-500 dark:text-gray-400">(fournisseur retiré)</span>
+            </ListgroupItem>
+          {/each}
+        </Listgroup>
+      {/snippet}
+    </Loader>
   </Card>
 </div>
