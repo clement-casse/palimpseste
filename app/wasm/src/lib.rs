@@ -851,6 +851,11 @@ mod tests {
             .map(|h| h.ability.as_str())
             .collect::<Vec<_>>();
         assert_eq!(ids, ["cof.humain.1", "cof.mage.1"]);
+        let kept = abilities
+            .iter()
+            .map(|h| h.kept_through.as_deref())
+            .collect::<Vec<_>>();
+        assert_eq!(kept, [Some("cof.mage.1"), None]);
         assert_eq!(abilities[0].progression, None);
         document.specialities = vec![SpecialityEntry {
             ability: "cof.humain.1".into(),
