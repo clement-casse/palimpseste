@@ -98,13 +98,14 @@ pub enum RollOption {
     HealthState(HealthState),
 }
 
-/// An option a roll offers, with its amount and whether it is picked
-/// unless the player says otherwise.
+/// An option a roll offers, with its amount, whether it is picked
+/// unless the player says otherwise, and whether it is put forward.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Offered {
     option: RollOption,
     amount: i32,
     picked: bool,
+    featured: bool,
 }
 
 impl Offered {
@@ -125,6 +126,14 @@ impl Offered {
     pub const fn picked(&self) -> bool {
         self.picked
     }
+
+    /// Whether it is put forward: a test bonus naming the characteristic
+    /// tested or counting it among its usual ones (D-60), the malus of the
+    /// state of health where it is picked.
+    #[must_use]
+    pub const fn featured(&self) -> bool {
+        self.featured
+    }
 }
 
 /// What a roll offers within the rules: its base with its breakdown, the
@@ -137,6 +146,7 @@ pub struct RollOffer {
     options: Vec<Offered>,
     notes: Vec<Situational>,
     bonus_dice: Vec<BonusDie>,
+    featured_dice: Vec<BonusDie>,
     mode: RollMode,
     critical_from: Option<i32>,
     critical_bonus: Option<i32>,
@@ -185,6 +195,13 @@ impl RollOffer {
     #[must_use]
     pub fn bonus_dice(&self) -> &[BonusDie] {
         &self.bonus_dice
+    }
+
+    /// Those of [`bonus_dice`](Self::bonus_dice) put forward: naming the
+    /// characteristic tested or counting it among their usual ones (D-60).
+    #[must_use]
+    pub fn featured_dice(&self) -> &[BonusDie] {
+        &self.featured_dice
     }
 
     /// The mode the roll starts in: a plain d20, since no capacité gives a
@@ -381,21 +398,26 @@ fn health(state: Option<HealthState>, picked: bool) -> Option<Offered> {
         option: RollOption::HealthState(state),
         amount: state.malus(),
         picked,
+        featured: picked,
     })
 }
 
-/// The characteristics of the tests `die` applies to: those of the test
-/// chosen for it, or its own; `None` while its test is not chosen, the die
-/// then going to no test yet (COC.PRG.BONUS-DIE).
-fn die_characteristics(character: &Character, die: BonusDie) -> Option<&'static [Characteristic]> {
+/// The characteristics named and the usual ones (D-60) of the tests `die`
+/// applies to: those of the test chosen for it, or its own; `None` while
+/// its test is not chosen, the die then going to no test yet
+/// (COC.PRG.BONUS-DIE).
+fn die_characteristics(character: &Character, die: BonusDie) -> Option<Characteristics> {
     if die.on_chosen_ability() {
         character
             .bonus_die_test(die)
-            .map(TestBonus::characteristics)
+            .map(|test| (test.characteristics(), test.usual_characteristics()))
     } else {
-        Some(die.characteristics())
+        Some((die.characteristics(), die.usual_characteristics()))
     }
 }
+
+/// Characteristics named, then usual.
+type Characteristics = (&'static [Characteristic], &'static [Characteristic]);
 
 fn test_offer(
     character: &Character,
@@ -407,8 +429,13 @@ fn test_offer(
         let malus = character.value(Value::AgiTestModifier).unwrap_or_default();
         base.extend(malus.contributions().iter().cloned());
     }
+    // Named, a bonus goes to the tests of its characteristics only; else to
+    // every test, put forward on those of its usual ones (D-60).
     let named = |characteristics: &[Characteristic]| {
         characteristics.is_empty() || characteristics.contains(&characteristic)
+    };
+    let featured = |(named, usual): Characteristics| {
+        named.contains(&characteristic) || usual.contains(&characteristic)
     };
     let mut options = character
         .test_bonuses()
@@ -420,6 +447,7 @@ fn test_offer(
                 option: RollOption::TestBonus(bonus),
                 amount,
                 picked: false,
+                featured: featured((bonus.characteristics(), bonus.usual_characteristics())),
             })
         })
         .collect::<Vec<_>>();
@@ -427,8 +455,13 @@ fn test_offer(
     let bonus_dice = character
         .bonus_dice()
         .into_iter()
-        .filter(|die| die_characteristics(character, *die).is_some_and(&named))
+        .filter(|die| die_characteristics(character, *die).is_some_and(|(n, _)| named(n)))
         .collect::<Vec<_>>();
+    let featured_dice = bonus_dice
+        .iter()
+        .copied()
+        .filter(|die| die_characteristics(character, *die).is_some_and(featured))
+        .collect();
     RollOffer {
         roll: Roll::Test(characteristic),
         base,
@@ -436,6 +469,7 @@ fn test_offer(
         options,
         notes: character.situational(Target::Characteristic(characteristic)),
         bonus_dice,
+        featured_dice,
         mode: RollMode::Plain,
         critical_from: None,
         critical_bonus: None,
@@ -458,6 +492,7 @@ fn attack_offer(
         options,
         notes: character.situational(Target::Value(value)),
         bonus_dice: Vec::new(),
+        featured_dice: Vec::new(),
         mode: RollMode::Plain,
         critical_from: Some(critical_from),
         critical_bonus: None,
@@ -473,6 +508,7 @@ fn damage_offer(character: &Character, weapon: Weapon) -> RollOffer {
         options: Vec::new(),
         notes: character.situational(Target::Value(value)),
         bonus_dice: Vec::new(),
+        featured_dice: Vec::new(),
         mode: RollMode::Plain,
         critical_from: None,
         critical_bonus: character
@@ -754,6 +790,40 @@ mod tests {
         assert_eq!(offer.roll(), Roll::Test(Characteristic::For));
         // Nothing to pick: the note has no amount to add.
         assert_eq!(offer.options(), []);
+    }
+
+    #[test]
+    fn a_bonus_goes_to_every_test_and_is_put_forward_on_its_usual_ones() {
+        // Convaincant: an approche sociale, usually CHA (D-60); Hyperpolyglotte:
+        // a dé bonus usually INT.
+        let character = ranks(Character::new(), Voie::Discours, 1);
+        let character = ranks(character, Voie::Langues, 5);
+        let played = played(&character);
+        let featured = |c| {
+            let offer = played.roll_offer(Roll::Test(c), None);
+            let speech = offer
+                .options()
+                .iter()
+                .find(|o| matches!(o.option(), RollOption::TestBonus(b) if b.voie() == Voie::Discours))
+                .map(Offered::featured);
+            (
+                speech,
+                offer.bonus_dice().len(),
+                offer.featured_dice().len(),
+            )
+        };
+        assert_eq!(featured(Characteristic::Cha), (Some(true), 1, 0));
+        assert_eq!(featured(Characteristic::Int), (Some(false), 1, 1));
+        // The malus of the state of health is put forward where it is picked.
+        let offer = played.roll_offer(Roll::Test(Characteristic::Int), Some(HealthState::Affaibli));
+        let health = offer
+            .options()
+            .iter()
+            .find(|o| matches!(o.option(), RollOption::HealthState(_)))
+            .unwrap();
+        assert!(!health.featured());
+        let offer = played.roll_offer(Roll::Test(Characteristic::Con), Some(HealthState::Affaibli));
+        assert!(offer.options().iter().any(|o| o.picked() && o.featured()));
     }
 
     #[test]

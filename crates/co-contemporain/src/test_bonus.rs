@@ -52,6 +52,14 @@ impl TestBonus {
         self.row().map_or(&[], |row| row.characteristics)
     }
 
+    /// The characteristics usually tested for its scope when the catalogue
+    /// names none (D-60): the bonus goes to every test, and is put forward
+    /// on the tests of these.
+    #[must_use]
+    pub fn usual_characteristics(self) -> &'static [Characteristic] {
+        self.row().map_or(&[], |row| row.usual)
+    }
+
     /// The tests the bonus applies to, in French and in a few words
     /// (`premiers soins, stabiliser un mourant`), besides the
     /// characteristics named.
@@ -131,6 +139,7 @@ pub struct BonusDie {
     voie: Voie,
     rank: Rank,
     characteristics: &'static [Characteristic],
+    usual: &'static [Characteristic],
     scope: &'static str,
     on_speciality: bool,
 }
@@ -159,6 +168,15 @@ impl BonusDie {
     #[must_use]
     pub const fn characteristics(self) -> &'static [Characteristic] {
         self.characteristics
+    }
+
+    /// The characteristics usually tested for its scope when the catalogue
+    /// names none (D-60): the dé bonus goes to every test, and is put
+    /// forward on the tests of these. Empty for a dé bonus going to a
+    /// capacité chosen, which follows that capacité's.
+    #[must_use]
+    pub const fn usual_characteristics(self) -> &'static [Characteristic] {
+        self.usual
     }
 
     /// The tests the dé bonus applies to, in French and in a few words.
@@ -202,11 +220,19 @@ struct Row {
     rank: u8,
     characteristics: &'static [Characteristic],
     amount: Amount,
+    usual: &'static [Characteristic],
     scope: &'static str,
     on_speciality: bool,
 }
 
 impl Row {
+    /// The same bonus, to tests of any characteristic, put forward on those
+    /// of `usual` (D-60).
+    const fn usual(mut self, usual: &'static [Characteristic]) -> Self {
+        self.usual = usual;
+        self
+    }
+
     /// The same bonus, to the tests of the speciality chosen.
     const fn on_speciality(mut self) -> Self {
         self.on_speciality = true;
@@ -225,6 +251,7 @@ const fn row(
         voie,
         rank,
         characteristics,
+        usual: &[],
         amount,
         scope,
         on_speciality: false,
@@ -278,9 +305,14 @@ const BONUSES: &[Row] = &[
         FIVE,
         "discipline, copie d’une œuvre",
     )
+    .usual(&[Int, Cha, Agi])
     .on_speciality(),
-    row(Voie::ArtsEtArtisanats, 3, &[], FIVE, "discipline").on_speciality(),
-    row(Voie::ArtsEtArtisanats, 4, &[], FIVE, "discipline").on_speciality(),
+    row(Voie::ArtsEtArtisanats, 3, &[], FIVE, "discipline")
+        .usual(&[Int, Cha, Agi])
+        .on_speciality(),
+    row(Voie::ArtsEtArtisanats, 4, &[], FIVE, "discipline")
+        .usual(&[Int, Cha, Agi])
+        .on_speciality(),
     // Sportif amateur, Sportif confirmé, Déterminé, Athlète.
     row(
         Voie::Athletisme,
@@ -289,9 +321,15 @@ const BONUSES: &[Row] = &[
         PerRank(1),
         "athlétisme, hors combat",
     ),
-    row(Voie::Athletisme, 2, &[], Flat(2), "discipline sportive").on_speciality(),
-    row(Voie::Athletisme, 3, &[], Flat(2), "discipline sportive").on_speciality(),
-    row(Voie::Athletisme, 4, &[], Flat(2), "discipline sportive").on_speciality(),
+    row(Voie::Athletisme, 2, &[], Flat(2), "discipline sportive")
+        .usual(&[For, Agi, Con])
+        .on_speciality(),
+    row(Voie::Athletisme, 3, &[], Flat(2), "discipline sportive")
+        .usual(&[For, Agi, Con])
+        .on_speciality(),
+    row(Voie::Athletisme, 4, &[], Flat(2), "discipline sportive")
+        .usual(&[For, Agi, Con])
+        .on_speciality(),
     // Amateur.
     row(
         Voie::CombatAMainsNues,
@@ -344,13 +382,22 @@ const BONUSES: &[Row] = &[
         &[],
         FIVE,
         "serrures, coffres, systèmes de sécurité",
-    ),
-    row(Voie::Crime, 4, &[], FIVE, "se faire passer pour un autre"),
+    )
+    .usual(&[Agi, Int]),
+    row(Voie::Crime, 4, &[], FIVE, "se faire passer pour un autre").usual(&[Cha]),
     // Convaincant, Éloquent, Rhétoricien, Meneur.
-    row(Voie::Discours, 1, &[], FIVE, "approche sociale").on_speciality(),
-    row(Voie::Discours, 2, &[], FIVE, "approche sociale").on_speciality(),
-    row(Voie::Discours, 3, &[], FIVE, "approche sociale").on_speciality(),
-    row(Voie::Discours, 4, &[], FIVE, "approche sociale").on_speciality(),
+    row(Voie::Discours, 1, &[], FIVE, "approche sociale")
+        .usual(&[Cha])
+        .on_speciality(),
+    row(Voie::Discours, 2, &[], FIVE, "approche sociale")
+        .usual(&[Cha])
+        .on_speciality(),
+    row(Voie::Discours, 3, &[], FIVE, "approche sociale")
+        .usual(&[Cha])
+        .on_speciality(),
+    row(Voie::Discours, 4, &[], FIVE, "approche sociale")
+        .usual(&[Cha])
+        .on_speciality(),
     // Furtif, Vigilant, Infiltré.
     row(
         Voie::Furtivite,
@@ -427,15 +474,20 @@ const BONUSES: &[Row] = &[
         "spécialité médicale, culture médicale",
     )
     .on_speciality(),
-    row(Voie::Medecine, 3, &[], FIVE, "spécialité médicale").on_speciality(),
-    row(Voie::Medecine, 4, &[], FIVE, "médecine traditionnelle").on_speciality(),
+    row(Voie::Medecine, 3, &[], FIVE, "spécialité médicale")
+        .usual(&[Int])
+        .on_speciality(),
+    row(Voie::Medecine, 4, &[], FIVE, "médecine traditionnelle")
+        .usual(&[Int])
+        .on_speciality(),
     row(
         Voie::Medecine,
         5,
         &[],
         FIVE,
         "relations sociales sur ses spécialités",
-    ),
+    )
+    .usual(&[Cha]),
     // Observateur.
     row(
         Voie::Psychologie,
@@ -467,9 +519,15 @@ const BONUSES: &[Row] = &[
         PerRank(1),
         "comprendre, entretenir, réparer, saboter un système",
     ),
-    row(Voie::Technologie, 2, &[], FIVE, "spécialité technique").on_speciality(),
-    row(Voie::Technologie, 3, &[], FIVE, "spécialité technique").on_speciality(),
-    row(Voie::Technologie, 4, &[], FIVE, "spécialité technique").on_speciality(),
+    row(Voie::Technologie, 2, &[], FIVE, "spécialité technique")
+        .usual(&[Int])
+        .on_speciality(),
+    row(Voie::Technologie, 3, &[], FIVE, "spécialité technique")
+        .usual(&[Int])
+        .on_speciality(),
+    row(Voie::Technologie, 4, &[], FIVE, "spécialité technique")
+        .usual(&[Int])
+        .on_speciality(),
     // Alumni: a discipline, and with peers.
     row(Voie::Sciences, 1, &[Int], FIVE, "discipline scientifique").on_speciality(),
     row(
@@ -480,16 +538,23 @@ const BONUSES: &[Row] = &[
         "relations avec ses pairs",
     ),
     // Professionnel, Esprit pratique, Expert reconnu, Personnalité publique.
-    row(Voie::Sciences, 2, &[], FIVE, "discipline scientifique").on_speciality(),
-    row(Voie::Sciences, 3, &[], FIVE, "discipline scientifique").on_speciality(),
-    row(Voie::Sciences, 4, &[], FIVE, "discipline scientifique").on_speciality(),
+    row(Voie::Sciences, 2, &[], FIVE, "discipline scientifique")
+        .usual(&[Int])
+        .on_speciality(),
+    row(Voie::Sciences, 3, &[], FIVE, "discipline scientifique")
+        .usual(&[Int])
+        .on_speciality(),
+    row(Voie::Sciences, 4, &[], FIVE, "discipline scientifique")
+        .usual(&[Int])
+        .on_speciality(),
     row(
         Voie::Sciences,
         5,
         &[],
         FIVE,
         "relations sociales sur ses spécialités",
-    ),
+    )
+    .usual(&[Cha]),
     // Voyageur du monde, Explorateur.
     row(
         Voie::Survie,
@@ -498,7 +563,9 @@ const BONUSES: &[Row] = &[
         PerRank(1),
         "coutumes locales, voyages, passer pour un local",
     ),
-    row(Voie::Survie, 2, &[], FIVE, "survie dans le milieu").on_speciality(),
+    row(Voie::Survie, 2, &[], FIVE, "survie dans le milieu")
+        .usual(&[Per, Con])
+        .on_speciality(),
     // Baroudeur: against fatigue, and a second milieu.
     row(
         Voie::Survie,
@@ -507,18 +574,32 @@ const BONUSES: &[Row] = &[
         PerRank(1),
         "résister à la fatigue, la faim, la maladie, le poison",
     ),
-    row(Voie::Survie, 3, &[], FIVE, "survie dans le milieu").on_speciality(),
+    row(Voie::Survie, 3, &[], FIVE, "survie dans le milieu")
+        .usual(&[Per, Con])
+        .on_speciality(),
     // Guide.
-    row(Voie::Survie, 4, &[], FIVE, "survie dans le milieu").on_speciality(),
+    row(Voie::Survie, 4, &[], FIVE, "survie dans le milieu")
+        .usual(&[Per, Con])
+        .on_speciality(),
     // Chauffeur: a vehicle, and its maintenance.
-    row(Voie::Vehicules, 1, &[], Flat(2), "conduite du véhicule").on_speciality(),
-    row(Voie::Vehicules, 1, &[], PerRank(1), "entretien courant"),
+    row(Voie::Vehicules, 1, &[], Flat(2), "conduite du véhicule")
+        .usual(&[Agi])
+        .on_speciality(),
+    row(Voie::Vehicules, 1, &[], PerRank(1), "entretien courant").usual(&[Int]),
     // Conducteur expérimenté, Casse-cou, Pilote émérite, As des as: one
     // more vehicle each.
-    row(Voie::Vehicules, 2, &[], Flat(2), "conduite du véhicule").on_speciality(),
-    row(Voie::Vehicules, 3, &[], Flat(2), "conduite du véhicule").on_speciality(),
-    row(Voie::Vehicules, 4, &[], Flat(2), "conduite du véhicule").on_speciality(),
-    row(Voie::Vehicules, 5, &[], Flat(2), "conduite du véhicule").on_speciality(),
+    row(Voie::Vehicules, 2, &[], Flat(2), "conduite du véhicule")
+        .usual(&[Agi])
+        .on_speciality(),
+    row(Voie::Vehicules, 3, &[], Flat(2), "conduite du véhicule")
+        .usual(&[Agi])
+        .on_speciality(),
+    row(Voie::Vehicules, 4, &[], Flat(2), "conduite du véhicule")
+        .usual(&[Agi])
+        .on_speciality(),
+    row(Voie::Vehicules, 5, &[], Flat(2), "conduite du véhicule")
+        .usual(&[Agi])
+        .on_speciality(),
 ];
 
 /// What a "+2 becomes +5" adds to the bonus it upgrades.
@@ -537,27 +618,68 @@ const UPGRADES: [(Voie, u8, u8, u8); 4] = [
     (Voie::Vehicules, 5, 3, 1),
 ];
 
-/// The dé bonus of the capacités, in voie and rank order: the voie, the
-/// rank, and the characteristics named.
-const BONUS_DICE: &[(Voie, u8, &[Characteristic], &str, bool)] = &[
+/// A dé bonus of the catalogue: the voie, the rank, the characteristics
+/// named, the usual ones (D-60), the tests in a few words, and whether they
+/// are those of the speciality.
+type Die = (
+    Voie,
+    u8,
+    &'static [Characteristic],
+    &'static [Characteristic],
+    &'static str,
+    bool,
+);
+
+/// The dé bonus of the capacités, in voie and rank order.
+const BONUS_DICE: &[Die] = &[
     // Génie, Champion, Boss, Cerveau, Marionnettiste, Fantôme.
-    (Voie::ArtsEtArtisanats, 5, &[], "discipline choisie", true),
+    (
+        Voie::ArtsEtArtisanats,
+        5,
+        &[],
+        &[Int, Cha, Agi],
+        "discipline choisie",
+        true,
+    ),
     (
         Voie::Athletisme,
         5,
         &[],
+        &[For, Agi, Con],
         "discipline sportive choisie",
         true,
     ),
-    (Voie::Corporations, 5, &[], "un test des rangs 2 à 4", false),
-    (Voie::Crime, 5, &[], "un test des rangs 1, 3 ou 4", false),
-    (Voie::Discours, 5, &[], "approche choisie", true),
-    (Voie::Furtivite, 5, &[], "un test des rangs 1 à 4", false),
+    (
+        Voie::Corporations,
+        5,
+        &[],
+        &[],
+        "un test des rangs 2 à 4",
+        false,
+    ),
+    (
+        Voie::Crime,
+        5,
+        &[],
+        &[],
+        "un test des rangs 1, 3 ou 4",
+        false,
+    ),
+    (Voie::Discours, 5, &[], &[Cha], "approche choisie", true),
+    (
+        Voie::Furtivite,
+        5,
+        &[],
+        &[],
+        "un test des rangs 1 à 4",
+        false,
+    ),
     // Spécialiste, Mémoire vivante.
     (
         Voie::Investigation,
         2,
         &[Int],
+        &[],
         "spécialité d’investigation",
         true,
     ),
@@ -565,24 +687,34 @@ const BONUS_DICE: &[(Voie, u8, &[Characteristic], &str, bool)] = &[
         Voie::Investigation,
         4,
         &[],
+        &[Int, Per],
         "deuxième spécialité d’investigation",
         true,
     ),
     // Hyperpolyglotte, Professeur, Clairvoyant, Génie, Personnalité
     // publique, Aventurier, As des as.
-    (Voie::Langues, 5, &[], "tests des rangs 2 à 4", false),
+    (
+        Voie::Langues,
+        5,
+        &[],
+        &[Int],
+        "tests des rangs 2 à 4",
+        false,
+    ),
     (
         Voie::Medecine,
         5,
         &[Int],
+        &[],
         "spécialité médicale choisie",
         true,
     ),
-    (Voie::Psychologie, 5, &[Per], "psychologie", false),
+    (Voie::Psychologie, 5, &[Per], &[], "psychologie", false),
     (
         Voie::Technologie,
         5,
         &[],
+        &[Int],
         "spécialité technique choisie",
         true,
     ),
@@ -590,6 +722,7 @@ const BONUS_DICE: &[(Voie, u8, &[Characteristic], &str, bool)] = &[
         Voie::Sciences,
         5,
         &[],
+        &[Int],
         "discipline scientifique choisie",
         true,
     ),
@@ -597,10 +730,11 @@ const BONUS_DICE: &[(Voie, u8, &[Characteristic], &str, bool)] = &[
         Voie::Survie,
         5,
         &[],
+        &[Per, Con, Int],
         "connaissance ou survie dans le milieu choisi",
         true,
     ),
-    (Voie::Vehicules, 5, &[], "véhicule choisi", false),
+    (Voie::Vehicules, 5, &[], &[], "véhicule choisi", false),
 ];
 
 /// The bonuses of the capacités the character holds now, in voie and rank
@@ -625,10 +759,11 @@ pub(crate) fn bonus_dice(character: &Character) -> Vec<BonusDie> {
     BONUS_DICE
         .iter()
         .map(
-            |(voie, rank, characteristics, scope, on_speciality)| BonusDie {
+            |(voie, rank, characteristics, usual, scope, on_speciality)| BonusDie {
                 voie: *voie,
                 rank: Rank::new(*rank),
                 characteristics,
+                usual,
                 scope,
                 on_speciality: *on_speciality,
             },
@@ -741,6 +876,25 @@ mod tests {
     }
 
     #[test]
+    fn a_bonus_naming_no_characteristic_has_usual_ones() {
+        // D-60: the usual characteristics put forward a bonus the catalogue
+        // gives to tests of any characteristic; a dé bonus going to a
+        // capacité chosen follows that capacité's.
+        for bonus in TestBonus::all() {
+            let (named, usual) = (bonus.characteristics(), bonus.usual_characteristics());
+            assert_ne!(named.is_empty(), usual.is_empty(), "{bonus:?}");
+        }
+        for (voie, rank, named, usual, ..) in BONUS_DICE {
+            let chosen = *rank == FIVE_RANK && !voie.bonus_die_choice().is_empty();
+            assert_eq!(chosen, named.is_empty() && usual.is_empty(), "{voie:?}");
+        }
+        assert_eq!(bonus(Voie::Discours, 1, 1).usual_characteristics(), [Cha]);
+        assert_eq!(bonus(Voie::Crime, 1, 1).usual_characteristics(), []);
+        let built = row(Voie::Crime, 3, &[], FIVE, "serrures").usual(&[Agi]);
+        assert_eq!(built.usual, [Agi]);
+    }
+
+    #[test]
     fn bonuses_to_a_speciality_say_so() {
         assert!(bonus(Voie::ArtsEtArtisanats, 1, 1).on_speciality());
         assert!(bonus(Voie::Sciences, 1, 1).on_speciality());
@@ -766,11 +920,7 @@ mod tests {
     #[test]
     fn every_bonus_names_its_tests() {
         assert!(TestBonus::all().all(|bonus| !bonus.scope().is_empty()));
-        assert!(
-            BONUS_DICE
-                .iter()
-                .all(|(_, _, _, scope, _)| !scope.is_empty())
-        );
+        assert!(BONUS_DICE.iter().all(|(.., scope, _)| !scope.is_empty()));
         assert_eq!(
             bonus(Voie::Medecine, 1, 1).scope(),
             "premiers soins, stabiliser un mourant"
