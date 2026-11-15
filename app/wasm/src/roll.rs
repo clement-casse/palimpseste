@@ -87,6 +87,10 @@ pub struct RollOptionLine {
     pub dice: Option<String>,
     /// Whether it starts picked.
     pub picked: bool,
+    /// Whether it is put forward: a test bonus naming the characteristic
+    /// tested or counting it among its usual ones (D-60); the others are
+    /// offered all the same.
+    pub featured: bool,
 }
 
 /// A capacité's dé bonus that may apply to a test.
@@ -96,6 +100,8 @@ pub struct RollBonusDie {
     pub origin: String,
     /// The tests it covers, in a few French words.
     pub scope: String,
+    /// Whether it is put forward, as [`RollOptionLine::featured`] says.
+    pub featured: bool,
 }
 
 /// What a roll offers within the rules.
@@ -458,6 +464,7 @@ mod fantasy {
             amount: offered.dice().is_none().then(|| offered.amount()),
             dice: offered.dice().map(ToString::to_string),
             picked: offered.picked(),
+            featured: offered.featured(),
         }
     }
 
@@ -503,6 +510,7 @@ mod fantasy {
                         die.on_speciality(),
                         die.scope(),
                     ),
+                    featured: offer.featured_dice().contains(die),
                 })
                 .collect(),
             mode: offer.mode().into(),
@@ -669,6 +677,7 @@ mod contemporain {
             amount: Some(offered.amount()),
             dice: None,
             picked: offered.picked(),
+            featured: offered.featured(),
         }
     }
 
@@ -711,6 +720,7 @@ mod contemporain {
                 .map(|note| RollBonusDie {
                     origin: named(note.ability().as_str()),
                     scope: note.situation().name().to_owned(),
+                    featured: true,
                 })
                 .collect(),
             bonus_dice: offer
@@ -724,6 +734,7 @@ mod contemporain {
                         die.on_speciality(),
                         die.scope(),
                     ),
+                    featured: offer.featured_dice().contains(die),
                 })
                 .collect(),
             mode: offer.mode().into(),

@@ -1247,6 +1247,13 @@ mod tests {
         assert_eq!(bonus.label, "intimidation");
         assert!(bonus.origin.ends_with("rang 1)"), "{}", bonus.origin);
         assert_eq!((bonus.amount, bonus.picked), (Some(3), false));
+        // Intimidation: usually CHA, offered to every test (D-60).
+        assert!(bonus.featured);
+        let agility = roll_offer(&document, &play, "cof.roll.test.agi").unwrap();
+        let [aside] = agility.options.as_slice() else {
+            panic!("one option expected")
+        };
+        assert!(!aside.featured);
 
         let request = |options: Vec<u32>| RollRequest {
             roll: "cof.roll.test.cha".into(),
@@ -1600,6 +1607,7 @@ mod tests {
         };
         assert_eq!(die.scope, "généalogie (spécialité d’investigation)");
         assert!(die.origin.starts_with("Spécialiste"), "{}", die.origin);
+        assert!(die.featured);
     }
 
     #[test]
