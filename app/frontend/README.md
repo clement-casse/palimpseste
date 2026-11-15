@@ -41,55 +41,76 @@ to Vite's origin, and register that redirect URI at the provider
 ## Layout
 
 ```
-index.html, vite.config.ts      Vite, the PWA manifest and service worker, the /api proxy, Vitest
+index.html, vite.config.ts      Vite, the PWA manifest and service worker, the /api proxy, the $lib alias, Vitest
+eslint.config.js, .prettierrc.json   lint (with the layout as rules) and formatting
 public/                         icons
+e2e/                            Playwright end-to-end tests
 src/
-├── main.ts                     registers the service worker, loads the engines (await init()), mounts App
-├── App.svelte                  who is signed in, and the page for the current path
-├── router.svelte.ts            the URL (History API): the only module that reads or changes it
-├── session.svelte.ts           the signed-in user
-├── pwa.svelte.ts               new version and offline status
-├── theme.svelte.ts             the theme chosen on this device (Système, Clair, Sombre, OLED)
-├── wakelock.svelte.ts          keeps the screen on while a page wants it
-├── api.ts                      the REST client: types and calls; a 401 signs out
-├── errors.ts                   describe(): what an error means, in French
-├── messages.ts                 French violation messages, keyed by rule identifier
-├── engines.ts                  engine display names, unsettled() and unsettledAll(): what is left to settle
-├── index.css                   design tokens, element defaults, shared utilities
-├── SignIn, Register, ProfilePage, ProfileFields, Characters, CharacterItem,
-│   NotFound, StatusBanner, ErrorMessage, ThemePicker (.svelte)
-├── character/                  the character editor, /characters/{id}
-│   ├── CharacterPage.svelte    loads the character
-│   ├── CharacterEditor.svelte  the document as state, evaluate() derived from it, steps in the hash
-│   ├── FantasyEditor.svelte, ContemporainEditor.svelte   per-engine steps, bind:choices
-│   ├── EditorHeader.svelte     name, save status, deletion
-│   ├── saver.svelte.ts         DocumentSaver: debounced whole-document PUT with If-Match
-│   ├── StepNav, Violations, ValueSheet, CharacteristicSheet, Breakdown,
-│   │   RankPicker, Items (.svelte)
-│   ├── Overrides.svelte, OverrideDialog.svelte, override.ts   waivers and adjustments
-│   └── edits.ts                helpers to read and change a document
-├── progression/                level-ups and spendings of XP, /characters/{id}/progression/{n}
-│   ├── ProgressionPage.svelte  loads the character
-│   ├── ProgressionEditor.svelte the draft, its steps, the summary, validate, abandon, remove
-│   ├── FantasyLevelForm.svelte, ContemporainSpendingForm.svelte   per-engine steps, bind:choices
-│   ├── ProgressionSection.svelte the editor's "Progression" step; COC2 XP and sequels
-│   ├── Ability.svelte          a capacité, shown by its identifier
-│   ├── AbilityOptionPicker, RankFivePicker, LaterRanks, Differences (.svelte)
-│   ├── drafts.ts               the draft kept in localStorage until validated
-│   └── progression.ts          numbering, copies, differences, abilityLabel()
-├── sheet/                      the character sheet, /characters/{id}/sheet
-│   ├── SheetPage.svelte        loads the character
-│   ├── CharacterSheet.svelte   evaluateInPlay(), header, unfinished banner, the screen kept on
-│   ├── FantasySheet.svelte, ContemporainSheet.svelte   per-engine resource bar and sections
-│   ├── Counter, HealthTrack, Restore (.svelte)          resources counted during a session
-│   ├── EquipmentSection, Inventory (.svelte)            the equipment in play, worn, counted, edited
-│   ├── equipment.ts            equipmentOf(): the creation equipment, as an equipment in play
-│   ├── play.svelte.ts          PlayState: resources used and equipment in play, per character, in localStorage
-│   ├── RollButton, RollDialog, RollResult, RollJournal (.svelte)   a roll from its die to its total, and the journal
-│   ├── rolls.svelte.ts         RollLog: the rolls of a session, per character, in localStorage
-│   ├── notes.ts, Marks.svelte, NoteList.svelte          waivers and adjustments, numbered and placed
-│   ├── Tile, Characteristics, VoieRanks (.svelte)
-│   └── values.ts               how values, damage and critical ranges are written
+├── main.ts                     registers the service worker, loads the engines, mounts App
+├── index.css                   Tailwind, Flowbite, the primary colour and the themes
+├── app/                        the shell
+│   ├── App.svelte              the top bar, who is signed in, the page for the current path
+│   ├── StatusBanner, Disclaimer, NotFound (.svelte)
+│   └── pwa.svelte.ts           new version and offline status
+├── lib/                        what every page shares ($lib/…); imports no feature
+│   ├── api.ts                  the REST client: types and calls; a 401 signs out
+│   ├── engine/
+│   │   ├── index.ts            the only importer of src/wasm: types, calls, attempt(), narrow()
+│   │   └── ids.ts              the value identifiers the interface names itself
+│   ├── engines.ts              engine display names, unsettled() and unsettledAll()
+│   ├── router.svelte.ts        the URL (History API): the only module that reads or changes it
+│   ├── session.svelte.ts       the signed-in user
+│   ├── theme.svelte.ts         the theme chosen on this device
+│   ├── wakelock.svelte.ts      keeps the screen on while a page wants it
+│   ├── storage.ts              the only module to touch localStorage and sessionStorage; KEYS
+│   ├── errors.ts               describe(): what an error means, in French
+│   ├── messages.ts             French violation messages, keyed by rule identifier
+│   ├── format.ts               how values, damage and critical ranges are written
+│   ├── character/              a choices document, whatever the page
+│   │   ├── load.ts             loadCharacter(), loadCharacters(): reads that wait for the last save
+│   │   ├── saver.svelte.ts     DocumentSaver: debounced whole-document PUT with If-Match
+│   │   ├── override.svelte.ts  Overriding: the waivers and adjustments asked for and recorded
+│   │   ├── edits.ts            helpers to read and change a document
+│   │   ├── progression.ts      numbering, copies, differences, abilityLabel()
+│   │   └── notes.ts            waivers and adjustments, numbered and placed
+│   └── components/             shown by several features
+│       ├── Loader.svelte       a one-shot read: spinner, result, error
+│       ├── ErrorMessage, ThemePicker, StepNav, Violations, OverrideDialog,
+│       │   Breakdown, BreakdownPopover, Items, Marks (.svelte)
+│       └── Ability.svelte, AbilityEffects.svelte   a capacité by its identifier, and its effects
+├── features/                   one folder per group of pages
+│   ├── auth/                   SignIn, Register, ProfilePage, ProfileFields
+│   ├── characters/             Characters, CharacterItem: the list, /
+│   ├── editor/                 the character editor, /characters/{id}
+│   │   ├── CharacterPage.svelte      loads the character
+│   │   ├── controller.svelte.ts      EditorController: the document, its evaluation, the step, saving
+│   │   ├── CharacterEditor.svelte    shows the controller
+│   │   ├── FantasyEditor.svelte, ContemporainEditor.svelte   per-engine steps, bind:choices
+│   │   └── EditorHeader, Overrides, ValueSheet, CharacteristicSheet, RankPicker (.svelte)
+│   ├── progression/            level-ups and spendings of XP, /characters/{id}/progression/{n}
+│   │   ├── ProgressionPage.svelte    loads the character
+│   │   ├── controller.svelte.ts      ProgressionController: the draft, its steps, validate, abandon, remove
+│   │   ├── ProgressionEditor.svelte  shows the controller
+│   │   ├── FantasyLevelForm.svelte, ContemporainSpendingForm.svelte   per-engine steps, bind:choices
+│   │   ├── ProgressionSection.svelte the editor's "Progression" step; COC2 XP and sequels
+│   │   ├── AbilityOptionPicker, BonusDieTargetPicker, RankFivePicker, SpecialityField,
+│   │   │   LaterRanks, Differences (.svelte)
+│   │   └── drafts.ts                 the draft kept on the device until validated
+│   ├── sheet/                  the character sheet, /characters/{id}/sheet
+│   │   ├── SheetPage.svelte          loads the character
+│   │   ├── controller.svelte.ts      SheetController: evaluateInPlay(), play state, the roll open
+│   │   ├── CharacterSheet.svelte     shows the controller: header, unfinished banner
+│   │   ├── model/                    fantasySheetModel(), contemporainSheetModel(): what a sheet shows, as data
+│   │   ├── FantasySheet.svelte, ContemporainSheet.svelte   lay a model out
+│   │   ├── Counter, HealthTrack, Restore (.svelte)          resources counted during a session
+│   │   ├── EquipmentSection, Inventory (.svelte)            the equipment in play
+│   │   ├── equipment.ts              equipmentOf(): the creation equipment, as an equipment in play
+│   │   ├── play.svelte.ts            PlayState: resources used and equipment in play, per character
+│   │   ├── rollController.svelte.ts  RollController: one roll, from what is offered to its outcome
+│   │   ├── RollButton, RollDialog, RollResult, RollJournal (.svelte)
+│   │   ├── rolls.svelte.ts           RollLog: the rolls of a session, per character
+│   │   └── Tile, Block, Identity, Characteristics, VoieRanks, SituationalList, NoteList (.svelte)
+│   └── friends/                FriendsPage, FriendPage, FriendSheetPage, InvitationPage, InviteCard
 ├── test/
 │   ├── setup.ts                loads the real .wasm once for every test
 │   └── backend.ts              stubBackend(): a fetch stub that records what was sent
@@ -110,14 +131,32 @@ These are enforced in review (see [docs/adr/frontend.md](../../docs/adr/frontend
 - **Svelte 5 runes only:** `$state`, `$derived`, `$props`, `$bindable`,
   `$effect`, and event attributes (`onclick`). Never use Svelte 4 syntax
   (`export let`, `$:`, `on:click`, stores for local state).
+- **Layout** (ADR FE-LAYOUT): `app` imports the features, a feature
+  imports `$lib` and its own files, `lib` imports neither. Only `editor`
+  imports `progression`, and `friends` imports `sheet`. What two features
+  need moves to `lib`. ESLint fails a wrong import.
+- **The engines** are read from `$lib/engine`, never from `src/wasm`
+  (ADR FE-ENGINE). Call them through `attempt()` wherever the input comes
+  from storage or the backend. A value identifier the interface names
+  itself goes in `$lib/engine/ids.ts`, never inline.
+- **State, data, markup** (ADR FE-CONTROLLERS): a page's state and what is
+  done with it live in a controller class of a `.svelte.ts` module; what a
+  sheet shows is shaped by a pure function in `model/`; a component lays
+  them out. A new behaviour goes in the controller or the model, with its
+  test, so redrawing a page rewrites no logic.
 - **Shared state** lives in `.svelte.ts` modules. Only `router.svelte.ts`
-  touches the URL.
-- **Reads** use `{#await}` blocks with loading and empty states, and show
-  errors through `ErrorMessage.svelte`. `$effect` only syncs with the
-  outside world. It never fetches.
+  touches the URL, and only `storage.ts` the browser's storage.
+- **Reads** are promises shown by `Loader.svelte`, with empty states, and
+  show errors through `ErrorMessage.svelte`. Read the user's characters
+  through `$lib/character/load`, which waits for the last save. `$effect`
+  only syncs with the outside world. It never fetches.
 - **Parent state** is changed through `$bindable` props or callbacks.
-- **Styles** live in each component's `<style>`. `index.css` keeps only
-  tokens and shared utilities.
+- **Styles** (ADR FE-STYLES): Flowbite components first, Tailwind
+  utilities only for layout, no `<style>` block. `index.css` only sets
+  Tailwind, Flowbite, the primary colour and the themes up.
+- **Lint and format** (ADR FE-LINT): `mise run frontend:check` runs
+  `svelte-check`, ESLint and `prettier --check`; `pnpm run format`
+  formats.
 - **No rule in the interface.** Options, values and violations come from
   `catalog()` and `evaluate()`. Do not restate a rule in TypeScript.
 - **Breaking a rule is never easier than following it** (ADR FE-OVERRIDES).
@@ -139,7 +178,7 @@ These are enforced in review (see [docs/adr/frontend.md](../../docs/adr/frontend
   name, description and effect will attach there. Components that only name
   capacités take `Abilities` (`{ abilities }`), since a catalog narrowed by
   engine has no `engine` field to match the tagged `Catalog`.
-- **New rules need a message.** Add the French text to `messages.ts`,
+- **New rules need a message.** Add the French text to `lib/messages.ts`,
   keyed by rule identifier and filled with the violation's parameters.
   Without it, the identifier is shown.
 - **Service worker:** prompt mode. A new version waits until the user

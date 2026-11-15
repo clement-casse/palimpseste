@@ -1,6 +1,7 @@
 # The checks AGENTS.md asks for before finishing a task, through the mise tasks:
 # `check` (fmt, lint, test, doc-test) and the front end (wasm:build,
-# frontend:test, frontend:build, which runs frontend:check's svelte-check).
+# frontend:test, frontend:build, which runs frontend:check's svelte-check,
+# ESLint and Prettier check).
 # `coverage` stands in for `test`: tarpaulin runs the same tests and fails on
 # a failing one, so the suite is built and run once, and its report goes to
 # Codecov.
