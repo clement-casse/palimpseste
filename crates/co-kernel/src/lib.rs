@@ -66,6 +66,7 @@ mod derived;
 mod dice;
 mod item;
 mod report;
+mod roll;
 mod speciality;
 mod violation;
 mod voie;
@@ -78,6 +79,7 @@ pub use derived::{Contribution, DerivedValue, Source};
 pub use dice::{Dice, Die};
 pub use item::{ItemName, Quantity};
 pub use report::{ReportEntry, ViolationReport};
+pub use roll::{Natural, RollMode, Rolled, TestRoll};
 pub use speciality::Speciality;
 pub use violation::{
     ADJUSTMENT_RULE, Category, Mechanic, Parameter, ParameterValue, RuleId, Severity, Subject,

@@ -35,7 +35,8 @@ out-of-scope lists of [AGENTS.md](AGENTS.md)); none is scheduled.
 **Rules**
 
 - [x] Kernel: characteristics, voies, derived values with breakdown,
-  violations, waivers, adjustments, dice, capacité effects
+  violations, waivers, adjustments, dice, rolls resolved from their
+  faces, capacité effects
 - [x] COC2 core rules: character creation
 - [x] COC2 core rules: experience (XP spendings, social class, rank 5
   characteristic growth, dé bonus target, sequels acquired in play)
@@ -172,7 +173,9 @@ else:
   `Deviation` with a `Severity`, `Uncomputable`, `Notice`).
 - **Waivers and `ViolationReport`**: attributed acceptance of a deviation,
   and the matching of violations against waivers.
-- **Dice** (`Dice`, `Die`): described, never rolled.
+- **Dice** (`Dice`, `Die`): described, never drawn.
+- **Rolls** (`Rolled`, `RollMode`, `TestRoll`): a test's dice resolved from
+  the faces drawn elsewhere.
 
 It has no dependencies. Decisions: [docs/adr/kernel.md](docs/adr/kernel.md).
 
