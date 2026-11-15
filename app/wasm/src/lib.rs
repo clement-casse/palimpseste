@@ -12,10 +12,15 @@
 //! microseconds.
 
 mod catalog;
+mod roll;
 mod sheet;
 
 pub use catalog::{Catalog, catalog};
 use palimpseste_document::{Document, Engine, Equipment};
+pub use roll::{
+    Mode, NaturalRoll, Play, RollBonusDie, RollKind, RollLine, RollLineKind, RollOffer,
+    RollOptionLine, RollOutcome, RollRequest, RolledDie, roll, roll_offer,
+};
 pub use sheet::{Sheet, evaluate, evaluate_in_play};
 use tsify::{Ts, Tsify};
 use wasm_bindgen::{JsError, prelude::wasm_bindgen};
@@ -71,6 +76,61 @@ pub fn evaluate_in_play_js(
     let sheet = evaluate_in_play(&document.to_rust()?, &equipment.to_rust()?)
         .map_err(|error| JsError::new(&error.to_string()))?;
     Ok(sheet.into_ts()?)
+}
+
+/// What the roll `roll` offers the character of `document` in play (ADR
+/// ENG-ROLLS): its base, the options to pick, the dice.
+///
+/// # Errors
+///
+/// Throws when `document` or `play` cannot be read, when `roll` names no
+/// roll, or when the equipment is of another engine.
+#[wasm_bindgen(js_name = rollOffer)]
+pub fn roll_offer_js(
+    document: &Ts<Document>,
+    play: &Ts<Play>,
+    roll: &str,
+) -> Result<Ts<RollOffer>, JsError> {
+    let offer = roll_offer(&document.to_rust()?, &play.to_rust()?, roll)
+        .map_err(|error| JsError::new(&error.to_string()))?;
+    Ok(offer.into_ts()?)
+}
+
+#[wasm_bindgen]
+extern "C" {
+    /// Fills `bytes` with the browser's random values.
+    #[wasm_bindgen(js_namespace = crypto, js_name = getRandomValues)]
+    fn random_values(bytes: &mut [u8]);
+}
+
+/// Rolls `request` for the character of `document` in play: the faces are
+/// drawn here, from the browser's random values, and the engine resolves
+/// the roll from them (ADR APP-ROLLS).
+///
+/// # Errors
+///
+/// Throws when `document`, `play` or `request` cannot be read, when the
+/// request names no roll or an option not offered, or when the equipment
+/// is of another engine.
+#[wasm_bindgen(js_name = roll)]
+pub fn roll_js(
+    document: &Ts<Document>,
+    play: &Ts<Play>,
+    request: &Ts<RollRequest>,
+) -> Result<Ts<RollOutcome>, JsError> {
+    let mut random = || {
+        let mut byte = [0_u8];
+        random_values(&mut byte);
+        byte[0]
+    };
+    let outcome = roll(
+        &document.to_rust()?,
+        &play.to_rust()?,
+        &request.to_rust()?,
+        &mut random,
+    )
+    .map_err(|error| JsError::new(&error.to_string()))?;
+    Ok(outcome.into_ts()?)
 }
 
 #[cfg(test)]
@@ -1114,5 +1174,485 @@ mod tests {
                 cost: 4,
             })
         );
+    }
+
+    /// Random bytes giving the `faces` wanted on dice of at most 20 faces.
+    fn faces(faces: &[u8]) -> impl FnMut() -> u8 {
+        let mut bytes = faces
+            .iter()
+            .map(|face| face - 1)
+            .collect::<Vec<_>>()
+            .into_iter();
+        move || bytes.next().unwrap()
+    }
+
+    #[test]
+    fn the_sheet_names_the_rolls_of_its_lines() {
+        let mut document = FantasyDocument::empty();
+        document.items = vec![ItemEntry::Weapon {
+            id: "cof.weapon.epee-longue".into(),
+            quantity: 1,
+        }];
+        let sheet = fantasy(document);
+        assert_eq!(sheet.characteristics[0].roll, "cof.roll.test.agi");
+        assert_eq!(
+            value(&sheet, "cof.attack.contact").roll.as_deref(),
+            Some("cof.roll.attack.contact")
+        );
+        let damage = value(&sheet, "cof.damage.epee-longue.one-handed");
+        assert_eq!(
+            damage.roll.as_deref(),
+            Some("cof.roll.damage.epee-longue.one-handed")
+        );
+        assert_eq!(
+            damage.attack_roll.as_deref(),
+            Some("cof.roll.attack.epee-longue.one-handed")
+        );
+        assert_eq!(value(&sheet, "cof.defence").roll, None);
+
+        let sheet = contemporain(ContemporainDocument::empty());
+        assert_eq!(sheet.characteristics[2].roll, "coc.roll.test.for");
+        assert_eq!(
+            value(&sheet, "coc.attack.unarmed").roll.as_deref(),
+            Some("coc.roll.attack.unarmed")
+        );
+        let damage = value(&sheet, "coc.damage.mains-nues");
+        assert_eq!(damage.roll.as_deref(), Some("coc.roll.damage.mains-nues"));
+        assert_eq!(
+            damage.attack_roll.as_deref(),
+            Some("coc.roll.weapon-attack.mains-nues")
+        );
+    }
+
+    #[test]
+    fn a_test_offers_its_bonuses_and_resolves_line_by_line() {
+        let mut document = FantasyDocument::empty();
+        document.voies = vec![VoieEntry {
+            id: "cof.spadassin".into(),
+            ranks: vec![1],
+        }];
+        let document = Document::Fantasy(document);
+        let play = Play::default();
+        let offer = roll_offer(&document, &play, "cof.roll.test.cha").unwrap();
+        assert_eq!(offer.name, "Test de CHA");
+        assert_eq!(offer.dice, "1d20");
+        assert_eq!(offer.helper_bonus, Some(2));
+        assert_eq!(
+            offer.helpers_label.as_deref(),
+            Some("Alliés ayant réussi leur aide")
+        );
+        let [bonus] = offer.options.as_slice() else {
+            panic!("one option expected")
+        };
+        assert_eq!(bonus.label, "intimidation");
+        assert!(bonus.origin.ends_with("rang 1)"), "{}", bonus.origin);
+        assert_eq!((bonus.amount, bonus.picked), (Some(3), false));
+
+        let request = |options: Vec<u32>| RollRequest {
+            roll: "cof.roll.test.cha".into(),
+            options,
+            mode: Mode::Bonus,
+            modifier: -1,
+            helpers: 2,
+            critical: false,
+        };
+        let plain = roll(&document, &play, &request(vec![]), &mut faces(&[7, 20])).unwrap();
+        assert_eq!(
+            plain
+                .dice
+                .iter()
+                .map(|d| (d.face, d.kept))
+                .collect::<Vec<_>>(),
+            [(7, false), (20, true)]
+        );
+        assert_eq!(plain.natural, Some(NaturalRoll::Twenty));
+        assert_eq!(plain.total, 20 + offer.base + 4 - 1);
+        assert_eq!(plain.unpicked, offer.options);
+        assert_eq!(
+            plain
+                .lines
+                .iter()
+                .map(|l| l.label.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "1d20",
+                "Valeur de série",
+                "Coopération : 2 alliés",
+                "Modificateur du MJ"
+            ]
+        );
+
+        let picked = roll(&document, &play, &request(vec![0]), &mut faces(&[7, 7])).unwrap();
+        assert_eq!(picked.total, 7 + offer.base + 3 + 4 - 1);
+        assert_eq!(picked.unpicked, []);
+        // Of two equal dice, one is kept.
+        assert_eq!(picked.dice.iter().filter(|d| d.kept).count(), 1);
+        let line = picked
+            .lines
+            .iter()
+            .find(|l| l.label == "intimidation")
+            .unwrap();
+        assert_eq!((line.kind, line.amount), (RollLineKind::Option, 3));
+
+        assert!(roll(&document, &play, &request(vec![4]), &mut faces(&[7, 7])).is_err());
+        assert!(roll_offer(&document, &play, "cof.roll.test.none").is_err());
+        assert!(roll_offer(&document, &play, "coc.roll.test.cha").is_err());
+    }
+
+    #[test]
+    fn an_attack_leads_to_its_damage_doubled_on_a_critical() {
+        let mut document = FantasyDocument::empty();
+        document.items = vec![ItemEntry::Weapon {
+            id: "cof.weapon.rapiere".into(),
+            quantity: 1,
+        }];
+        let document = Document::Fantasy(document);
+        let play = Play::default();
+        let attack = "cof.roll.attack.rapiere.one-handed";
+        let offer = roll_offer(&document, &play, attack).unwrap();
+        assert_eq!(offer.critical_from, Some(19));
+        assert_eq!(offer.helper_bonus, None);
+        let damage = offer.damage_roll.clone().unwrap();
+        let request = |roll: &str, critical| RollRequest {
+            roll: roll.into(),
+            options: vec![],
+            mode: Mode::Plain,
+            modifier: 0,
+            helpers: 0,
+            critical,
+        };
+        let hit = roll(&document, &play, &request(attack, false), &mut faces(&[19])).unwrap();
+        assert!(hit.critical);
+        assert_eq!(hit.natural, None);
+        assert_eq!(hit.damage_roll.as_deref(), Some(damage.as_str()));
+
+        let offer = roll_offer(&document, &play, &damage).unwrap();
+        assert_eq!(offer.critical.as_deref(), Some("DM doublés"));
+        let plain = roll(&document, &play, &request(&damage, false), &mut faces(&[4])).unwrap();
+        let doubled = roll(&document, &play, &request(&damage, true), &mut faces(&[4])).unwrap();
+        assert_eq!(doubled.total, plain.total * 2);
+        assert!(doubled.critical);
+        assert_eq!(
+            doubled.lines.last().map(|l| l.label.as_str()),
+            Some("Critique : DM doublés")
+        );
+    }
+
+    #[test]
+    fn a_coc2_roll_follows_the_health_and_the_equipment_in_play() {
+        let document = Document::Contemporain(ContemporainDocument::empty());
+        let play = Play {
+            equipment: None,
+            damage: 10,
+        };
+        let offer = roll_offer(&document, &play, "coc.roll.test.con").unwrap();
+        assert_eq!(offer.helpers_label.as_deref(), Some("Alliés aidant"));
+        let [health] = offer.options.as_slice() else {
+            panic!("one option expected")
+        };
+        assert_eq!(
+            (
+                health.label.as_str(),
+                health.origin.as_str(),
+                health.amount,
+                health.picked
+            ),
+            ("Affaibli", "État de santé", Some(-3), true)
+        );
+        let mental = roll_offer(&document, &play, "coc.roll.test.int").unwrap();
+        assert!(!mental.options[0].picked);
+        assert_eq!(
+            roll_offer(&document, &Play::default(), "coc.roll.test.con")
+                .unwrap()
+                .options,
+            []
+        );
+
+        let damage = roll_offer(&document, &play, "coc.roll.damage.mains-nues").unwrap();
+        assert_eq!(damage.critical.as_deref(), Some("bonus critique +4"));
+        assert_eq!(damage.dice, "1d4");
+        let request = RollRequest {
+            roll: "coc.roll.damage.mains-nues".into(),
+            options: vec![],
+            mode: Mode::Plain,
+            modifier: 0,
+            helpers: 0,
+            critical: true,
+        };
+        let outcome = roll(&document, &play, &request, &mut faces(&[3])).unwrap();
+        assert_eq!(outcome.total, 3 + damage.base + 4);
+        assert_eq!(
+            outcome.dice,
+            [RolledDie {
+                faces: 4,
+                face: 3,
+                kept: true
+            }]
+        );
+
+        // An equipment of another engine is an error.
+        let other = Play {
+            equipment: Some(Equipment::Fantasy(palimpseste_document::FantasyEquipment {
+                armour: None,
+                shield: None,
+                items: vec![],
+            })),
+            damage: 0,
+        };
+        assert!(roll_offer(&document, &other, "coc.roll.test.con").is_err());
+        // The AGI test takes the malus of the protections worn in play.
+        let worn = Play {
+            equipment: Some(Equipment::Contemporain(
+                palimpseste_document::ContemporainEquipment {
+                    protections: vec!["coc.protection.gilet-rigide".into()],
+                    items: vec![],
+                },
+            )),
+            damage: 0,
+        };
+        let agility = roll_offer(&document, &worn, "coc.roll.test.agi").unwrap();
+        assert!(agility.base < 0);
+        assert_eq!(agility.contributions.len(), 2);
+    }
+
+    fn request(roll: &str, options: Vec<u32>, mode: Mode) -> RollRequest {
+        RollRequest {
+            roll: roll.into(),
+            options,
+            mode,
+            modifier: 0,
+            helpers: 0,
+            critical: false,
+        }
+    }
+
+    fn voie(id: &str, ranks: &[u8]) -> VoieEntry {
+        VoieEntry {
+            id: id.into(),
+            ranks: ranks.to_vec(),
+        }
+    }
+
+    #[test]
+    fn a_heroic_characteristic_starts_a_roll_with_a_bonus_die_and_a_malus_die_can_be_asked() {
+        let mut document = FantasyDocument::empty();
+        document.voies = vec![voie("cof.brute", &[1, 2, 3, 4])];
+        let document = Document::Fantasy(document);
+        let play = Play::default();
+        let offer = roll_offer(&document, &play, "cof.roll.test.for").unwrap();
+        assert_eq!(offer.mode, Mode::Bonus);
+        assert_eq!(offer.dice, "2d20");
+        let [die] = offer.bonus_dice.as_slice() else {
+            panic!("one dé bonus expected")
+        };
+        assert!(die.origin.contains("Force héroïque"), "{}", die.origin);
+        assert_eq!(
+            roll_offer(&document, &play, "cof.roll.test.agi")
+                .unwrap()
+                .mode,
+            Mode::Plain
+        );
+
+        // A dé malus keeps the lower die: a natural 1, then one ally.
+        let mut malus = request("cof.roll.test.for", vec![], Mode::Malus);
+        malus.helpers = 1;
+        let outcome = roll(&document, &play, &malus, &mut faces(&[1, 9])).unwrap();
+        assert_eq!(outcome.natural, Some(NaturalRoll::One));
+        assert_eq!(outcome.mode, Mode::Malus);
+        assert!(
+            outcome
+                .lines
+                .iter()
+                .any(|l| l.label == "Coopération : 1 allié")
+        );
+    }
+
+    #[test]
+    fn competence_bonuses_count_once_per_source_and_stop_at_the_cap() {
+        let mut document = FantasyDocument::empty();
+        document.profil = Some("cof.profil.voleur".into());
+        document.peuple = Some("cof.peuple.halfelin".into());
+        document.voies = vec![voie("cof.spadassin", &[1]), voie("cof.explosifs", &[1, 2])];
+        let plain = Document::Fantasy(document.clone());
+        let play = Play::default();
+        let offer = roll_offer(&plain, &play, "cof.roll.test.int").unwrap();
+        assert_eq!(offer.options.len(), 2);
+        // Two voies de profil: the higher counts, the other is set aside.
+        let outcome = roll(
+            &plain,
+            &play,
+            &request("cof.roll.test.int", vec![0, 1], Mode::Plain),
+            &mut faces(&[10]),
+        )
+        .unwrap();
+        let [aside] = outcome.set_aside.as_slice() else {
+            panic!("one bonus set aside expected")
+        };
+        assert_eq!(aside.amount, Some(3));
+        assert_eq!(outcome.total, 10 + offer.base + 4);
+
+        // A voie de peuple adds to a voie de profil, up to +15.
+        document.voies = vec![voie("cof.spadassin", &[1]), voie("cof.halfelin", &[1])];
+        document.adjustments = vec![AdjustmentEntry {
+            target: Target::Value("cof.test-bonus.spadassin.1.1".into()),
+            amount: 12,
+            author: "gm".into(),
+            reason: "a legend".into(),
+        }];
+        let document = Document::Fantasy(document);
+        let offer = roll_offer(&document, &play, "cof.roll.test.cha").unwrap();
+        let picked = (0..u32::try_from(offer.options.len()).unwrap()).collect::<Vec<_>>();
+        let outcome = roll(
+            &document,
+            &play,
+            &request("cof.roll.test.cha", picked, Mode::Plain),
+            &mut faces(&[10]),
+        )
+        .unwrap();
+        let cap = outcome
+            .lines
+            .iter()
+            .find(|l| l.kind == RollLineKind::Cap)
+            .expect("a line takes back what exceeds +15");
+        assert_eq!(cap.label, "Bonus de compétence plafonnés à +15");
+        assert_eq!(cap.amount, -3);
+    }
+
+    #[test]
+    fn a_coc2_roll_names_its_bonuses_notes_and_dice_and_draws_each_line() {
+        let mut document = ContemporainDocument::empty();
+        document.voies = vec![
+            voie("coc.crime", &[1, 2]),
+            voie("coc.investigation", &[1, 2]),
+        ];
+        document.specialities = vec![palimpseste_document::SpecialityEntry {
+            ability: "coc.investigation.2".into(),
+            speciality: "généalogie".into(),
+        }];
+        let document = Document::Contemporain(document);
+        let play = Play {
+            equipment: None,
+            damage: 10,
+        };
+
+        // A test bonus to some AGI tests, picked, with the help of one ally.
+        let offer = roll_offer(&document, &play, "coc.roll.test.agi").unwrap();
+        let bonus = offer
+            .options
+            .iter()
+            .position(|o| o.label.contains("vol"))
+            .expect("the pickpocket's bonus is offered");
+        let mut asked = request(
+            "coc.roll.test.agi",
+            vec![u32::try_from(bonus).unwrap()],
+            Mode::Plain,
+        );
+        asked.helpers = 1;
+        asked.modifier = 2;
+        let outcome = roll(&document, &play, &asked, &mut faces(&[10])).unwrap();
+        let labels = outcome
+            .lines
+            .iter()
+            .map(|l| l.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"Coopération : 1 allié"));
+        assert!(labels.contains(&"Modificateur du MJ"));
+        let line = outcome
+            .lines
+            .iter()
+            .find(|l| l.kind == RollLineKind::Option)
+            .unwrap();
+        assert!(
+            line.origin
+                .as_deref()
+                .is_some_and(|origin| origin.contains("Pickpocket"))
+        );
+
+        // What the player left unpicked is recalled with the result.
+        let outcome = roll(
+            &document,
+            &play,
+            &request("coc.roll.test.int", vec![], Mode::Plain),
+            &mut faces(&[10]),
+        )
+        .unwrap();
+        assert!(outcome.unpicked.iter().any(|o| o.label == "Affaibli"));
+        assert_eq!(outcome.set_aside, []);
+        assert!(
+            roll(
+                &document,
+                &play,
+                &request("coc.roll.test.int", vec![99], Mode::Plain),
+                &mut faces(&[10]),
+            )
+            .is_err()
+        );
+
+        // A note without an amount, and the dé bonus of a speciality.
+        let strength = roll_offer(&document, &play, "coc.roll.test.for").unwrap();
+        let [note] = strength.notes.as_slice() else {
+            panic!("one note expected")
+        };
+        assert!(note.origin.contains("Gangster"), "{}", note.origin);
+        let intelligence = roll_offer(&document, &play, "coc.roll.test.int").unwrap();
+        let [die] = intelligence.bonus_dice.as_slice() else {
+            panic!("one dé bonus expected")
+        };
+        assert_eq!(die.scope, "généalogie (spécialité d’investigation)");
+        assert!(die.origin.starts_with("Spécialiste"), "{}", die.origin);
+    }
+
+    #[test]
+    fn a_coc2_attack_leads_to_its_damage_roll() {
+        let document = Document::Contemporain(ContemporainDocument::empty());
+        let play = Play::default();
+        let attack = roll_offer(&document, &play, "coc.roll.attack.unarmed").unwrap();
+        assert_eq!((attack.kind, attack.damage_roll), (RollKind::Attack, None));
+        let weapon = roll_offer(&document, &play, "coc.roll.weapon-attack.mains-nues").unwrap();
+        assert_eq!(weapon.kind, RollKind::Attack);
+        assert_eq!(
+            weapon.damage_roll.as_deref(),
+            Some("coc.roll.damage.mains-nues")
+        );
+        let outcome = roll(
+            &document,
+            &play,
+            &request("coc.roll.weapon-attack.mains-nues", vec![], Mode::Plain),
+            &mut faces(&[20]),
+        )
+        .unwrap();
+        assert!(outcome.critical);
+        assert_eq!(
+            outcome.damage_roll.as_deref(),
+            Some("coc.roll.damage.mains-nues")
+        );
+    }
+
+    #[test]
+    fn an_equipment_of_the_other_engine_is_refused_for_a_coc2_character_and_a_cof2_one() {
+        let document = Document::Fantasy(FantasyDocument::empty());
+        let other = Play {
+            equipment: Some(Equipment::Contemporain(
+                palimpseste_document::ContemporainEquipment {
+                    protections: vec![],
+                    items: vec![],
+                },
+            )),
+            damage: 0,
+        };
+        assert!(roll_offer(&document, &other, "cof.roll.test.for").is_err());
+    }
+
+    #[test]
+    fn the_state_of_health_is_given_for_each_step_filled() {
+        let sheet = contemporain(ContemporainDocument::empty());
+        let Details::Contemporain(details) = &sheet.details else {
+            panic!("COC2 details expected")
+        };
+        let states = &details.health_states;
+        assert_eq!(states.len(), 21);
+        assert_eq!(states[4], None);
+        assert_eq!(states[5].as_deref(), Some("coc.health-state.contusionne"));
+        assert_eq!(states[20].as_deref(), Some("coc.health-state.mourant"));
     }
 }

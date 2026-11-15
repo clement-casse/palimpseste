@@ -4,7 +4,9 @@ The engines compiled to WebAssembly for the PWA. The rules run in the
 browser, on every edit (ADR APP-LOCAL-RULES). This crate only maps what the
 engines compute, and the French names they give it, to plain data. It
 applies no rule; of its own, it names only the constant term of a formula
-("Base") and an adjustment ("Ajustement de ...").
+("Base"), an adjustment ("Ajustement de ...") and the lines of a roll that
+are no content (the allies helping, the Game Master's modifier, a
+critical), and it draws the faces of the dice (ADR APP-ROLLS).
 
 It depends on `co-kernel`, `co-contemporain`, `co-fantasy` and
 `palimpseste-document` (with the `ts` feature), plus `serde`, `tsify` and
@@ -13,13 +15,15 @@ the native tests can run.
 
 ## The bindings
 
-Three stateless functions over plain data (ADR APP-BINDINGS):
+Stateless functions over plain data (ADR APP-BINDINGS):
 
 | JavaScript | Rust | Returns |
 |---|---|---|
 | `emptyDocument(engine)` | `empty_document_js` | a `Document` with no choice made |
 | `catalog(engine)` | `catalog_js` → `catalog()` | the content the engine offers: profils, peuples, voies, every capacité by identifier (`abilities`), weapons, the steps of a level-up or spending, ... with identifiers and French names |
 | `evaluate(document)` | `evaluate_js` → `evaluate()` | a `Sheet`: the status of each creation step and of each level-up or spending (`progression`), characteristics, values with their breakdown, violations (waived or not) placed in their step, unused waivers, and engine-specific details, the offers of each level-up or spending among them |
+| `rollOffer(document, play, roll)` | `roll_offer_js` → `roll_offer()` | a `RollOffer`: what the roll named by a sheet line (`roll`, `attackRoll`) offers the character in play (`Play`: the equipment worn, the COC2 damage taken): its base with its breakdown, the options to pick, the dé bonus to show, the critical range, what each ally adds |
+| `roll(document, play, request)` | `roll_js` → `roll()` | a `RollOutcome`: the dice drawn here from `crypto.getRandomValues`, the die kept, every line of the total, the options left unpicked or set aside |
 
 No Rust object crosses the boundary, so JavaScript never frees memory by
 hand. Values cross as `tsify::Ts<T>`, which turns a value the front end got
@@ -34,6 +38,7 @@ when (de)serialization fails.
 | `lib.rs` | the `#[wasm_bindgen]` exports and the native tests |
 | `catalog.rs` | `Catalog` (`FantasyCatalog`, `ContemporainCatalog`) and its entries, built from the engines' `ALL`, `id()`, `name()` and public content tables |
 | `sheet.rs` | `Sheet` and its lines (`StepStatus`, `CharacteristicLine`, `ValueLine`, `ContributionLine`, `ReportedViolation`, ...), and `evaluate`: the values of each engine's `Value::FIXED`, named by `Value::name()`, `label` and `term_label` |
+| `roll.rs` | `Play`, `RollOffer`, `RollRequest`, `RollOutcome` and their lines, `roll_offer` and `roll`: the engines' offers and outcomes named, and the faces drawn from random bytes given by the caller |
 
 Identifiers in the catalogue and the sheet are those of the choices
 document, so the front end can write them back as they are.

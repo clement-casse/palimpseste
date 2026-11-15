@@ -22,6 +22,7 @@ const constitution: CharacteristicLine = {
     },
   ],
   situational: [],
+  roll: "cof.roll.test.con",
 };
 
 test("hovering a characteristic on the sheet shows every source, capacités included", async () => {

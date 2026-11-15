@@ -86,7 +86,7 @@ does not link `wasm-bindgen`.
 ## WebAssembly
 
 **APP-BINDINGS: Stateless functions over plain data.** `palimpseste-wasm`
-exposes `emptyDocument(engine)`, `catalog(engine)`,
+exposes the rolls (ADR APP-ROLLS), `emptyDocument(engine)`, `catalog(engine)`,
 `evaluate(document)` (values with breakdowns, violations by step, step
 status) and `evaluateInPlay(document, equipment)`: the same steps and
 violations, the values with the equipment in play, and the findings of
@@ -110,6 +110,27 @@ is always named by its identifier: the catalog's `abilities` label each
 one, and a breakdown line gives the identifier of its source (`sourceId`),
 so the capacités' names, descriptions and effects attach later to the same
 key.
+
+**APP-ROLLS: The bindings draw the dice, the engines resolve them.**
+`rollOffer(document, play, roll)` returns what a roll offers (ADR
+ENG-ROLLS) and `roll(document, play, request)` rolls it. A roll is named
+by the identifier a sheet line carries (`roll` on a characteristic, an
+attack value or a weapon's DM, `attackRoll` on a DM for the attack before
+it), and its options by their position in the offer; `Play` is what the
+device knows of the character in play, the equipment worn and the COC2
+damage taken, which the engines never store. `roll` computes the dice of
+the request, draws each face from `crypto.getRandomValues`, imported
+through `wasm-bindgen`, and hands the faces to the engine: a byte beyond
+the last multiple of the die's faces is drawn again, so every face is as
+likely. The Rust function behind it takes the source of random bytes as a
+parameter, which the native tests fix. The outcome is plain data made to
+be shown and kept as it is: every die with the one kept, each line of the
+total with its French label, the options left unpicked. Of their own, the
+bindings name the lines that are no content (the allies helping, the
+Game Master's modifier, a critical, the competence cap). *Why in the
+bindings:* the front end only presents, and the engines stay pure (ADR
+APP-BOUNDARIES, KER-ROLLS); *why no crate:* `wasm-bindgen` already reaches
+the browser's generator, and no other randomness is needed.
 
 **APP-WASM-BUILD: `cargo` and `wasm-bindgen-cli`.** `cargo` builds the
 `wasm32-unknown-unknown` target, and `wasm-bindgen --target web` writes an

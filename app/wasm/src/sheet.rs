@@ -166,10 +166,13 @@ pub struct CharacteristicLine {
     /// The capacités' modifiers and notes that hold only in a situation,
     /// never in the total (ADR ENG-SITUATIONAL).
     pub situational: Vec<SituationalLine>,
+    /// The identifier of its test, a roll (ADR ENG-ROLLS).
+    pub roll: String,
 }
 
 /// A computed value and its breakdown.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
 pub struct ValueLine {
     /// The value's identifier, the target of its adjustments.
     pub id: String,
@@ -184,6 +187,12 @@ pub struct ValueLine {
     /// The capacités' modifiers that hold only in a situation, never in the
     /// total (ADR ENG-SITUATIONAL).
     pub situational: Vec<SituationalLine>,
+    /// The identifier of the roll adding the value to its dice: an attack
+    /// test, a weapon's DM (ADR ENG-ROLLS).
+    pub roll: Option<String>,
+    /// For a weapon's DM, the identifier of the attack test rolled before
+    /// it.
+    pub attack_roll: Option<String>,
 }
 
 /// A capacité's modifier holding only in a situation.
@@ -456,7 +465,7 @@ pub struct BonusDieLine {
 }
 
 /// The speciality `specialities` give the capacité `ability`.
-fn speciality_of(specialities: &[SpecialityEntry], ability: &str) -> Option<String> {
+pub(crate) fn speciality_of(specialities: &[SpecialityEntry], ability: &str) -> Option<String> {
     // The last entry wins, as when the document converts to the engine.
     specialities
         .iter()
@@ -492,6 +501,10 @@ pub struct ContemporainDetails {
     pub spendings: Vec<SpendingLine>,
     /// The rank 5 capacités held, with the characteristic each raises.
     pub rank_five: Vec<RankFiveLine>,
+    /// The identifier of the state of health reached, by the steps of the
+    /// échelle de santé filled, from none to all of them; `None` while no
+    /// state is (COC.CNT.SCALES).
+    pub health_states: Vec<Option<String>>,
     /// Every capacité held, with the spending that bought it.
     pub abilities_held: Vec<HeldAbility>,
 }
@@ -593,6 +606,7 @@ struct Common<'a> {
 impl Common<'_> {
     fn sheet(
         &self,
+        roll: impl Fn(co_kernel::Characteristic) -> String,
         characteristics: impl Fn(co_kernel::Characteristic) -> DerivedValue,
         situational: impl Fn(co_kernel::Characteristic) -> Vec<SituationalLine>,
         values: Vec<ValueLine>,
@@ -651,6 +665,7 @@ impl Common<'_> {
                         total: value.total(),
                         contributions: self.contributions(&value),
                         situational: situational(c),
+                        roll: roll(c),
                     }
                 })
                 .collect(),
@@ -721,40 +736,7 @@ impl Common<'_> {
     }
 
     fn contribution(&self, contribution: &Contribution) -> ContributionLine {
-        let labelled = |id: &str| (self.label)(id).unwrap_or_else(|| id.to_owned());
-        let (source, source_id, label) = match contribution.source() {
-            Source::Characteristic(c) => (
-                SourceKind::Characteristic,
-                None,
-                c.abbreviation().to_owned(),
-            ),
-            Source::Ability(id) => (
-                SourceKind::Ability,
-                Some(id.as_str().to_owned()),
-                labelled(id.as_str()),
-            ),
-            Source::Rule(rule) => (
-                SourceKind::Rule,
-                None,
-                (self.term_label)(rule).unwrap_or("Base").to_owned(),
-            ),
-            Source::Value(id) => (
-                SourceKind::Value,
-                Some(id.as_str().to_owned()),
-                labelled(id.as_str()),
-            ),
-            Source::Adjustment { author, reason } => (
-                SourceKind::Adjustment,
-                None,
-                format!("Ajustement de {} : {reason}", author.as_str()),
-            ),
-        };
-        ContributionLine {
-            source,
-            source_id,
-            label,
-            amount: contribution.amount(),
-        }
+        contribution_line(self.label, self.term_label, contribution)
     }
 
     fn line(&self, id: String, label: String, value: Option<&DerivedValue>) -> ValueLine {
@@ -765,7 +747,51 @@ impl Common<'_> {
             contributions: value.map_or_default(|value| self.contributions(value)),
             dice: None,
             situational: Vec::new(),
+            roll: None,
+            attack_roll: None,
         }
+    }
+}
+
+/// One term of a breakdown, named by an engine's `label` and `term_label`.
+pub(crate) fn contribution_line(
+    label: &dyn Fn(&str) -> Option<String>,
+    term_label: &dyn Fn(&RuleId) -> Option<&'static str>,
+    contribution: &Contribution,
+) -> ContributionLine {
+    let labelled = |id: &str| label(id).unwrap_or_else(|| id.to_owned());
+    let (source, source_id, label) = match contribution.source() {
+        Source::Characteristic(c) => (
+            SourceKind::Characteristic,
+            None,
+            c.abbreviation().to_owned(),
+        ),
+        Source::Ability(id) => (
+            SourceKind::Ability,
+            Some(id.as_str().to_owned()),
+            labelled(id.as_str()),
+        ),
+        Source::Rule(rule) => (
+            SourceKind::Rule,
+            None,
+            term_label(rule).unwrap_or("Base").to_owned(),
+        ),
+        Source::Value(id) => (
+            SourceKind::Value,
+            Some(id.as_str().to_owned()),
+            labelled(id.as_str()),
+        ),
+        Source::Adjustment { author, reason } => (
+            SourceKind::Adjustment,
+            None,
+            format!("Ajustement de {} : {reason}", author.as_str()),
+        ),
+    };
+    ContributionLine {
+        source,
+        source_id,
+        label,
+        amount: contribution.amount(),
     }
 }
 
@@ -808,21 +834,57 @@ fn carried<T: Ord + Copy>(items: &[ItemEntry], from_id: impl Fn(&str) -> Option<
         .collect()
 }
 
+/// The equipment a COF2 character chose at creation, as an equipment in
+/// play: what it wears and carries while none other is given.
+pub(crate) fn fantasy_creation(document: &FantasyDocument) -> FantasyEquipment {
+    FantasyEquipment {
+        armour: document.armour.clone(),
+        shield: document.shield.clone(),
+        items: document.items.clone(),
+    }
+}
+
+/// The equipment a COC2 character chose at creation, as an equipment in
+/// play.
+pub(crate) fn contemporain_creation(document: &ContemporainDocument) -> ContemporainEquipment {
+    ContemporainEquipment {
+        protections: document.protections.clone(),
+        items: document.items.clone(),
+    }
+}
+
+/// The roll adding the COF2 `value` to its dice, if any.
+fn fantasy_roll(value: co_fantasy::Value) -> Option<String> {
+    use co_fantasy::{Roll, Value};
+    match value {
+        Value::Attack(mode) => Some(Roll::Attack(mode)),
+        Value::WeaponAttack(weapon, weapon_use) => Some(Roll::WeaponAttack(weapon, weapon_use)),
+        Value::Damage(weapon, weapon_use) => Some(Roll::Damage(weapon, weapon_use)),
+        _ => None,
+    }
+    .map(Roll::id)
+}
+
+/// The attack test rolled before the DM `value`, if it is one.
+fn fantasy_attack_roll(value: co_fantasy::Value) -> Option<String> {
+    use co_fantasy::{Roll, Value};
+    match value {
+        Value::Damage(weapon, weapon_use) => Some(Roll::WeaponAttack(weapon, weapon_use).id()),
+        _ => None,
+    }
+}
+
 fn fantasy(
     document: &FantasyDocument,
     equipment: Option<&FantasyEquipment>,
 ) -> Result<Sheet, Error> {
-    use co_fantasy::{Family, LevelStep, Money, Placement, Step, Value, Weapon, WeaponUse};
+    use co_fantasy::{Family, LevelStep, Money, Placement, Roll, Step, Value, Weapon, WeaponUse};
     let character = document.to_character()?;
     let report = character.report();
     // In play, the values follow the equipment in play; the steps and
     // violations stay those of the creation. Without equipment given, the
     // character is in play with the equipment chosen at creation.
-    let creation = FantasyEquipment {
-        armour: document.armour.clone(),
-        shield: document.shield.clone(),
-        items: document.items.clone(),
-    };
+    let creation = fantasy_creation(document);
     let carried_in_play = equipment.unwrap_or(&creation);
     let played = character.in_play(carried_in_play.to_equipment()?);
     let items = &carried_in_play.items;
@@ -851,6 +913,8 @@ fn fantasy(
     let situational = |target: co_fantasy::Target| fantasy_situational(&played.situational(target));
     let line = |value: Value| ValueLine {
         situational: situational(co_fantasy::Target::Value(value)),
+        roll: fantasy_roll(value),
+        attack_roll: fantasy_attack_roll(value),
         ..common.line(
             value.id().as_str().to_owned(),
             value.name(),
@@ -897,6 +961,7 @@ fn fantasy(
     });
     let in_play = equipment.map(|_| played.report());
     let mut sheet = common.sheet(
+        |c| Roll::Test(c).id(),
         |c| character.characteristic(c),
         |c| situational(co_fantasy::Target::Characteristic(c)),
         values,
@@ -907,21 +972,33 @@ fn fantasy(
     Ok(sheet)
 }
 
+/// The identifier of the state of health reached, by the steps of the
+/// échelle de santé filled, from none to all of them.
+fn contemporain_health_states(played: &co_contemporain::InPlay) -> Vec<Option<String>> {
+    let length = played
+        .value(co_contemporain::Value::HealthScale)
+        .map_or(0, |scale| scale.total());
+    (0..=length)
+        .map(|damage| {
+            played
+                .health_state(damage)
+                .map(|state| state.id().as_str().to_owned())
+        })
+        .collect()
+}
+
 fn contemporain(
     document: &ContemporainDocument,
     equipment: Option<&ContemporainEquipment>,
 ) -> Result<Sheet, Error> {
-    use co_contemporain::{Placement, SpendingStep, Step, Value, Weapon};
+    use co_contemporain::{Placement, Roll, SpendingStep, Step, Value, Weapon};
     let character = document.to_character()?;
     let report = character.report();
     // In play, the values follow the equipment in play; the steps and
     // violations stay those of the creation. No COC2 equipment rule holds in
     // play. Without equipment given, the character is in play with the
     // equipment chosen at creation.
-    let creation = ContemporainEquipment {
-        protections: document.protections.clone(),
-        items: document.items.clone(),
-    };
+    let creation = contemporain_creation(document);
     let carried_in_play = equipment.unwrap_or(&creation);
     let played = character.in_play(carried_in_play.to_equipment()?);
     let items = &carried_in_play.items;
@@ -951,6 +1028,16 @@ fn contemporain(
         |target: co_contemporain::Target| contemporain_situational(&played.situational(target));
     let line = |value: Value| ValueLine {
         situational: situational(co_contemporain::Target::Value(value)),
+        roll: match value {
+            Value::Attack(mode) => Some(Roll::Attack(mode)),
+            Value::Damage(weapon) => Some(Roll::Damage(weapon)),
+            _ => None,
+        }
+        .map(Roll::id),
+        attack_roll: match value {
+            Value::Damage(weapon) => Some(Roll::WeaponAttack(weapon).id()),
+            _ => None,
+        },
         ..common.line(
             value.id().as_str().to_owned(),
             value.name(),
@@ -985,9 +1072,11 @@ fn contemporain(
         disadvantages: character.disadvantages(),
         spendings: contemporain_spendings(&character, spendings),
         rank_five: contemporain_rank_five(&character),
+        health_states: contemporain_health_states(&played),
         abilities_held: contemporain_held(&character, document, &line),
     });
     let mut sheet = common.sheet(
+        |c| Roll::Test(c).id(),
         |c| character.characteristic(c),
         |c| situational(co_contemporain::Target::Characteristic(c)),
         values,

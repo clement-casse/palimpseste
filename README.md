@@ -248,13 +248,16 @@ which only `palimpseste-wasm` enables.
 
 ### `app/wasm`: `palimpseste-wasm`
 
-The engines compiled to WebAssembly. It exposes four stateless functions
+The engines compiled to WebAssembly. It exposes six stateless functions
 over plain data: `emptyDocument(engine)`, `catalog(engine)`,
-`evaluate(document)` and `evaluateInPlay(document, equipment)`. `evaluate`
-returns values with their breakdowns, violations by step, the status of
-each step, each capacité's effects written for the character and its
-situational modifiers; `evaluateInPlay` computes the same with the
-equipment carried in play. No Rust object crosses the
+`evaluate(document)`, `evaluateInPlay(document, equipment)`,
+`rollOffer(document, play, roll)` and `roll(document, play, request)`.
+`evaluate` returns values with their breakdowns, violations by step, the
+status of each step, each capacité's effects written for the character,
+its situational modifiers and the roll of each line; `evaluateInPlay`
+computes the same with the equipment carried in play; `rollOffer` says
+what a roll offers, and `roll` draws the dice and returns every line of
+the total. No Rust object crosses the
 boundary (ADR APP-BINDINGS). `mise run wasm:build` writes the bindings into
 `app/frontend/src/wasm/`. They are generated, never committed.
 
