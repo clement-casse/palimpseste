@@ -2,6 +2,8 @@
 // answers every path outside `/api` with the app, so a reload keeps the page.
 // This module is the only one to read or change the URL.
 
+import { KEYS, readText, remove, writeText } from "./lib/storage";
+
 let path = $state(location.pathname);
 let search = $state(location.search);
 let hash = $state(location.hash);
@@ -142,26 +144,17 @@ export function takeQuery(name: string): string | null {
 // Where a signed-out user was going, kept for this tab across the sign-in
 // pages and the provider's: an invitation link opened signed out comes back
 // once signed in.
-const RETURN = "palimpseste.return";
-
 /** Remembers the current page, to come back to once signed in. */
 export function rememberReturn() {
-  try {
-    sessionStorage.setItem(RETURN, path + search + hash);
-  } catch {
-    // Storage blocked: the user lands on the home page instead.
-  }
+  // Where storage is blocked, the user lands on the home page instead.
+  writeText(KEYS.return, path + search + hash, "session");
 }
 
 /** The page remembered by `rememberReturn`, forgotten once read. */
 export function takeReturn(): string | null {
-  try {
-    const back = sessionStorage.getItem(RETURN);
-    sessionStorage.removeItem(RETURN);
-    return back;
-  } catch {
-    return null;
-  }
+  const back = readText(KEYS.return, "session");
+  remove(KEYS.return, "session");
+  return back;
 }
 
 /** Follows a link inside the app without reloading the page. */
