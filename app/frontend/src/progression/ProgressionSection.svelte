@@ -21,7 +21,7 @@
   import { U32_MAX, integerOf, valueOf } from "../character/edits";
   import { unsettled, unsettledAll } from "../engines";
   import { characterProgressionPath, follow } from "../router.svelte";
-  import { type Catalog, type Document, type Sheet, evaluate } from "../wasm/palimpseste_wasm";
+  import { type Catalog, type Document, type Sheet, attempt, evaluate } from "../lib/engine";
   import Differences from "./Differences.svelte";
   import { loadDraft } from "./drafts";
   import { differences, nextLabel } from "./progression";
@@ -47,11 +47,8 @@
     const after = structuredClone($state.snapshot(choices));
     if (after.engine !== "contemporain") return [];
     after.acquiredSequels = [...(after.acquiredSequels ?? []), sequel];
-    try {
-      return differences(sheet, evaluate(after));
-    } catch {
-      return [];
-    }
+    const result = attempt(() => evaluate(after));
+    return result.ok ? differences(sheet, result.value) : [];
   });
   const sequelNames = $derived(
     new Map(catalog.engine === "contemporain" ? catalog.sequels.map((s) => [s.id, s.name]) : []),

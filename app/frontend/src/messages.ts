@@ -2,7 +2,7 @@
 // keyed by rule identifier and filled with the violation's parameters. A
 // rule without a message shows its identifier.
 
-import type { ReportedViolation } from "./wasm/palimpseste_wasm";
+import type { ReportedViolation } from "./lib/engine";
 
 type Params = Record<string, number | string | undefined>;
 

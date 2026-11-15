@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { lhagva } from "../test/backend";
-import { type Document, type ReportedViolation, evaluate } from "../wasm/palimpseste_wasm";
+import { type Document, type ReportedViolation, evaluate } from "../lib/engine";
 import { marksAt, notesOf } from "./notes";
 
 /** Lhagva with the deviation `change` makes, found by `find`, and its waiver. */

@@ -3,7 +3,7 @@
   // adjustment is attributed, and reported as a notice.
   import { Accordion, AccordionItem, Button } from "flowbite-svelte";
 
-  import type { Target, ValueLine } from "../wasm/palimpseste_wasm";
+  import type { Target, ValueLine } from "../lib/engine";
   import Breakdown from "./Breakdown.svelte";
   import { signed } from "./edits";
 

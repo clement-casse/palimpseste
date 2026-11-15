@@ -4,7 +4,7 @@
 // Each resource is stored as the amount used, by value identifier, so a
 // maximum changed in the editor keeps the count sensible.
 
-import type { Engine, Equipment } from "../wasm/palimpseste_wasm";
+import type { Engine, Equipment } from "../lib/engine";
 import { isEquipment } from "./equipment";
 
 export class PlayState {

@@ -9,7 +9,7 @@ import type {
   HeldAbility,
   Sheet,
   VoieEntry,
-} from "../wasm/palimpseste_wasm";
+} from "../lib/engine";
 
 /** What names the capacités: either engine's catalog. */
 export type Abilities = { abilities: AbilityEntry[] };

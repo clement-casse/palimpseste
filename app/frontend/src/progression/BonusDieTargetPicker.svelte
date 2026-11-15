@@ -9,7 +9,7 @@
     ContemporainCatalog,
     ContemporainDocument,
     RankFiveLine,
-  } from "../wasm/palimpseste_wasm";
+  } from "../lib/engine";
   import Ability from "./Ability.svelte";
   import { abilityLabel } from "./progression";
 

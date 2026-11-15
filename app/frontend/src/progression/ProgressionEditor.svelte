@@ -25,9 +25,10 @@
     type ReportedViolation,
     type Sheet,
     type StepStatus,
+    attempt,
     catalog,
     evaluate,
-  } from "../wasm/palimpseste_wasm";
+  } from "../lib/engine";
   import Ability from "./Ability.svelte";
   import ContemporainSpendingForm from "./ContemporainSpendingForm.svelte";
   import Differences from "./Differences.svelte";
@@ -56,11 +57,8 @@
   const editor = `${characterPath(initial.id)}#progression`;
 
   function evaluated(document: Document): Sheet | null {
-    try {
-      return evaluate(document);
-    } catch {
-      return null;
-    }
+    const result = attempt(() => evaluate(document));
+    return result.ok ? result.value : null;
   }
 
   /** Where the form starts: the draft kept for this entry, or a new one. */

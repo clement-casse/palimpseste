@@ -3,7 +3,7 @@
   // rules never check (D-26).
   import { Button, Input, Listgroup, ListgroupItem, Select } from "flowbite-svelte";
 
-  import type { ItemEntry } from "../wasm/palimpseste_wasm";
+  import type { ItemEntry } from "../lib/engine";
   import { U32_MAX, integerOf, valueOf } from "./edits";
 
   let {

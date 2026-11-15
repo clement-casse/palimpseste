@@ -1,4 +1,4 @@
-import type { ReportedViolation, Target } from "../wasm/palimpseste_wasm";
+import type { ReportedViolation, Target } from "../lib/engine";
 
 /** What the Game Master is about to override. */
 export type OverrideRequest =

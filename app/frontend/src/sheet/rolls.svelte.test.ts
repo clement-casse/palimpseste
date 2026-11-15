@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { RollOutcome } from "../wasm/palimpseste_wasm";
+import type { RollOutcome } from "../lib/engine";
 import { KEPT, RollLog } from "./rolls.svelte";
 
 const outcome = (total: number): RollOutcome => ({

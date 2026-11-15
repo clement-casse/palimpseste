@@ -4,7 +4,7 @@
   // included, read without opening anything.
   import { Popover } from "flowbite-svelte";
 
-  import type { ContributionLine, SituationalLine } from "../wasm/palimpseste_wasm";
+  import type { ContributionLine, SituationalLine } from "../lib/engine";
   import Breakdown from "./Breakdown.svelte";
 
   let {
