@@ -1,7 +1,8 @@
 <script lang="ts">
   // A friend's character, on its sheet read only (ADR FE-SHEET).
-  import { A, Spinner } from "flowbite-svelte";
+  import { A } from "flowbite-svelte";
 
+  import Loader from "../lib/components/Loader.svelte";
   import { getFriend, getFriendCharacter } from "../api";
   import ErrorMessage from "../ErrorMessage.svelte";
   import { FRIENDS, follow } from "../router.svelte";
@@ -15,12 +16,13 @@
 
 <!-- Another character is another sheet, loaded anew. -->
 {#key `${friend}/${id}`}
-  {#await load(friend, id)}
-    <p class="flex items-center gap-2"><Spinner size="4" /> Chargement…</p>
-  {:then [owner, character]}
-    <CharacterSheet {character} friend={owner} />
-  {:catch error}
-    <ErrorMessage {error} />
-    <A href={FRIENDS} onclick={follow}>← Amis</A>
-  {/await}
+  <Loader load={load(friend, id)}>
+    {#snippet children([owner, character])}
+      <CharacterSheet {character} friend={owner} />
+    {/snippet}
+    {#snippet failed(error)}
+      <ErrorMessage {error} />
+      <A href={FRIENDS} onclick={follow}>← Amis</A>
+    {/snippet}
+  </Loader>
 {/key}

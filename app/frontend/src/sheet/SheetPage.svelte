@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { A, Spinner } from "flowbite-svelte";
+  import { A } from "flowbite-svelte";
 
-  import { getCharacter } from "../api";
-  import { settled } from "../character/saver.svelte";
+  import Loader from "../lib/components/Loader.svelte";
+  import { loadCharacter } from "../lib/characters";
   import ErrorMessage from "../ErrorMessage.svelte";
   import { follow } from "../router.svelte";
   import CharacterSheet from "./CharacterSheet.svelte";
@@ -12,12 +12,13 @@
 
 <!-- Another character is another sheet, loaded anew. -->
 {#key id}
-  {#await settled().then(() => getCharacter(id))}
-    <p class="flex items-center gap-2"><Spinner size="4" /> Chargement…</p>
-  {:then character}
-    <CharacterSheet {character} />
-  {:catch error}
-    <ErrorMessage {error} />
-    <A href="/" onclick={follow}>← Personnages</A>
-  {/await}
+  <Loader load={loadCharacter(id)}>
+    {#snippet children(character)}
+      <CharacterSheet {character} />
+    {/snippet}
+    {#snippet failed(error)}
+      <ErrorMessage {error} />
+      <A href="/" onclick={follow}>← Personnages</A>
+    {/snippet}
+  </Loader>
 {/key}
