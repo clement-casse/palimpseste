@@ -1,0 +1,47 @@
+<script lang="ts">
+  import { Accordion, AccordionItem, Button } from "flowbite-svelte";
+
+  import type { CharacteristicLine, Target } from "$lib/engine";
+  import Breakdown from "$lib/components/Breakdown.svelte";
+  import BreakdownPopover from "$lib/components/BreakdownPopover.svelte";
+  import { signed } from "$lib/character/edits";
+
+  let {
+    characteristics,
+    onadjust,
+  }: {
+    characteristics: CharacteristicLine[];
+    onadjust: (target: Target, label: string) => void;
+  } = $props();
+</script>
+
+<Accordion flush multiple>
+  {#each characteristics as line (line.characteristic)}
+    <AccordionItem headingTag="div" classes={{ content: "space-y-2 py-2" }}>
+      {#snippet header()}
+        <span class="flex flex-1 justify-between gap-2 pe-3">
+          <span>{line.characteristic}</span>
+          <strong id="editor-characteristic-{line.characteristic}" class="text-gray-900 dark:text-white"
+            >{signed(line.total)}</strong
+          >
+        </span>
+      {/snippet}
+      <Breakdown contributions={line.contributions} situational={line.situational} />
+      <Button
+        size="xs"
+        color="alternative"
+        onclick={() => onadjust({ kind: "characteristic", id: line.characteristic }, line.characteristic)}
+      >
+        Ajuster…
+      </Button>
+    </AccordionItem>
+    {#if line.contributions.length > 0}
+      <!-- Outside the item, so it shows while the item is closed. -->
+      <BreakdownPopover
+        triggeredBy="#editor-characteristic-{line.characteristic}"
+        title="{line.characteristic} : {signed(line.total)}"
+        contributions={line.contributions}
+      />
+    {/if}
+  {/each}
+</Accordion>
