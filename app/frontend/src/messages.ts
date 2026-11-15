@@ -3,6 +3,7 @@
 // rule without a message shows its identifier.
 
 import type { ReportedViolation } from "./lib/engine";
+import { COC } from "./lib/engine/ids";
 
 type Params = Record<string, number | string | undefined>;
 
@@ -101,7 +102,7 @@ const MESSAGES: Record<string, Message> = {
       ? "Indiquez l'âge du personnage."
       : v.category.kind === "uncomputable"
         ? `${p.age} ans : aucune tranche d'âge avant 10 ans.`
-        : v.subject.kind === "value" && v.subject.id === "coc.age"
+        : v.subject.kind === "value" && v.subject.id === COC.age
           ? `${p.age} ans : hors de 16-65 ans, prenez le trait D'un autre âge.`
           : `${s} : réservé aux âges hors de 16-65 ans (${p.age} ans).`,
   "COC.CRE.DOMAINE": (_s, p, v) =>

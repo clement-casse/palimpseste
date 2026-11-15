@@ -19,6 +19,7 @@ import {
   narrow,
   withEquipment,
 } from "../lib/engine";
+import { COC } from "../lib/engine/ids";
 import { keepAwake } from "../wakelock.svelte";
 import { equipmentOf } from "./equipment";
 import { type Note, notesOf } from "./notes";
@@ -29,7 +30,7 @@ type Evaluation =
   { sheet: Sheet; equipment: Equipment; unreadable: boolean } | { error: string };
 
 // The steps of the COC2 échelle de santé filled reach a roll (D-56).
-const HEALTH = "coc.health-scale";
+const HEALTH = COC.healthScale;
 
 export class SheetController {
   /** The character as loaded: the sheet never changes it. */

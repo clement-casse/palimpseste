@@ -20,8 +20,8 @@
     FantasyDocument,
     FantasyEquipment,
     Sheet,
-    ValueLine,
   } from "../lib/engine";
+  import { COF } from "../lib/engine/ids";
   import Block from "./Block.svelte";
   import Characteristics from "./Characteristics.svelte";
   import Counter from "./Counter.svelte";
@@ -35,8 +35,8 @@
   import RollButton from "./RollButton.svelte";
   import SituationalList from "./SituationalList.svelte";
   import Tile from "./Tile.svelte";
-  import { damage, range, shown, situationalText, weaponSlugs } from "./values";
-  import { currentVoies } from "../progression/progression";
+  import { fantasySheetModel } from "./model/fantasy";
+  import { damage, range, shown, situationalText } from "./values";
   import VoieRanks from "./VoieRanks.svelte";
 
   let {
@@ -62,22 +62,7 @@
     equipment: FantasyEquipment;
   } = $props();
 
-  const profil = $derived(catalog.profils.find((p) => p.id === choices.profil));
-  const peuple = $derived(catalog.peuples.find((p) => p.id === choices.peuple));
-  const armour = $derived(catalog.armours.find((a) => a.id === equipment.armour));
-  const shield = $derived(catalog.shields.find((s) => s.id === equipment.shield));
-  const identity = $derived([
-    {
-      label: "Profil",
-      value: profil ? `${profil.name}${details.family ? ` (${details.family.name})` : ""}` : "À choisir",
-    },
-    { label: "Peuple", value: peuple?.name ?? "À choisir" },
-    { label: "Niveau", value: `${details.level} (d4° : ${details.evolutiveDie})` },
-  ]);
-
-  function line(id: string): ValueLine | undefined {
-    return sheet.values.find((l) => l.id === id);
-  }
+  const model = $derived(fantasySheetModel({ choices, catalog, sheet, details, equipment }));
 
   function valueMarks(id: string): Note[] {
     return marksAt(notes, { kind: "value", id });
@@ -87,62 +72,24 @@
   function equip(change: Partial<FantasyEquipment>) {
     play?.equip({ engine: "fantasy", ...equipment, ...change });
   }
-
-  const COMBAT = [
-    { id: "cof.initiative", label: "Init", title: "Initiative", signed: false },
-    { id: "cof.defence", label: "DEF", title: "Défense", signed: false },
-    { id: "cof.attack.contact", label: "Contact", title: "Attaque au contact", signed: true },
-    { id: "cof.attack.ranged", label: "Distance", title: "Attaque à distance", signed: true },
-    { id: "cof.attack.magic", label: "Magique", title: "Attaque magique", signed: true },
-  ];
-
-  // The resources, each counted against its computed maximum; PM only for a
-  // character who knows a spell (COF.DER.PM).
-  const resources = $derived(
-    [
-      { id: "cof.vigour-points", label: "PV" },
-      { id: "cof.mana-points", label: "PM" },
-      { id: "cof.luck-points", label: "PC" },
-      { id: "cof.recovery-dice", label: "DR" },
-    ].flatMap(({ id, label }) => {
-      const value = line(id);
-      return value?.total === undefined ? [] : [{ ...value, total: value.total, short: label }];
-    }),
-  );
-
-  // The weapons carried, in the document's order, from the engine's damage
-  // lines (`cof.damage.<weapon>.<use>`): one per use, in the order of the
-  // catalogue's uses, then the critical range.
-  const weapons = $derived(
-    weaponSlugs(sheet.values, "cof.damage").flatMap((slug) => {
-      const weapon = catalog.weapons.find((w) => w.id === `cof.weapon.${slug}`);
-      if (!weapon) return [];
-      const damages = sheet.values.filter((l) => l.id.startsWith(`cof.damage.${slug}.`));
-      const quantity = (equipment.items ?? [])
-        .filter((item) => item.kind === "weapon" && item.id === weapon.id)
-        .reduce((sum, item) => sum + item.quantity, 0);
-      const critical = line(`cof.critical-range.${slug}`);
-      return [{ weapon, quantity, damages, critical }];
-    }),
-  );
 </script>
 
 <div class="my-3">
-  <Identity fields={identity} notes={marksAt(notes, ...steps("profil", "peuple"))} />
+  <Identity fields={model.identity} notes={marksAt(notes, ...steps("profil", "peuple"))} />
 </div>
 
 <div
   class="sticky top-0 z-10 -mx-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-gray-200 bg-white px-4 py-2 print:static dark:border-gray-700 dark:bg-gray-900"
 >
-  {#each resources as resource (resource.id)}
+  {#each model.resources as resource (resource.id)}
     <Counter
       label={resource.short}
       title={resource.label}
-      max={resource.total}
-      used={play?.used(resource.id, resource.total) ?? 0}
+      max={resource.max}
+      used={play?.used(resource.id, resource.max) ?? 0}
       die={resource.dice}
       notes={valueMarks(resource.id)}
-      onchange={play ? (used) => play.set(resource.id, used, resource.total) : undefined}
+      onchange={play ? (used) => play.set(resource.id, used, resource.max) : undefined}
     />
   {/each}
   {#if play}<Restore {play} />{/if}
@@ -161,44 +108,42 @@
 
     <Block title="Combat" notes={marksAt(notes, ...steps("derived"))}>
       <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1.5">
-        {#each COMBAT as tile (tile.id)}
-          {@const value = line(tile.id)}
+        {#each model.combat as tile (tile.id)}
+          {@const roll = tile.roll}
           <Tile
             label={tile.label}
             title={tile.title}
-            value={shown(value, tile.signed)}
+            value={tile.text}
             notes={valueMarks(tile.id)}
-            contributions={value?.contributions}
-            situational={value?.situational}
-            onroll={onroll && value?.roll ? () => onroll(value.roll ?? "") : undefined}
+            contributions={tile.contributions}
+            situational={tile.situational}
+            onroll={onroll && roll ? () => onroll(roll) : undefined}
           />
         {/each}
       </ul>
       <!-- Weapons show theirs in their row. -->
-      <SituationalList
-        {catalog}
-        entries={sheet.values.filter((v) => !/^cof\.(attack|damage)\.[^.]+\.[^.]+$/.test(v.id))}
-      />
-      {#if weapons.length > 0}
+      <SituationalList {catalog} entries={model.situational} />
+      {#if model.weapons.length > 0}
         <Table class="mt-3">
           <TableHead>
             <TableHeadCell class="px-2 py-2">Arme</TableHeadCell><TableHeadCell class="px-2 py-2">Usage</TableHeadCell><TableHeadCell class="px-2 py-2">Attaque</TableHeadCell><TableHeadCell class="px-2 py-2">DM</TableHeadCell><TableHeadCell class="px-2 py-2">Critique</TableHeadCell>
           </TableHead>
           <TableBody>
-            {#each weapons as { weapon, quantity, damages, critical } (weapon.id)}
-              {#each damages as dm, i (dm.id)}
+            {#each model.weapons as { weapon, quantity, uses, critical } (weapon.id)}
+              {#each uses as use, i (use.damage.id)}
+                {@const dm = use.damage}
                 <TableBodyRow>
                   {#if i === 0}
-                    <TableHeadCell scope="row" rowspan={damages.length} class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">
+                    <TableHeadCell scope="row" rowspan={uses.length} class="px-2 py-2 whitespace-normal text-gray-900 dark:text-white">
                       {weapon.name}{#if quantity > 1}{` ×${quantity}`}{/if}
                     </TableHeadCell>
                   {/if}
-                  <TableBodyCell class="px-2 py-2">{weapon.uses[i]?.name ?? ""}</TableBodyCell>
-                  {@const attackId = dm.id.replace("cof.damage.", "cof.attack.")}
-                  <TableBodyCell class="px-2 py-2">{shown(line(attackId), true)}<Marks notes={valueMarks(attackId)} />{#if onroll && dm.attackRoll}{@const attackRoll = dm.attackRoll} <RollButton label="attaque, {weapon.name} ({weapon.uses[i]?.name ?? ""})" onclick={() => onroll(attackRoll)} />{/if}{#each line(attackId)?.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}</TableBodyCell>
-                  <TableBodyCell class="px-2 py-2">{damage(dm)}<Marks notes={valueMarks(dm.id)} />{#if onroll && dm.roll}{@const dmRoll = dm.roll} <RollButton label="DM, {weapon.name} ({weapon.uses[i]?.name ?? ""})" onclick={() => onroll(dmRoll)} />{/if}{#each dm.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}</TableBodyCell>
+                  <TableBodyCell class="px-2 py-2">{use.name}</TableBodyCell>
+                  {@const attackId = use.attackId}
+                  <TableBodyCell class="px-2 py-2">{shown(use.attack, true)}<Marks notes={valueMarks(attackId)} />{#if onroll && dm.attackRoll}{@const attackRoll = dm.attackRoll} <RollButton label="attaque, {weapon.name} ({use.name})" onclick={() => onroll(attackRoll)} />{/if}{#each use.attack?.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}</TableBodyCell>
+                  <TableBodyCell class="px-2 py-2">{damage(dm)}<Marks notes={valueMarks(dm.id)} />{#if onroll && dm.roll}{@const dmRoll = dm.roll} <RollButton label="DM, {weapon.name} ({use.name})" onclick={() => onroll(dmRoll)} />{/if}{#each dm.situational ?? [] as s, k (k)}<span class="block text-xs text-gray-500 dark:text-gray-400">{situationalText(s)}</span>{/each}</TableBodyCell>
                   {#if i === 0}
-                    <TableBodyCell rowspan={damages.length} class="px-2 py-2">
+                    <TableBodyCell rowspan={uses.length} class="px-2 py-2">
                       {range(critical)}{#if critical}<Marks notes={valueMarks(critical.id)} />{/if}
                     </TableBodyCell>
                   {/if}
@@ -214,7 +159,7 @@
   <div class="grid gap-4 md:col-span-2 lg:col-span-4">
     <Block title="Voies" notes={marksAt(notes, ...steps("voies"))}>
       <VoieRanks
-        voies={currentVoies(catalog, details.abilitiesHeld)}
+        voies={model.voies}
         names={namesOf(catalog.voies)}
         {notes}
         {catalog}
@@ -265,9 +210,10 @@
             </Select>
           </Label>
         {:else}
+          {@const { armour, shield } = model}
           <li>Armure : {armour ? `${armour.name} (DEF ${signed(armour.defence)})` : "aucune"}</li>
           <li>Bouclier : {shield ? `${shield.name} (DEF ${signed(shield.defence)})` : "aucun"}</li>
-          <li>Bourse : {details.money ?? "—"}<Marks notes={valueMarks("cof.money")} /></li>
+          <li>Bourse : {model.money ?? "—"}<Marks notes={valueMarks(COF.money)} /></li>
         {/if}
       {/snippet}
     </EquipmentSection>
