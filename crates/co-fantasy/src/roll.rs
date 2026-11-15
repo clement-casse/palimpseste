@@ -110,13 +110,14 @@ pub enum RollOption {
     Situational(Situational),
 }
 
-/// An option a roll offers, with its amount and whether it is picked
-/// unless the player says otherwise.
+/// An option a roll offers, with its amount, whether it is picked
+/// unless the player says otherwise, and whether it is put forward.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Offered {
     option: RollOption,
     amount: i32,
     picked: bool,
+    featured: bool,
 }
 
 impl Offered {
@@ -146,6 +147,14 @@ impl Offered {
     pub const fn picked(&self) -> bool {
         self.picked
     }
+
+    /// Whether it is put forward: a test bonus naming the characteristic
+    /// tested or counting it among its usual ones (D-60), and every other
+    /// option, which aims at the roll itself.
+    #[must_use]
+    pub const fn featured(&self) -> bool {
+        self.featured
+    }
 }
 
 /// What a roll offers within the rules: its base with its breakdown, the
@@ -157,6 +166,7 @@ pub struct RollOffer {
     damage_dice: Dice,
     options: Vec<Offered>,
     bonus_dice: Vec<BonusDie>,
+    featured_dice: Vec<BonusDie>,
     mode: RollMode,
     critical_from: Option<i32>,
 }
@@ -214,6 +224,13 @@ impl RollOffer {
     #[must_use]
     pub fn bonus_dice(&self) -> &[BonusDie] {
         &self.bonus_dice
+    }
+
+    /// Those of [`bonus_dice`](Self::bonus_dice) put forward: naming the
+    /// characteristic tested or counting it among their usual ones (D-60).
+    #[must_use]
+    pub fn featured_dice(&self) -> &[BonusDie] {
+        &self.featured_dice
     }
 
     /// The mode the roll starts in: a dé bonus when a capacité gives one to
@@ -411,6 +428,7 @@ fn situational(character: &Character, target: Target) -> Vec<Offered> {
             amount: s.amount().unwrap_or(0),
             option: RollOption::Situational(s),
             picked: false,
+            featured: true,
         })
         .collect()
 }
@@ -423,8 +441,13 @@ fn unconditional(die: BonusDie, characteristic: Characteristic) -> bool {
 }
 
 fn test_offer(character: &Character, characteristic: Characteristic) -> RollOffer {
+    // Named, a bonus goes to the tests of its characteristics only; else to
+    // every test, put forward on those of its usual ones (D-60).
     let named = |characteristics: &[Characteristic]| {
         characteristics.is_empty() || characteristics.contains(&characteristic)
+    };
+    let featured = |named: &[Characteristic], usual: &[Characteristic]| {
+        named.contains(&characteristic) || usual.contains(&characteristic)
     };
     let mut options = character
         .test_bonuses()
@@ -439,6 +462,7 @@ fn test_offer(character: &Character, characteristic: Characteristic) -> RollOffe
                 // circumstance.
                 picked: test_bonus::stacking(bonus) == Stacking::Apart
                     && bonus.characteristics().contains(&characteristic),
+                featured: featured(bonus.characteristics(), bonus.usual_characteristics()),
             })
         })
         .collect::<Vec<_>>();
@@ -451,6 +475,11 @@ fn test_offer(character: &Character, characteristic: Characteristic) -> RollOffe
         .into_iter()
         .filter(|die| named(die.characteristics()))
         .collect::<Vec<_>>();
+    let featured_dice = bonus_dice
+        .iter()
+        .copied()
+        .filter(|die| featured(die.characteristics(), die.usual_characteristics()))
+        .collect();
     let mode = if bonus_dice
         .iter()
         .any(|die| unconditional(*die, characteristic))
@@ -465,6 +494,7 @@ fn test_offer(character: &Character, characteristic: Characteristic) -> RollOffe
         damage_dice: Dice::default(),
         options,
         bonus_dice,
+        featured_dice,
         mode,
         critical_from: None,
     }
@@ -495,6 +525,7 @@ pub(crate) fn offer(character: &Character, roll: Roll) -> RollOffer {
         damage_dice,
         options: situational(character, Target::Value(value)),
         bonus_dice: Vec::new(),
+        featured_dice: Vec::new(),
         mode: RollMode::Plain,
         critical_from,
     }
@@ -749,6 +780,34 @@ mod tests {
     }
 
     #[test]
+    fn a_bonus_goes_to_every_test_and_is_put_forward_on_its_usual_ones() {
+        // Discrétion: usually AGI or CHA (D-60); Constitution héroïque: CON
+        // named.
+        let character = ranks(Character::new(), Voie::Assassin, 1);
+        let character = ranks(character, Voie::Mercenaire, 4);
+        let played = played(&character);
+        let featured = |c| {
+            let offer = played.roll_offer(Roll::Test(c));
+            let discretion = offer
+                .options()
+                .iter()
+                .find(|o| matches!(o.option(), RollOption::TestBonus(b) if b.voie() == Voie::Assassin))
+                .map(Offered::featured);
+            (
+                discretion,
+                offer.bonus_dice().len(),
+                offer.featured_dice().len(),
+            )
+        };
+        assert_eq!(featured(Characteristic::Agi), (Some(true), 0, 0));
+        assert_eq!(featured(Characteristic::Int), (Some(false), 0, 0));
+        assert_eq!(featured(Characteristic::Con), (Some(false), 1, 1));
+        // Every situational option aims at its roll.
+        let attack = played.roll_offer(Roll::Attack(AttackMode::Contact));
+        assert!(attack.options().iter().all(Offered::featured));
+    }
+
+    #[test]
     fn a_bonus_to_every_test_of_the_characteristic_starts_picked() {
         // Tatouages: +3 to the tests of the characteristic chosen.
         let character = ranks(Character::new(), Voie::Pagne, 3).with_ability_option(
@@ -763,6 +822,7 @@ mod tests {
             .find(|o| o.picked())
             .expect("the tattoo is picked");
         assert_eq!(tattoo.amount(), 3);
+        assert!(tattoo.featured());
     }
 
     #[test]
