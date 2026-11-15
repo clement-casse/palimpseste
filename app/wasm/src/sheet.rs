@@ -403,6 +403,10 @@ pub struct HeldAbility {
     /// The level-up (COF2) or spending (COC2) that acquired it, `None` for
     /// creation.
     pub progression: Option<u32>,
+    /// The capacité it is kept through, held without a rank of its own
+    /// (COF2: the voie du mage's rank 1 keeping the voie de peuple's);
+    /// `None` when a rank records it.
+    pub kept_through: Option<String>,
     /// The speciality written for it, when it asks for one (ADR
     /// ENG-SPECIALITIES).
     pub speciality: Option<String>,
@@ -999,9 +1003,9 @@ fn count(number: usize) -> u32 {
     u32::try_from(number).unwrap_or(u32::MAX)
 }
 
-/// Every COF2 capacité held, the one the voie du mage keeps included, with the level-up that acquired it, its
-/// speciality and its option from `document`, its test bonuses and its dé
-/// bonus among `dice`.
+/// Every COF2 capacité held, the one the voie du mage keeps included, with
+/// the level-up that acquired it, its speciality and its option from
+/// `document`, its test bonuses and its dé bonus among `dice`.
 fn fantasy_held(
     character: &co_fantasy::Character,
     document: &FantasyDocument,
@@ -1014,6 +1018,9 @@ fn fantasy_held(
         .into_iter()
         .map(|(voie, rank)| HeldAbility {
             ability: voie.ability(rank).as_str().to_owned(),
+            kept_through: character
+                .kept_through(voie, rank)
+                .map(|(keeper, at)| keeper.ability(at).as_str().to_owned()),
             speciality: speciality_of(&document.specialities, voie.ability(rank).as_str()),
             choice: document
                 .ability_options
@@ -1065,6 +1072,7 @@ fn contemporain_held(
         .into_iter()
         .map(|(voie, rank)| HeldAbility {
             ability: voie.ability(rank).as_str().to_owned(),
+            kept_through: None,
             speciality: speciality_of(&document.specialities, voie.ability(rank).as_str()),
             choice: document
                 .raised_characteristics
@@ -1167,7 +1175,7 @@ fn fantasy_levels(character: &co_fantasy::Character) -> Vec<LevelLine> {
 /// The COF2 capacités held that offer options.
 fn fantasy_options(character: &co_fantasy::Character) -> Vec<AbilityOptionLine> {
     character
-        .ranks()
+        .abilities_held()
         .into_iter()
         .filter_map(|(voie, rank)| {
             let offered = character.ability_options_offered(voie, rank);

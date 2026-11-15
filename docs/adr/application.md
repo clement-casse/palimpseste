@@ -104,10 +104,12 @@ creation step, or a step of a level-up or spending, numbered in
 `sheet.progression` gives each level-up or spending with the status of its
 steps. The details carry what each level-up or spending offers within the
 rules, the capacités held with where they were acquired (a capacité kept
-through the voie du mage with none), and the options they offer. A capacité is always named by its identifier: the catalog's
-`abilities` label each one, and a breakdown line gives the identifier of
-its source (`sourceId`), so the capacités' names, descriptions and effects
-attach later to the same key.
+through another, the voie du mage's rank 1, names it in `keptThrough` and
+is placed where it was acquired), and the options they offer. A capacité
+is always named by its identifier: the catalog's `abilities` label each
+one, and a breakdown line gives the identifier of its source (`sourceId`),
+so the capacités' names, descriptions and effects attach later to the same
+key.
 
 **APP-WASM-BUILD: `cargo` and `wasm-bindgen-cli`.** `cargo` builds the
 `wasm32-unknown-unknown` target, and `wasm-bindgen --target web` writes an
