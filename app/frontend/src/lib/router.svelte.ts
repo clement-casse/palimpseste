@@ -29,38 +29,69 @@ export const route = {
   },
 };
 
+// Every path of the app (ADR FE-PAGES), written once: `match` reads a path
+// with it, and the functions below write one. `:name` stands for a number;
+// `:number` also for `new`.
+const PATHS = {
+  characters: "/",
+  login: "/login",
+  register: "/register",
+  profile: "/profile",
+  friends: "/friends",
+  invitation: "/invitation",
+  character: "/characters/:id",
+  characterProgression: "/characters/:id/progression/:number",
+  characterSheet: "/characters/:id/sheet",
+  friend: "/friends/:id",
+  friendSheet: "/friends/:friend/characters/:id",
+} as const;
+
+/** `pattern` with each `:name` replaced by its value. */
+function fill(pattern: string, values: Record<string, number | string>): string {
+  return pattern.replace(/:(\w+)/g, (_, name: string) => String(values[name]));
+}
+
+/** What `pattern` holds in `path`, by name; `null` when `path` is another page's. */
+function read(pattern: string, path: string): Record<string, string> | null {
+  const source = pattern.replace(/:(\w+)/g, (_, name: string) =>
+    name === "number" ? "(?<number>new|\\d+)" : `(?<${name}>\\d+)`,
+  );
+  const found = new RegExp(`^${source}$`).exec(path);
+  return found ? { ...found.groups } : null;
+}
+
 /** The sign-in page, where a signed-out user is sent. */
-export const LOGIN = "/login";
+export const LOGIN = PATHS.login;
 
 /** Creating an account, where the first sign-in of an identity ends. */
-export const REGISTER = "/register";
+export const REGISTER = PATHS.register;
 
 /** The signed-in user's own profile and identities. */
-export const PROFILE = "/profile";
+export const PROFILE = PATHS.profile;
 
 /** The user's friends, and their invitations. */
-export const FRIENDS = "/friends";
+export const FRIENDS = PATHS.friends;
 
 /** Where an invitation link leads, its token in the hash. */
-export const INVITATION = "/invitation";
+export const INVITATION = PATHS.invitation;
 
-export const characterPath = (id: number) => `/characters/${id}`;
+export const characterPath = (id: number) => fill(PATHS.character, { id });
 
 /**
  * The level-up (COF2) or spending of XP (COC2) numbered `number` being
  * prepared, or the next one (ADR FE-PROGRESSION).
  */
 export const characterProgressionPath = (id: number, number: number | "new") =>
-  `/characters/${id}/progression/${number}`;
+  fill(PATHS.characterProgression, { id, number });
 
 /** The sheet a player follows a character with during a session. */
-export const characterSheetPath = (id: number) => `/characters/${id}/sheet`;
+export const characterSheetPath = (id: number) => fill(PATHS.characterSheet, { id });
 
-export const friendPath = (id: number) => `/friends/${id}`;
+export const friendPath = (id: number) => fill(PATHS.friend, { id });
 
 /** The sheet of a friend's character, read only. */
 export const friendSheetPath = (friend: number, character: number) =>
-  `/friends/${friend}/characters/${character}`;
+  fill(PATHS.friendSheet, { friend, id: character });
 
 /**
  * The link of an invitation (ADR BE-INVITATIONS): its token in the hash,
@@ -83,27 +114,35 @@ export type Page =
   | { name: "register" }
   | { name: "not-found" };
 
+/** Each path with the page it shows, from what the path holds. */
+const ROUTES: { pattern: string; page: (held: Record<string, string>) => Page }[] = [
+  { pattern: PATHS.characters, page: () => ({ name: "characters" }) },
+  { pattern: PATHS.login, page: () => ({ name: "login" }) },
+  { pattern: PATHS.register, page: () => ({ name: "register" }) },
+  { pattern: PATHS.profile, page: () => ({ name: "profile" }) },
+  { pattern: PATHS.friends, page: () => ({ name: "friends" }) },
+  { pattern: PATHS.invitation, page: () => ({ name: "invitation" }) },
+  { pattern: PATHS.character, page: (held) => ({ name: "character", id: Number(held.id) }) },
+  {
+    pattern: PATHS.characterProgression,
+    page: (held) => ({
+      name: "character-progression",
+      id: Number(held.id),
+      number: held.number === "new" ? "new" : Number(held.number),
+    }),
+  },
+  { pattern: PATHS.characterSheet, page: (held) => ({ name: "character-sheet", id: Number(held.id) }) },
+  { pattern: PATHS.friend, page: (held) => ({ name: "friend", id: Number(held.id) }) },
+  {
+    pattern: PATHS.friendSheet,
+    page: (held) => ({ name: "friend-sheet", friend: Number(held.friend), id: Number(held.id) }),
+  },
+];
+
 export function match(path: string): Page {
-  if (path === "/") return { name: "characters" };
-  if (path === LOGIN) return { name: "login" };
-  if (path === REGISTER) return { name: "register" };
-  if (path === PROFILE) return { name: "profile" };
-  if (path === FRIENDS) return { name: "friends" };
-  if (path === INVITATION) return { name: "invitation" };
-  const character = /^\/characters\/(\d+)$/.exec(path);
-  if (character) return { name: "character", id: Number(character[1]) };
-  const progression = /^\/characters\/(\d+)\/progression\/(new|\d+)$/.exec(path);
-  if (progression) {
-    const number = progression[2] === "new" ? "new" : Number(progression[2]);
-    return { name: "character-progression", id: Number(progression[1]), number };
-  }
-  const sheet = /^\/characters\/(\d+)\/sheet$/.exec(path);
-  if (sheet) return { name: "character-sheet", id: Number(sheet[1]) };
-  const friend = /^\/friends\/(\d+)$/.exec(path);
-  if (friend) return { name: "friend", id: Number(friend[1]) };
-  const friendSheet = /^\/friends\/(\d+)\/characters\/(\d+)$/.exec(path);
-  if (friendSheet) {
-    return { name: "friend-sheet", friend: Number(friendSheet[1]), id: Number(friendSheet[2]) };
+  for (const route of ROUTES) {
+    const held = read(route.pattern, path);
+    if (held) return route.page(held);
   }
   return { name: "not-found" };
 }
