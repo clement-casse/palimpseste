@@ -1,4 +1,4 @@
-//! Dice to roll, described but never rolled.
+//! Dice to roll, described here; `roll` resolves them from the faces drawn.
 
 use std::fmt;
 

@@ -3,7 +3,7 @@
 The concepts that mean exactly the same thing in every Chroniques Oubliées
 engine: characteristics, voie ranks and their checks, items carried, specialities, the effects of a capacité,
 derived values with their breakdown, adjustments, violations, waivers, the
-violation report, and dice. Nothing engine-specific belongs here. No
+violation report, dice and the rolls resolved from their faces. Nothing engine-specific belongs here. No
 formula, budget, table or game content goes in this crate.
 
 It has no dependencies. Like the engines, it has no I/O, no async code and
@@ -24,7 +24,8 @@ depends on it.
 | `violation.rs` | `Violation`, `RuleId`, `Mechanic`, `ValueId`, `Subject`, `Category`, `Severity`, `Parameter`, `ADJUSTMENT_RULE`, `adjustment_notice` | KER-IDS, KER-SUBJECT, KER-SEVERITY |
 | `waiver.rs` | `Waiver` | KER-MATCHING |
 | `report.rs` | `ViolationReport`, `ReportEntry` | KER-REPORT |
-| `dice.rs` | `Die`, `Dice` (described, never rolled) | KER-DICE |
+| `dice.rs` | `Die`, `Dice` (described, never drawn) | KER-DICE |
+| `roll.rs` | `Rolled`, `RollMode`, `TestRoll`, `Natural` (resolved from faces) | KER-ROLLS |
 
 The crate-level doc test in `lib.rs` walks through the whole flow with
 invented identifiers. Read it first.

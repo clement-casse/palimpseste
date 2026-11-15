@@ -75,10 +75,22 @@ then clamps to the `i32` range. *Why:* out-of-bound inputs never panic,
 and the total does not depend on the order of the contributions, as
 saturating at each step would.
 
-**KER-DICE: Dice are described, never rolled.** `Die(u8)` is a number of
+**KER-DICE: Dice are described, never drawn.** `Die(u8)` is a number of
 faces; `Dice(Vec<Die>)` the dice rolled together (`2d6` is `[d6, d6]`), so
 mixed dice are representable. Flat bonuses are not dice: they stay in the
 breakdown of a `DerivedValue`. COF2's `RecoveryDie` stays in its engine.
+
+**KER-ROLLS: A roll is resolved from its faces.** `Rolled` is a die and
+the face it showed; whoever rolls draws the faces and gives them, so the
+kernel and the engines stay pure and deterministic (design principle 3
+extends to rolls: same faces, same result). The kernel holds what both
+rulesets share of a test (CO.RES.TEST, CO.RES.CRIT-NATURAL): `RollMode`
+(one d20, or two with the higher kept for a dé bonus, the lower for a dé
+malus) names the dice to roll, and `TestRoll` reads them: the die kept,
+the one set aside, the natural 20 or 1. Which modifiers a roll takes, how
+dés bonus and malus net out, critical ranges and critical damage diverge
+between the rulesets and stay in the engines (ADR ENG-ROLLS). Success and
+failure are not computed: only the Game Master knows the difficulty.
 
 ## Adjustments
 

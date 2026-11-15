@@ -26,7 +26,8 @@ In scope:
 - **Violations**: computed findings about a character, with a stable rule identifier, the emitting mechanic, a subject, parameters, and a category (`Incomplete`, `Deviation` with its severity, `Uncomputable`, `Notice`).
 - **Waivers**: persisted, attributed acceptance of a `Deviation` (rule identifier, subject, author, reason).
 - **Violation report**: aggregation of violations and matching against waivers.
-- **Dice**: the dice to roll for a value, as a list of dice (`Dice`, `Die`), described but never rolled (ADR KER-DICE).
+- **Dice**: the dice to roll for a value, as a list of dice (`Dice`, `Die`), described but never drawn (ADR KER-DICE).
+- **Rolls**: a die and the face it showed (`Rolled`), how a test's d20 is rolled (`RollMode`: alone, with a dé bonus or a dé malus) and what its dice give once rolled (`TestRoll`: the die kept, the natural 20 or 1), resolved from faces drawn elsewhere (ADR KER-ROLLS).
 
 Out of scope for the kernel: anything engine-specific (formulas, budgets, tables, game content). It lives in the engine crates.
 
