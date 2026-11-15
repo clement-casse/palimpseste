@@ -77,6 +77,8 @@ out-of-scope lists of [AGENTS.md](AGENTS.md)); none is scheduled.
 - [x] PWA: rolls from the sheet, with every term of the total, what may
   still apply recalled for the Game Master, and a journal on the device
 - [x] PWA: installable, with a theme per device, and end-to-end tests
+- [x] PWA: sources laid out as shell, shared library and features, each
+  page's state and data apart from its markup, linted and formatted
 - [x] Container image, Fly.io deployment, CI with coverage
 - [ ] Offline editing: documents kept on the device and synced
 - [ ] Narrative steps beyond the character name
@@ -311,7 +313,13 @@ and weapon to roll it: the dialog shows what the engine offers, the dice
 drawn and every term of the total, and the rolls stay in a journal on the
 device. Friends are made through invitation links, and
 read each other's sheets. The theme is chosen per device. The rules run
-locally through the WebAssembly bindings. Tests use Vitest, happy-dom and
+locally through the WebAssembly bindings. The sources are laid out as a
+shell (`src/app`), what every page shares (`src/lib`: the API client, the
+engines behind one module, the router, the device's storage) and one
+folder per group of pages (`src/features`); a page keeps its state in a
+controller and the data it shows in a view-model, apart from its markup,
+so it can be redrawn alone. ESLint holds that layout and Prettier formats,
+both run by `frontend:check`. Tests use Vitest, happy-dom and
 Testing Library, and sit next to the code; end-to-end tests use Playwright
 and a mock OIDC provider. Decisions:
 [docs/adr/frontend.md](docs/adr/frontend.md).
