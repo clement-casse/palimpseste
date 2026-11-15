@@ -22,6 +22,7 @@
   import { unsettled, unsettledAll } from "../engines";
   import { characterProgressionPath, follow } from "../router.svelte";
   import { type Catalog, type Document, type Sheet, attempt, evaluate } from "../lib/engine";
+  import { COC } from "../lib/engine/ids";
   import Differences from "./Differences.svelte";
   import { loadDraft } from "./drafts";
   import { differences, nextLabel } from "./progression";
@@ -93,7 +94,7 @@
     >
       +1 XP (fin de séance)
     </Button>
-    <P class="pb-2">XP restante : {total("coc.experience") ?? "—"}</P>
+    <P class="pb-2">XP restante : {total(COC.experience) ?? "—"}</P>
   </div>
 {/if}
 

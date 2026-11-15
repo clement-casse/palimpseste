@@ -28,6 +28,7 @@
     ItemEntry,
     Sheet,
   } from "../lib/engine";
+  import { COC } from "../lib/engine/ids";
   import {
     CHARACTERISTICS,
     U16_MAX,
@@ -159,8 +160,8 @@
   {/if}
 {:else if step === "voies"}
   <P weight="semibold">
-    Points de capacité : {details.capacityPointsSpent} / {total("coc.capacity-points")} · Voies :
-    {details.voieCount} / {total("coc.max-voies")} · Rang maximum : {total("coc.max-rank")}
+    Points de capacité : {details.capacityPointsSpent} / {total(COC.capacityPoints)} · Voies :
+    {details.voieCount} / {total(COC.maxVoies)} · Rang maximum : {total(COC.maxRank)}
   </P>
   <Listgroup class="flex-col">
     {#each [...catalog.voies].sort((a, b) => Number(domaineVoies.has(b.id)) - Number(domaineVoies.has(a.id))) as voie (voie.id)}
@@ -243,7 +244,7 @@
   {/each}
 {:else if step === "characteristics"}
   <P weight="semibold">
-    Points de caractéristique : {details.caracPointsSpent} / {total("coc.carac-points")}
+    Points de caractéristique : {details.caracPointsSpent} / {total(COC.caracPoints)}
   </P>
   <Table class="w-auto">
     <TableBody>

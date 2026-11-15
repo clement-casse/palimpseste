@@ -5,6 +5,7 @@
   import { ENGINES, unsettledAll } from "./engines";
   import { characterPath, characterSheetPath, follow } from "./router.svelte";
   import { attempt, evaluate } from "./lib/engine";
+  import { COC } from "./lib/engine/ids";
 
   let { character }: { character: Character } = $props();
 
@@ -18,7 +19,7 @@
   const standing = $derived.by(() => {
     const details = evaluation?.details;
     if (details?.engine === "fantasy") return `Niv. ${details.level}`;
-    const xp = evaluation?.values.find((line) => line.id === "coc.experience")?.total;
+    const xp = evaluation?.values.find((line) => line.id === COC.experience)?.total;
     return xp === undefined ? null : `XP ${xp}`;
   });
 </script>
