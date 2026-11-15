@@ -4,7 +4,7 @@
   import { Badge } from "flowbite-svelte";
 
   import { characterProgressionPath, follow } from "../router.svelte";
-  import type { HeldAbility } from "../wasm/palimpseste_wasm";
+  import type { HeldAbility } from "../lib/engine";
   import { type Abilities, abilityLabel } from "./progression";
 
   let {

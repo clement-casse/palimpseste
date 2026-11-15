@@ -6,7 +6,7 @@ import "./index.css";
 import { newVersion } from "./pwa.svelte";
 // Applies the theme chosen on this device before the app shows.
 import "./theme.svelte";
-import init from "./wasm/palimpseste_wasm";
+import { loadEngines } from "./lib/engine";
 
 /** How often an open app asks for a new version, in milliseconds. */
 const UPDATE_CHECK = 60 * 60 * 1000;
@@ -21,7 +21,7 @@ const update = registerSW({
 });
 
 // The engines must be loaded before any component calls them.
-await init();
+await loadEngines();
 
 const target = document.getElementById("root");
 if (target) {

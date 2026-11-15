@@ -2,7 +2,7 @@
   import { Li, List } from "flowbite-svelte";
 
   import { situationalText } from "../sheet/values";
-  import type { ContributionLine, SituationalLine } from "../wasm/palimpseste_wasm";
+  import type { ContributionLine, SituationalLine } from "../lib/engine";
   import { signed } from "./edits";
 
   let {

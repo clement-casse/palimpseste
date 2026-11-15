@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { amelia, ionas, lhagva } from "../test/backend";
-import { catalog, emptyDocument, evaluate } from "../wasm/palimpseste_wasm";
+import { catalog, emptyDocument, evaluate } from "../lib/engine";
 import { clearDraft, loadDraft, saveDraft } from "./drafts";
 import {
   abilityLabel,

@@ -12,11 +12,11 @@
     type Document,
     type Mode,
     type Play,
-    type RollOffer,
     type RollOutcome,
+    attempt,
     roll as throwDice,
     rollOffer,
-  } from "../wasm/palimpseste_wasm";
+  } from "../lib/engine";
   import RollResult from "./RollResult.svelte";
   import { optionText } from "./values";
 
@@ -49,14 +49,12 @@
   ];
 
   // The dialog is one roll: the page recreates it for another.
-  const offered = untrack((): RollOffer | { error: string } => {
-    try {
-      return rollOffer($state.snapshot(choices), $state.snapshot(play), roll);
-    } catch (error) {
-      return { error: error instanceof Error ? error.message : String(error) };
-    }
+  const offered = untrack(() => {
+    const document = $state.snapshot(choices);
+    const state = $state.snapshot(play);
+    return attempt(() => rollOffer(document, state, roll));
   });
-  const offer = "error" in offered ? null : offered;
+  const offer = offered.ok ? offered.value : null;
 
   let picked = $state(offer?.options.map((option) => option.picked) ?? []);
   let mode = $state<Mode>(offer?.mode ?? "plain");
@@ -68,26 +66,31 @@
 
   function launch(event: SubmitEvent) {
     event.preventDefault();
-    try {
-      outcome = throwDice($state.snapshot(choices), $state.snapshot(play), {
+    const document = $state.snapshot(choices);
+    const state = $state.snapshot(play);
+    const rolled = attempt(() =>
+      throwDice(document, state, {
         roll,
         options: picked.flatMap((isPicked, index) => (isPicked ? [index] : [])),
         mode,
         modifier,
         helpers,
         critical: asCritical,
-      });
-      failure = null;
-      onrolled(outcome);
-    } catch (error) {
-      failure = error instanceof Error ? error.message : String(error);
+      }),
+    );
+    if (!rolled.ok) {
+      failure = rolled.error;
+      return;
     }
+    outcome = rolled.value;
+    failure = null;
+    onrolled(rolled.value);
   }
 </script>
 
 <Modal open title={offer?.name ?? "Jet"} size="md" oncancel={onclose}>
   {#if !offer}
-    <Alert color="red">Ce jet ne peut pas être préparé : {"error" in offered ? offered.error : ""}</Alert>
+    <Alert color="red">Ce jet ne peut pas être préparé : {offered.ok ? "" : offered.error}</Alert>
   {:else}
     <form class="flex flex-col gap-4" onsubmit={launch}>
       <section aria-label="Base">

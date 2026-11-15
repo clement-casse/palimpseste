@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { VoieEntry } from "../wasm/palimpseste_wasm";
+import type { VoieEntry } from "../lib/engine";
 import { setRanks } from "./edits";
 
 describe("ranks set on a document without voies", () => {

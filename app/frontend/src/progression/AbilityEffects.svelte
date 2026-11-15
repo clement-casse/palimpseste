@@ -15,7 +15,7 @@
     HeldAbility,
     TestBonusLine,
     WrittenEffects,
-  } from "../wasm/palimpseste_wasm";
+  } from "../lib/engine";
   import { type Abilities, bonusDieLabel, scopeLabel } from "./progression";
 
   let {

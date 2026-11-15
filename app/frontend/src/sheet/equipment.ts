@@ -2,7 +2,7 @@
 // `evaluateInPlay` reads it. Only fields are picked here: the engines apply
 // every rule.
 
-import type { Document, Engine, Equipment } from "../wasm/palimpseste_wasm";
+import type { Document, Engine, Equipment } from "../lib/engine";
 
 /** The equipment chosen at creation, as an equipment in play. */
 export function equipmentOf(document: Document): Equipment {

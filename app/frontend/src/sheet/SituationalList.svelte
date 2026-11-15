@@ -5,7 +5,7 @@
   import { Li, List } from "flowbite-svelte";
 
   import type { Abilities } from "../progression/progression";
-  import type { SituationalLine } from "../wasm/palimpseste_wasm";
+  import type { SituationalLine } from "../lib/engine";
   import { situationalText } from "./values";
 
   let {

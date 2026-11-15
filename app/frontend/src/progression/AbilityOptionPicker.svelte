@@ -4,7 +4,7 @@
   import { Label, Select } from "flowbite-svelte";
 
   import { valueOf } from "../character/edits";
-  import type { AbilityOptionLine, FantasyCatalog, FantasyDocument } from "../wasm/palimpseste_wasm";
+  import type { AbilityOptionLine, FantasyCatalog, FantasyDocument } from "../lib/engine";
   import Ability from "./Ability.svelte";
 
   let {

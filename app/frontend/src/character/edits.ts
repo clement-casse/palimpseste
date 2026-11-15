@@ -2,7 +2,7 @@
 // document. Changes keep every other choice: a choice that no longer fits
 // the rules turns into a violation, it is never removed.
 
-import type { Characteristic, Subject, VoieEntry } from "../wasm/palimpseste_wasm";
+import type { Characteristic, Subject, VoieEntry } from "../lib/engine";
 
 export const CHARACTERISTICS: Characteristic[] = ["AGI", "CON", "FOR", "PER", "CHA", "INT", "VOL"];
 

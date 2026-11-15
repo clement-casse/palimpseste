@@ -7,7 +7,7 @@
   import Ability from "../progression/Ability.svelte";
   import AbilityEffects from "../progression/AbilityEffects.svelte";
   import { type Abilities, bonusDieLabel, scopeLabel } from "../progression/progression";
-  import type { HeldAbility, VoieEntry, WrittenEffects } from "../wasm/palimpseste_wasm";
+  import type { HeldAbility, VoieEntry, WrittenEffects } from "../lib/engine";
   import Marks from "./Marks.svelte";
   import { type Note, marksAt } from "./notes";
 

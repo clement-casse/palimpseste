@@ -4,9 +4,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { initSync } from "../wasm/palimpseste_wasm";
+import { loadEnginesSync } from "../lib/engine";
 
-initSync({ module: readFileSync(join(import.meta.dirname, "../wasm/palimpseste_wasm_bg.wasm")) });
+loadEnginesSync(readFileSync(join(import.meta.dirname, "../wasm/palimpseste_wasm_bg.wasm")));
 
 // The test DOM (happy-dom) may lack media queries, which Svelte's motion (and so Flowbite) reads
 // on import: a device that prefers nothing.

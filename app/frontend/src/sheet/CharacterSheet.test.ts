@@ -11,7 +11,7 @@ import {
   emptyDocument,
   evaluate,
   evaluateInPlay,
-} from "../wasm/palimpseste_wasm";
+} from "../lib/engine";
 import CharacterSheet from "./CharacterSheet.svelte";
 import { equipmentOf } from "./equipment";
 import HealthTrack from "./HealthTrack.svelte";

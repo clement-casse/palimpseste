@@ -1,7 +1,7 @@
 // How the sheets write the engine's computed values.
 
 import { signed } from "../character/edits";
-import type { RollOptionLine, SituationalLine, ValueLine } from "../wasm/palimpseste_wasm";
+import type { RollOptionLine, SituationalLine, ValueLine } from "../lib/engine";
 
 /**
  * A modifier holding only in a situation (ADR ENG-SITUATIONAL), such as
