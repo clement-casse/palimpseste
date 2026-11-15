@@ -54,6 +54,7 @@ mod health;
 mod label;
 mod play;
 mod protection;
+mod roll;
 mod rules;
 mod secondary;
 mod situation;
@@ -73,6 +74,9 @@ pub use health::{HEALTH_SCALE_STEPS, HealthState};
 pub use label::{label, term_label};
 pub use play::{Equipment, InPlay};
 pub use protection::Protection;
+pub use roll::{
+    Offered, Roll, RollChoices, RollLine, RollOffer, RollOption, RollOutcome, RollSource,
+};
 pub use situation::{Situation, Situational};
 pub use step::{Placement, SpendingStep, Step};
 pub use test_bonus::{BonusDie, TestBonus};

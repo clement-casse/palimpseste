@@ -121,7 +121,8 @@ it: it goes with the voie du mage. `TestBonus::on_speciality` and
 names them by the player's words. *Why free text:* the lists are open
 (any discipline, any vehicle), and no rule reads them.
 
-**ENG-SITUATIONAL: Situational modifiers are listed, never added.** A
+**ENG-SITUATIONAL: Situational modifiers are listed, never added to a
+value.** A
 capacité's modifier that holds only in a situation (against a larger
 creature, outdoors, mounted, with two weapons) is a `Situational`: its
 `Situation`, a closed enum named in our own French words (`name()`:
@@ -137,8 +138,10 @@ table gives DEF against a kind of attack or in a moving vehicle, RD
 parrying unarmed, and notes without an amount: a manoeuvre or automatic
 fire at −2 instead of −5 on its attack, FOR or INT tested in place of
 another characteristic, listed on that characteristic. *Why
-not toggles:* a situation changes from one attack to the next; the sheet
-shows the modifier, the player applies it.
+not toggles on the sheet:* a situation changes from one attack to the
+next; the sheet shows the modifier, and the player picks it for one roll
+(ADR ENG-ROLLS), where it is a line of that roll's total and of nothing
+else.
 
 **ENG-ABILITY-EFFECTS: Every capacité lists its effects.**
 `Voie::ability_effects(rank)` gives a capacité's effects (ADR
@@ -226,6 +229,44 @@ engine computes from the equipment it is given. *Why not waivers or
 adjustments:* an equipment's effects are formulas (the AGI cap, several
 values at once, new damage lines), not amounts, and a waiver accepts a
 deviation without changing a value.
+
+**ENG-ROLLS: A roll is offered, then resolved from its faces.** A `Roll`
+is a characteristic test, an attack test (with a weapon category or
+attack value, or with a weapon) or the DM of a weapon, named by an
+identifier (`coc.roll.test.for`). `InPlay::roll_offer(roll, …)` says what
+the roll offers within the rules, so the interface restates none: its
+base (the characteristic, attack value or DM computed with the equipment
+in play, with its breakdown), the dice (`RollOffer::dice(mode)`), the
+options the player may pick (`Offered`: a `RollOption`, its amount,
+whether it starts picked), the notes and dé bonus to show, the critical
+range of an attack, and what each ally helping adds. The engine does not
+know the circumstances of a roll, so nothing circumstantial is applied by
+itself: a test bonus (ADR ENG-TEST-BONUSES) is offered to the tests of
+the characteristics it names, or to all when it names none, unpicked; a
+COF2 situational modifier (ADR ENG-SITUATIONAL) is offered to its target
+the same way, while COC2's, on the targets it rolls, are notes without an
+amount, shown and never picked.
+`InPlay::resolve_roll(roll, …, choices, rolled)` resolves it from the
+dice rolled (ADR KER-ROLLS) and the `RollChoices` (options picked, the
+`RollMode`, the Game Master's modifier, the allies helping, a critical
+DM): a `RollOutcome` whose `lines()` are every term of the total, in
+order (the dice counted, each contribution of the base, each option
+picked, the help, the modifier, the critical), with the options left
+unpicked beside it, since they may still apply and the Game Master
+should hear of them. Nothing says whether the roll succeeds: only the
+Game Master knows the difficulty. The dé bonus of the capacités are
+shown, the player choosing the mode; the roll starts with a dé bonus only
+when a capacité gives one to every test of the characteristic. How dés
+bonus and malus net out (COF.RES.BONUS-DICE, COC.RES.BONUS-DICE) is not
+computed. COC2: the worst state of health reached
+(`InPlay::health_state(damage)`, the damage being play state the engine
+is given) offers its malus, picked for the tests of FOR, AGI and CON and
+for attacks (D-56); an AGI test takes the malus of the protections worn;
+each ally helping gives +2 to a characteristic test (COC.RES.COOPERATION);
+a weapon attack is critical from the weapon's critical range, and a
+critical DM adds its bonus critique (COC.DER.CRIT-BONUS). *Why offered,
+then resolved:* the faces are an input, so the rules stay pure and
+tested; and the player, not the engine, knows what the test is about.
 
 **ENG-EQUIPMENT: Starting equipment is checked, never imposed (D-26).**
 Each line of the profil's (COF2) or the voies' (COC2) starting equipment
