@@ -224,6 +224,10 @@ after it, under the core rules of *Chroniques Oubliées Fantasy*:
 - **Capacités**: the effects of the 390 capacités, the options chosen per
   capacité, test bonuses (with their dé bonus), situational modifiers, and
   the equipment in play.
+- **Rolls**: what a characteristic test, an attack test or a weapon's DM
+  offers and its resolution from the dice rolled, with one competence
+  bonus per source capped at +15, the help of allies and a critical DM
+  doubled; never success or failure.
 
 Both engines expose a catalogue of their content (`ALL`, `id()`,
 `from_id()`, `name()`) and the creation steps (`Step`), in the book's

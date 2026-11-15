@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 use co_kernel::{DerivedValue, Dice, Quantity, ViolationReport};
 
 use crate::{
-    Armour, BonusDie, Character, Item, Shield, Situational, Target, Value, Weapon, WeaponUse,
-    armour, weapon,
+    Armour, BonusDie, Character, Item, Roll, RollOffer, Shield, Situational, Target, Value, Weapon,
+    WeaponUse, armour, roll, weapon,
 };
 
 /// What a character wears and carries: an armour, a shield and items.
@@ -94,6 +94,14 @@ impl InPlay {
     #[must_use]
     pub fn situational(&self, target: Target) -> Vec<Situational> {
         self.character.situational(target)
+    }
+
+    /// Returns what `roll` offers within the rules (ADR ENG-ROLLS): its
+    /// base, the options to pick, the dice; [`RollOffer::resolve`] then
+    /// resolves it from the dice rolled.
+    #[must_use]
+    pub fn roll_offer(&self, roll: Roll) -> RollOffer {
+        roll::offer(&self.character, roll)
     }
 
     /// Returns the findings of the rules that hold in play, matched against

@@ -27,6 +27,7 @@ complete nain guerrier. Read it first.
 | `ability.rs` | `AbilityOption`, the options capacités offer and the specialities they ask for, the per-value tables of capacité effects and characteristic raises (D-13, D-22) | COF.CNT.VOIE, COF.CNT.EFFECT-SHAPES |
 | `ability_effects.rs` | the effects of each capacité in our own words, computed or described | ENG-ABILITY-EFFECTS |
 | `action.rs` | `Action`: the action each capacité takes, and the PM a spell costs | COF.CNT.VOIE, ENG-COF-ACTIONS |
+| `roll.rs` | `Roll`, `RollOffer`, `RollChoices`, `RollOutcome`: what a test, an attack or a DM offers and its resolution from the dice rolled | ENG-ROLLS, COF.DER.COMPETENCE, COF.RES.COOPERATION, D-57, D-58, D-59 |
 | `test_bonus.rs` | `TestBonus` and `BonusDie`: the capacités' permanent test bonuses and dé bonus with the tests they cover (`scope`), as tables of capacité effects | COF.DER.COMPETENCE, D-50 |
 | `armour.rs` | `Armour`, `Shield`, the profil's armour limits | COF.EQP.ARMOUR, COF.DER.ARMOUR-LIMIT |
 | `weapon.rs` | `Weapon`, `WeaponUse`, dice per use and as the capacités change them, the attack with a weapon, DM, critical range, the checks on the weapons carried | COF.EQP.MELEE, COF.EQP.RANGED, COF.DER.DM, COF.DER.CRIT-RANGE |

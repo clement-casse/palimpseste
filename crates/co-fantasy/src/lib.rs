@@ -64,6 +64,7 @@ mod money;
 mod peuple;
 mod play;
 mod profil;
+mod roll;
 mod rules;
 mod situation;
 mod step;
@@ -83,6 +84,9 @@ pub use money::{Money, purse_dice};
 pub use peuple::Peuple;
 pub use play::{Equipment, InPlay};
 pub use profil::{Family, Profil, RecoveryDie};
+pub use roll::{
+    Offered, Roll, RollChoices, RollLine, RollOffer, RollOption, RollOutcome, RollSource,
+};
 pub use situation::{Situation, Situational};
 pub use step::{LevelStep, Placement, Step};
 pub use test_bonus::{BonusDie, TestBonus};

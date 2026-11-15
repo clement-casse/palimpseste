@@ -96,7 +96,8 @@ other rank-1 effects (COF.DER.COMPETENCE); Tatouages gives +3 to the
 tests of the characteristic chosen, Formation d'élite a dé bonus to them
 (ADR ENG-COF-OPTIONS), and Vêtements sacrés' dé bonus holds without
 armour, so `InPlay::bonus_dice` follows the equipment. The +15 cap and
-the one bonus per source are not checked: they need the fields. *Why
+the one bonus per source are no matter for a value, which knows no test:
+a roll applies them to the bonuses picked for it (ADR ENG-ROLLS, D-58). *Why
 values:* breakdowns and adjustments come with them, as for every computed
 value.
 
@@ -246,7 +247,7 @@ the characteristics it names, or to all when it names none, unpicked; a
 COF2 situational modifier (ADR ENG-SITUATIONAL) is offered to its target
 the same way, while COC2's, on the targets it rolls, are notes without an
 amount, shown and never picked.
-`InPlay::resolve_roll(roll, …, choices, rolled)` resolves it from the
+`RollOffer::resolve(choices, rolled)` resolves it from the
 dice rolled (ADR KER-ROLLS) and the `RollChoices` (options picked, the
 `RollMode`, the Game Master's modifier, the allies helping, a critical
 DM): a `RollOutcome` whose `lines()` are every term of the total, in
@@ -264,7 +265,17 @@ is given) offers its malus, picked for the tests of FOR, AGI and CON and
 for attacks (D-56); an AGI test takes the malus of the protections worn;
 each ally helping gives +2 to a characteristic test (COC.RES.COOPERATION);
 a weapon attack is critical from the weapon's critical range, and a
-critical DM adds its bonus critique (COC.DER.CRIT-BONUS). *Why offered,
+critical DM adds its bonus critique (COC.DER.CRIT-BONUS). COF2: a bonus
+to every test of a characteristic (Tatouages) starts picked, and a
+"caractéristique héroïque" starts the roll with its dé bonus, never an
+attack (COF.RES.TEST-KINDS); among the competence bonuses picked, the
+highest of the voies de profil and the highest of the voies de peuple
+count, the others are set aside (`RollOutcome::set_aside`) and their sum
+beyond +15 is taken back as a line (COF.DER.COMPETENCE, D-58), Tatouages
+and Éclectique adding beside; each ally whose help succeeded gives +2
+(COF.RES.COOPERATION, D-59); a situational modifier giving dice to a DM
+adds them to the dice to roll (`RollOffer::dice(choices)`); a critical DM
+is doubled, as a last line worth the sum of the others (D-57). *Why offered,
 then resolved:* the faces are an input, so the rules stay pure and
 tested; and the player, not the engine, knows what the test is about.
 
