@@ -33,6 +33,8 @@ function base(document: Document, roll: string): number {
 const dialog = () => within(screen.getByRole("dialog"));
 const total = () => dialog().getByRole("status", { name: "Total" }).textContent;
 const open = (name: string | RegExp) => fireEvent.click(screen.getAllByRole("button", { name })[0]);
+const unfold = () =>
+  fireEvent.click(dialog().getByRole("button", { name: /^Autres bonus et modificateurs/ }));
 
 afterEach(() => {
   localStorage.clear();
@@ -58,16 +60,50 @@ describe("rolling from the sheet", () => {
     expect(recalled?.textContent).toContain("+3 intimidation");
   });
 
+  it("folds away the bonuses of other characteristics, still offered", async () => {
+    // Intimidation is usually a CHA test (D-60): on an AGI test, it waits
+    // in the folded section, with the help and the modifier.
+    const document = bully();
+    render(CharacterSheet, { character: character(document) });
+    await open("Lancer : Test de AGI");
+    expect(dialog().getByRole("radiogroup", { name: "Dé" })).toBeTruthy();
+    expect(dialog().getByRole("radio", { name: "Dé normal" }).getAttribute("aria-checked")).toBe(
+      "true",
+    );
+    expect(dialog().queryByRole("checkbox", { name: /\+3 intimidation/ })).toBeNull();
+    expect(dialog().queryByRole("spinbutton", { name: "Modificateur du MJ" })).toBeNull();
+
+    await unfold();
+    await fireEvent.click(dialog().getByRole("checkbox", { name: /\+3 intimidation/ }));
+    dice(10);
+    await fireEvent.click(dialog().getByRole("button", { name: "Lancer le dé" }));
+    expect(total()).toBe(String(10 + base(document, "cof.roll.test.agi") + 3));
+  });
+
+  it("keeps a mode chosen when it is tapped again", async () => {
+    render(CharacterSheet, { character: character(bully()) });
+    await open("Lancer : Test de CHA");
+    await fireEvent.click(dialog().getByRole("radio", { name: "Dé bonus" }));
+    await fireEvent.click(dialog().getByRole("radio", { name: "Dé bonus" }));
+    expect(dialog().getByRole("radio", { name: "Dé bonus" }).getAttribute("aria-checked")).toBe(
+      "true",
+    );
+  });
+
   it("adds what the player picks: a bonus, the allies helping, the modifier, a dé bonus", async () => {
     const document = bully();
     render(CharacterSheet, { character: character(document) });
     await open("Lancer : Test de CHA");
     await fireEvent.click(dialog().getByRole("checkbox", { name: /\+3 intimidation/ }));
+    await unfold();
     await fireEvent.click(dialog().getByRole("button", { name: "Un allié de plus" }));
     await fireEvent.click(dialog().getByRole("button", { name: "Un allié de plus" }));
     await fireEvent.click(dialog().getByRole("radio", { name: "Dé bonus" }));
     const modifier = dialog().getByRole("spinbutton", { name: "Modificateur du MJ" });
     await fireEvent.change(modifier, { target: { value: "-1" } });
+    expect(
+      dialog().getByRole("button", { name: /^Autres bonus et modificateurs/ }).textContent,
+    ).toContain("(2 en cours)");
 
     dice(4, 15);
     await fireEvent.click(dialog().getByRole("button", { name: "Lancer le dé" }));
@@ -109,6 +145,7 @@ describe("rolling from the sheet", () => {
     render(CharacterSheet, { character: character(amelia(), "Amelia") });
     await open("Lancer : Test de CON");
     expect(dialog().getByRole("checkbox", { name: /-3 Affaibli/ })).toHaveProperty("checked", true);
+    await unfold();
     expect(dialog().getByRole("group", { name: "Alliés aidant" })).toBeTruthy();
   });
 

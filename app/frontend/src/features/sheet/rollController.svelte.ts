@@ -9,12 +9,20 @@ import {
   type Mode,
   type Play,
   type Result,
+  type RollBonusDie,
   type RollOffer,
+  type RollOptionLine,
   type RollOutcome,
   attempt,
   roll as throwDice,
   rollOffer,
 } from "$lib/engine";
+
+/** An option of the offer, with its position in it. */
+export interface Placed {
+  option: RollOptionLine;
+  index: number;
+}
 
 export class RollController {
   /** What the engine offers for the roll, or why it cannot be prepared. */
@@ -64,6 +72,42 @@ export class RollController {
   /** What the roll offers, `null` when it cannot be prepared. */
   get offer(): RollOffer | null {
     return this.offered.ok ? this.offered.value : null;
+  }
+
+  /**
+   * The options put forward, shown first: those of the characteristic
+   * rolled, named or usual (D-60), and those aiming at the roll itself.
+   */
+  get featured(): Placed[] {
+    return this.#placed().filter(({ option }) => option.featured);
+  }
+
+  /** The options offered all the same, folded away. */
+  get others(): Placed[] {
+    return this.#placed().filter(({ option }) => !option.featured);
+  }
+
+  /** The capacités' dé bonus put forward. */
+  get featuredDice(): RollBonusDie[] {
+    return this.offer?.bonusDice.filter((die) => die.featured) ?? [];
+  }
+
+  /** The capacités' dé bonus folded away. */
+  get otherDice(): RollBonusDie[] {
+    return this.offer?.bonusDice.filter((die) => !die.featured) ?? [];
+  }
+
+  /**
+   * How many of the settings folded away count in the roll: options picked,
+   * allies helping, the Game Master's modifier.
+   */
+  get foldedInUse(): number {
+    const picked = this.others.filter(({ index }) => this.picked[index]).length;
+    return picked + (this.helpers > 0 ? 1 : 0) + (this.modifier !== 0 ? 1 : 0);
+  }
+
+  #placed(): Placed[] {
+    return this.offer?.options.map((option, index) => ({ option, index })) ?? [];
   }
 
   /** Draws the dice and resolves the roll with what is picked. */
