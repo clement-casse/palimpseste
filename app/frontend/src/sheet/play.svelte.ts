@@ -5,6 +5,7 @@
 // maximum changed in the editor keeps the count sensible.
 
 import type { Engine, Equipment } from "../lib/engine";
+import { KEYS, readJson, remove, writeJson } from "../lib/storage";
 import { isEquipment } from "./equipment";
 
 export class PlayState {
@@ -15,8 +16,8 @@ export class PlayState {
   #equipment = $state.raw<Equipment | null>(null);
 
   constructor(characterId: number, engine: Engine) {
-    this.#key = `palimpseste.play.${characterId}`;
-    this.#equipmentKey = `palimpseste.play.${characterId}.equipment`;
+    this.#key = KEYS.play(characterId);
+    this.#equipmentKey = KEYS.equipment(characterId);
     this.#used = read(this.#key);
     this.#equipment = readEquipment(this.#equipmentKey, engine);
   }
@@ -29,13 +30,13 @@ export class PlayState {
   /** Wears and carries `equipment` in play. */
   equip(equipment: Equipment) {
     this.#equipment = equipment;
-    store(this.#equipmentKey, JSON.stringify(equipment));
+    writeJson(this.#equipmentKey, equipment);
   }
 
   /** Goes back to the equipment chosen at creation. */
   forgetEquipment() {
     this.#equipment = null;
-    store(this.#equipmentKey, null);
+    remove(this.#equipmentKey);
   }
 
   /** How much of value `id` is used, within 0 and its maximum `max`. */
@@ -46,51 +47,29 @@ export class PlayState {
   /** Sets how much of value `id` is used, kept within 0 and `max`. */
   set(id: string, used: number, max: number) {
     this.#used[id] = Math.max(0, Math.min(used, max));
-    this.#write();
+    writeJson(this.#key, this.#used);
   }
 
   /** Puts every resource back to its maximum; the equipment stays. */
   reset() {
     this.#used = {};
-    store(this.#key, null);
-  }
-
-  #write() {
-    store(this.#key, JSON.stringify(this.#used));
-  }
-}
-
-/** Keeps `value` under `key`, or forgets it for `null`. */
-export function store(key: string, value: string | null) {
-  try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
-  } catch {
-    // Storage refused (private browsing, quota): it holds for this visit.
+    remove(this.#key);
   }
 }
 
 /** The equipment kept for `key`, `null` when none or unreadable. */
 function readEquipment(key: string, engine: Engine): Equipment | null {
-  try {
-    const kept: unknown = JSON.parse(localStorage.getItem(key) ?? "null");
-    return isEquipment(kept, engine) ? kept : null;
-  } catch {
-    return null;
-  }
+  const kept = readJson(key);
+  return isEquipment(kept, engine) ? kept : null;
 }
 
 /** What was kept for `key`, anything unreadable dropped. */
 function read(key: string): Record<string, number> {
-  try {
-    const kept: unknown = JSON.parse(localStorage.getItem(key) ?? "{}");
-    if (typeof kept !== "object" || kept === null) return {};
-    return Object.fromEntries(
-      Object.entries(kept).filter(
-        (entry): entry is [string, number] => Number.isInteger(entry[1]) && entry[1] > 0,
-      ),
-    );
-  } catch {
-    return {};
-  }
+  const kept = readJson(key);
+  if (typeof kept !== "object" || kept === null) return {};
+  return Object.fromEntries(
+    Object.entries(kept).filter(
+      (entry): entry is [string, number] => Number.isInteger(entry[1]) && entry[1] > 0,
+    ),
+  );
 }

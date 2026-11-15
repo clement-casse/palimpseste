@@ -3,6 +3,8 @@
 // an OLED screen does not light. The choice stays on the device; `main.ts`
 // loads this module before the app shows, so the first paint has the theme.
 
+import { KEYS, readText, remove, writeText } from "./lib/storage";
+
 export type ThemeChoice = "system" | "light" | "dark" | "oled";
 
 export const THEMES: { id: ThemeChoice; name: string }[] = [
@@ -12,15 +14,9 @@ export const THEMES: { id: ThemeChoice; name: string }[] = [
   { id: "oled", name: "OLED (noir)" },
 ];
 
-const KEY = "palimpseste.theme";
-
 function stored(): ThemeChoice {
-  try {
-    const value = localStorage.getItem(KEY);
-    return THEMES.find((theme) => theme.id === value)?.id ?? "system";
-  } catch {
-    return "system";
-  }
+  const value = readText(KEYS.theme);
+  return THEMES.find((theme) => theme.id === value)?.id ?? "system";
 }
 
 let choice = $state<ThemeChoice>(stored());
@@ -54,10 +50,6 @@ export const theme = {
 export function setTheme(next: ThemeChoice) {
   choice = next;
   apply();
-  try {
-    if (next === "system") localStorage.removeItem(KEY);
-    else localStorage.setItem(KEY, next);
-  } catch {
-    // Storage refused (private browsing): the theme holds for this visit.
-  }
+  if (next === "system") remove(KEYS.theme);
+  else writeText(KEYS.theme, next);
 }
