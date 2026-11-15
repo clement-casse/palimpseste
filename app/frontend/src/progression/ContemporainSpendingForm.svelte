@@ -21,7 +21,7 @@
     TraitChangeEntry,
     XpSpendingEntry,
     WrittenEffects,
-  } from "../wasm/palimpseste_wasm";
+  } from "../lib/engine";
   import Ability from "./Ability.svelte";
   import AbilityEffects from "./AbilityEffects.svelte";
   import { askingSpeciality } from "./progression";

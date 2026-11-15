@@ -15,9 +15,10 @@
     type Sheet,
     type StepStatus,
     type Target,
+    attempt,
     catalog,
     evaluate,
-  } from "../wasm/palimpseste_wasm";
+  } from "../lib/engine";
   import CharacteristicSheet from "./CharacteristicSheet.svelte";
   import ContemporainEditor from "./ContemporainEditor.svelte";
   import EditorHeader from "./EditorHeader.svelte";
@@ -41,12 +42,9 @@
   // Overrides are signed by the signed-in user.
   const author = $derived(session.user?.nickname ?? "");
 
-  const evaluation = $derived.by((): { sheet: Sheet } | { error: string } => {
-    try {
-      return { sheet: evaluate($state.snapshot(choices)) };
-    } catch (error) {
-      return { error: error instanceof Error ? error.message : String(error) };
-    }
+  const evaluation = $derived.by(() => {
+    const document = $state.snapshot(choices);
+    return attempt(() => evaluate(document));
   });
 
   // The step shown is the URL's hash, so a reload keeps it. After the
@@ -131,10 +129,10 @@
 <section class="flex flex-col gap-4">
   <EditorHeader character={initial} {saver} ondeleted={deleted} />
 
-  {#if "error" in evaluation}
+  {#if !evaluation.ok}
     <Alert color="red">Le document ne peut pas être évalué : {evaluation.error}</Alert>
   {:else}
-    {@const sheet = evaluation.sheet}
+    {@const sheet = evaluation.value}
     {@const statuses = [...sheet.steps, progressionStatus(sheet)]}
     <div class="grid items-start gap-6 md:grid-cols-[16rem_1fr]">
       <StepNav steps={statuses} current={step} onselect={setHash} />

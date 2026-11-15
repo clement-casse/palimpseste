@@ -7,7 +7,7 @@
   import { MinusOutline, PlusOutline } from "flowbite-svelte-icons";
 
   import { signed } from "../character/edits";
-  import type { HealthScaleEntry } from "../wasm/palimpseste_wasm";
+  import type { HealthScaleEntry } from "../lib/engine";
   import Marks from "./Marks.svelte";
   import type { Note } from "./notes";
 

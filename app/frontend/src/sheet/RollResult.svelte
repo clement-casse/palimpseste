@@ -5,7 +5,7 @@
   import { Badge } from "flowbite-svelte";
 
   import { signed } from "../character/edits";
-  import type { RollOutcome } from "../wasm/palimpseste_wasm";
+  import type { RollOutcome } from "../lib/engine";
   import { optionText, rangeFrom } from "./values";
 
   let { outcome }: { outcome: RollOutcome } = $props();

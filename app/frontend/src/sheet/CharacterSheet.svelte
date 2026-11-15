@@ -19,9 +19,12 @@
     type Equipment,
     type Play,
     type Sheet,
+    attempt,
     catalog,
     evaluateInPlay,
-  } from "../wasm/palimpseste_wasm";
+    narrow,
+    withEquipment,
+  } from "../lib/engine";
   import ContemporainSheet from "./ContemporainSheet.svelte";
   import { equipmentOf } from "./equipment";
   import FantasySheet from "./FantasySheet.svelte";
@@ -64,40 +67,20 @@
   const evaluation = $derived.by((): Evaluation => {
     const kept = play?.equipment ?? null;
     if (kept) {
-      try {
-        return { sheet: evaluateInPlay(choices, kept), equipment: kept, unreadable: false };
-      } catch {
-        // Read again below, with the creation equipment.
-      }
+      const inPlay = attempt(() => evaluateInPlay(choices, kept));
+      if (inPlay.ok) return { sheet: inPlay.value, equipment: kept, unreadable: false };
+      // Read again below, with the creation equipment.
     }
-    try {
-      const sheet = evaluateInPlay(choices, creation);
-      return { sheet, equipment: creation, unreadable: kept !== null };
-    } catch (error) {
-      return { error: error instanceof Error ? error.message : String(error) };
-    }
+    const asCreated = attempt(() => evaluateInPlay(choices, creation));
+    return asCreated.ok
+      ? { sheet: asCreated.value, equipment: creation, unreadable: kept !== null }
+      : { error: asCreated.error };
   });
 
   /** The document, catalogue, details and equipment of one engine, narrowed together. */
   function narrowed(sheet: Sheet, equipment: Equipment) {
-    const details = sheet.details;
-    if (
-      choices.engine === "fantasy" &&
-      content.engine === "fantasy" &&
-      details.engine === "fantasy" &&
-      equipment.engine === "fantasy"
-    ) {
-      return { engine: "fantasy", choices, catalog: content, sheet, details, equipment } as const;
-    }
-    if (
-      choices.engine === "contemporain" &&
-      content.engine === "contemporain" &&
-      details.engine === "contemporain" &&
-      equipment.engine === "contemporain"
-    ) {
-      return { engine: "contemporain", choices, catalog: content, sheet, details, equipment } as const;
-    }
-    return null;
+    const view = narrow(choices, content, sheet);
+    return view && withEquipment(view, equipment);
   }
 
   const view = $derived("error" in evaluation ? null : narrowed(evaluation.sheet, evaluation.equipment));

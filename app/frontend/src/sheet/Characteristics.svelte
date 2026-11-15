@@ -2,7 +2,7 @@
   // The seven characteristics, as the 2nd editions write them: modifiers.
   import { signed } from "../character/edits";
   import type { Abilities } from "../progression/progression";
-  import type { CharacteristicLine } from "../wasm/palimpseste_wasm";
+  import type { CharacteristicLine } from "../lib/engine";
   import { type Note, marksAt } from "./notes";
   import SituationalList from "./SituationalList.svelte";
   import Tile from "./Tile.svelte";

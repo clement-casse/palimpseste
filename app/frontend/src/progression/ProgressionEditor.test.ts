@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { navigate, route } from "../router.svelte";
 import { signedIn } from "../session.svelte";
 import { type Sent, amelia, character, ionas, lhagva, stubBackend } from "../test/backend";
-import { type Document, emptyDocument } from "../wasm/palimpseste_wasm";
+import { type Document, emptyDocument } from "../lib/engine";
 import { loadDraft } from "./drafts";
 import ProgressionEditor from "./ProgressionEditor.svelte";
 

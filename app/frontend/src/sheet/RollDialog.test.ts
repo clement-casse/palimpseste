@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { amelia, character, lhagva } from "../test/backend";
-import { type Document, emptyDocument, rollOffer } from "../wasm/palimpseste_wasm";
+import { type Document, emptyDocument, rollOffer } from "../lib/engine";
 import CharacterSheet from "./CharacterSheet.svelte";
 import { equipmentOf } from "./equipment";
 

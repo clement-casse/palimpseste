@@ -4,7 +4,7 @@
 // started from. One draft per character; storage may be blocked, then the
 // draft lasts as long as the page.
 
-import { type Document, evaluate } from "../wasm/palimpseste_wasm";
+import { type Document, attempt, evaluate } from "../lib/engine";
 
 export type Draft = {
   /** The level (COF2) or rank (COC2) of the entry prepared. */
@@ -30,12 +30,7 @@ function isDraft(kept: unknown): kept is Draft {
   if (!Number.isInteger(number) || typeof fresh !== "boolean" || !Number.isInteger(base)) {
     return false;
   }
-  try {
-    evaluate(document as Document);
-    return true;
-  } catch {
-    return false;
-  }
+  return attempt(() => evaluate(document as Document)).ok;
 }
 
 /** The draft kept for character `id`; one that cannot be read is forgotten. */

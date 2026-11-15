@@ -6,7 +6,7 @@ import { navigate } from "../router.svelte";
 import { signedIn } from "../session.svelte";
 import { type Sent, amelia, character, lhagva, stubBackend } from "../test/backend";
 import CharacterSheet from "../sheet/CharacterSheet.svelte";
-import { type Document, emptyDocument } from "../wasm/palimpseste_wasm";
+import { type Document, emptyDocument } from "../lib/engine";
 
 /** Matches the innermost list item by its whole text, styled values included. */
 const line = (pattern: RegExp) => (_: string, element: Element | null) =>

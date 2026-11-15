@@ -7,7 +7,7 @@
   import { ENGINES } from "./engines";
   import ErrorMessage from "./ErrorMessage.svelte";
   import { characterPath, navigate } from "./router.svelte";
-  import type { Engine } from "./wasm/palimpseste_wasm";
+  import type { Engine } from "./lib/engine";
 
   let { user }: { user: User } = $props();
 

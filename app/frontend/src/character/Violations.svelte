@@ -4,7 +4,7 @@
   import { Badge, Button, Listgroup, ListgroupItem, P } from "flowbite-svelte";
 
   import { kind, message } from "../messages";
-  import type { ReportedViolation } from "../wasm/palimpseste_wasm";
+  import type { ReportedViolation } from "../lib/engine";
 
   let {
     violations,

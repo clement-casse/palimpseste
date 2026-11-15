@@ -27,7 +27,7 @@
     ContemporainDocument,
     ItemEntry,
     Sheet,
-  } from "../wasm/palimpseste_wasm";
+  } from "../lib/engine";
   import {
     CHARACTERISTICS,
     U16_MAX,

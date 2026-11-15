@@ -1,4 +1,4 @@
-import type { Engine, Sheet, StepStatus } from "./wasm/palimpseste_wasm";
+import type { Engine, Sheet, StepStatus } from "./lib/engine";
 
 export const ENGINES: Record<Engine, string> = {
   fantasy: "Chroniques Oubliées Fantasy",
