@@ -248,9 +248,10 @@ know the circumstances of a roll, so nothing circumstantial is applied by
 itself: a test bonus (ADR ENG-TEST-BONUSES) is offered to the tests of
 the characteristics it names, or to all when it names none, unpicked, and put forward (`Offered::featured`) on the tests
 of the characteristics it names or usually tested for it (D-60), the
-others offered all the same; the dé bonus likewise
-(`RollOffer::featured_dice`); every other option aims at the roll and is
-put forward, the COC2 malus of the state of health where it starts picked; a
+others offered all the same; each dé bonus offered likewise (`OfferedDie::featured`), saying too
+whether the character has it whatever the test is about (`granted`);
+every other option aims at the roll and is put forward, the COC2 malus
+of the state of health on every roll, picked or not; a
 COF2 situational modifier (ADR ENG-SITUATIONAL) is offered to its target
 the same way, while COC2's, on the targets it rolls, are notes without an
 amount, shown and never picked.
@@ -264,7 +265,9 @@ unpicked beside it, since they may still apply and the Game Master
 should hear of them. Nothing says whether the roll succeeds: only the
 Game Master knows the difficulty. The dé bonus of the capacités are
 shown, the player choosing the mode; the roll starts with a dé bonus only
-when a capacité gives one to every test of the characteristic. How dés
+when one is granted, a capacité giving it to every test of the
+characteristic (COF2; none in COC2, where each waits for a speciality or
+the test of a capacité). How dés
 bonus and malus net out (COF.RES.BONUS-DICE, COC.RES.BONUS-DICE) is not
 computed. COC2: the worst state of health reached
 (`InPlay::health_state(damage)`, the damage being play state the engine
