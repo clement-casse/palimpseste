@@ -618,123 +618,111 @@ const UPGRADES: [(Voie, u8, u8, u8); 4] = [
     (Voie::Vehicules, 5, 3, 1),
 ];
 
-/// A dé bonus of the catalogue: the voie, the rank, the characteristics
-/// named, the usual ones (D-60), the tests in a few words, and whether they
-/// are those of the speciality.
-type Die = (
-    Voie,
-    u8,
-    &'static [Characteristic],
-    &'static [Characteristic],
-    &'static str,
-    bool,
-);
+/// A dé bonus of the catalogue.
+#[derive(Debug)]
+struct Die {
+    voie: Voie,
+    rank: u8,
+    characteristics: &'static [Characteristic],
+    usual: &'static [Characteristic],
+    scope: &'static str,
+    on_speciality: bool,
+}
+
+impl Die {
+    /// The same dé bonus, to tests of any characteristic, put forward on
+    /// those of `usual` (D-60).
+    const fn usual(mut self, usual: &'static [Characteristic]) -> Self {
+        self.usual = usual;
+        self
+    }
+}
+
+const fn die(
+    voie: Voie,
+    rank: u8,
+    characteristics: &'static [Characteristic],
+    scope: &'static str,
+    on_speciality: bool,
+) -> Die {
+    Die {
+        voie,
+        rank,
+        characteristics,
+        usual: &[],
+        scope,
+        on_speciality,
+    }
+}
 
 /// The dé bonus of the capacités, in voie and rank order.
 const BONUS_DICE: &[Die] = &[
     // Génie, Champion, Boss, Cerveau, Marionnettiste, Fantôme.
-    (
-        Voie::ArtsEtArtisanats,
-        5,
-        &[],
-        &[Int, Cha, Agi],
-        "discipline choisie",
-        true,
-    ),
-    (
+    die(Voie::ArtsEtArtisanats, 5, &[], "discipline choisie", true).usual(&[Int, Cha, Agi]),
+    die(
         Voie::Athletisme,
         5,
         &[],
-        &[For, Agi, Con],
         "discipline sportive choisie",
         true,
-    ),
-    (
-        Voie::Corporations,
-        5,
-        &[],
-        &[],
-        "un test des rangs 2 à 4",
-        false,
-    ),
-    (
-        Voie::Crime,
-        5,
-        &[],
-        &[],
-        "un test des rangs 1, 3 ou 4",
-        false,
-    ),
-    (Voie::Discours, 5, &[], &[Cha], "approche choisie", true),
-    (
-        Voie::Furtivite,
-        5,
-        &[],
-        &[],
-        "un test des rangs 1 à 4",
-        false,
-    ),
+    )
+    .usual(&[For, Agi, Con]),
+    die(Voie::Corporations, 5, &[], "un test des rangs 2 à 4", false),
+    die(Voie::Crime, 5, &[], "un test des rangs 1, 3 ou 4", false),
+    die(Voie::Discours, 5, &[], "approche choisie", true).usual(&[Cha]),
+    die(Voie::Furtivite, 5, &[], "un test des rangs 1 à 4", false),
     // Spécialiste, Mémoire vivante.
-    (
+    die(
         Voie::Investigation,
         2,
         &[Int],
-        &[],
         "spécialité d’investigation",
         true,
     ),
-    (
+    die(
         Voie::Investigation,
         4,
         &[],
-        &[Int, Per],
         "deuxième spécialité d’investigation",
         true,
-    ),
+    )
+    .usual(&[Int, Per]),
     // Hyperpolyglotte, Professeur, Clairvoyant, Génie, Personnalité
     // publique, Aventurier, As des as.
-    (
-        Voie::Langues,
-        5,
-        &[],
-        &[Int],
-        "tests des rangs 2 à 4",
-        false,
-    ),
-    (
+    die(Voie::Langues, 5, &[], "tests des rangs 2 à 4", false).usual(&[Int]),
+    die(
         Voie::Medecine,
         5,
         &[Int],
-        &[],
         "spécialité médicale choisie",
         true,
     ),
-    (Voie::Psychologie, 5, &[Per], &[], "psychologie", false),
-    (
+    die(Voie::Psychologie, 5, &[Per], "psychologie", false),
+    die(
         Voie::Technologie,
         5,
         &[],
-        &[Int],
         "spécialité technique choisie",
         true,
-    ),
-    (
+    )
+    .usual(&[Int]),
+    die(
         Voie::Sciences,
         5,
         &[],
-        &[Int],
         "discipline scientifique choisie",
         true,
-    ),
-    (
+    )
+    .usual(&[Int]),
+    die(
         Voie::Survie,
         5,
         &[],
-        &[Per, Con, Int],
         "connaissance ou survie dans le milieu choisi",
         true,
-    ),
-    (Voie::Vehicules, 5, &[], &[], "véhicule choisi", false),
+    )
+    .usual(&[Per, Con, Int]),
+    die(Voie::Vehicules, 5, &[], "véhicule choisi", false),
 ];
 
 /// The bonuses of the capacités the character holds now, in voie and rank
@@ -750,7 +738,7 @@ pub(crate) fn held(character: &Character) -> Vec<TestBonus> {
 pub(crate) fn gives_bonus_die(voie: Voie, rank: u8) -> bool {
     BONUS_DICE
         .iter()
-        .any(|(other, other_rank, ..)| (*other, *other_rank) == (voie, rank))
+        .any(|die| (die.voie, die.rank) == (voie, rank))
 }
 
 /// The dé bonus of the capacités the character holds now, in voie and rank
@@ -758,16 +746,14 @@ pub(crate) fn gives_bonus_die(voie: Voie, rank: u8) -> bool {
 pub(crate) fn bonus_dice(character: &Character) -> Vec<BonusDie> {
     BONUS_DICE
         .iter()
-        .map(
-            |(voie, rank, characteristics, usual, scope, on_speciality)| BonusDie {
-                voie: *voie,
-                rank: Rank::new(*rank),
-                characteristics,
-                usual,
-                scope,
-                on_speciality: *on_speciality,
-            },
-        )
+        .map(|die| BonusDie {
+            voie: die.voie,
+            rank: Rank::new(die.rank),
+            characteristics: die.characteristics,
+            usual: die.usual,
+            scope: die.scope,
+            on_speciality: die.on_speciality,
+        })
         .filter(|die| character.has_rank(die.voie, die.rank))
         .collect()
 }
@@ -884,9 +870,11 @@ mod tests {
             let (named, usual) = (bonus.characteristics(), bonus.usual_characteristics());
             assert_ne!(named.is_empty(), usual.is_empty(), "{bonus:?}");
         }
-        for (voie, rank, named, usual, ..) in BONUS_DICE {
-            let chosen = *rank == FIVE_RANK && !voie.bonus_die_choice().is_empty();
-            assert_eq!(chosen, named.is_empty() && usual.is_empty(), "{voie:?}");
+        for die in BONUS_DICE {
+            let chosen = die.rank == FIVE_RANK && !die.voie.bonus_die_choice().is_empty();
+            let neither = die.characteristics.is_empty() && die.usual.is_empty();
+            assert_eq!(chosen, neither, "{die:?}");
+            assert!(die.characteristics.is_empty() || die.usual.is_empty());
         }
         assert_eq!(bonus(Voie::Discours, 1, 1).usual_characteristics(), [Cha]);
         assert_eq!(bonus(Voie::Crime, 1, 1).usual_characteristics(), []);
@@ -912,15 +900,15 @@ mod tests {
         assert!(
             BONUS_DICE
                 .iter()
-                .filter(|(.., on_speciality)| *on_speciality)
-                .all(|(voie, rank, ..)| voie.speciality(Rank::new(*rank)).is_some())
+                .filter(|die| die.on_speciality)
+                .all(|die| die.voie.speciality(Rank::new(die.rank)).is_some())
         );
     }
 
     #[test]
     fn every_bonus_names_its_tests() {
         assert!(TestBonus::all().all(|bonus| !bonus.scope().is_empty()));
-        assert!(BONUS_DICE.iter().all(|(.., scope, _)| !scope.is_empty()));
+        assert!(BONUS_DICE.iter().all(|die| !die.scope.is_empty()));
         assert_eq!(
             bonus(Voie::Medecine, 1, 1).scope(),
             "premiers soins, stabiliser un mourant"
@@ -947,7 +935,7 @@ mod tests {
         assert!(
             BONUS_DICE
                 .windows(2)
-                .all(|pair| (pair[0].0, pair[0].1) < (pair[1].0, pair[1].1))
+                .all(|pair| (pair[0].voie, pair[0].rank) < (pair[1].voie, pair[1].rank))
         );
     }
 
