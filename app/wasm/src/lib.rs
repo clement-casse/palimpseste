@@ -18,7 +18,7 @@ mod sheet;
 pub use catalog::{Catalog, catalog};
 use palimpseste_document::{Document, Engine, Equipment};
 pub use roll::{
-    Mode, NaturalRoll, Play, RollBonusDie, RollKind, RollLine, RollLineKind, RollOffer,
+    Mode, NaturalRoll, Play, RollBonusDie, RollKind, RollLine, RollLineKind, RollNote, RollOffer,
     RollOptionLine, RollOutcome, RollRequest, RolledDie, roll, roll_offer,
 };
 pub use sheet::{Sheet, evaluate, evaluate_in_play};
@@ -1453,6 +1453,7 @@ mod tests {
             panic!("one dé bonus expected")
         };
         assert!(die.origin.contains("Force héroïque"), "{}", die.origin);
+        assert!(die.granted && die.featured);
         assert_eq!(
             roll_offer(&document, &play, "cof.roll.test.agi")
                 .unwrap()
@@ -1607,7 +1608,8 @@ mod tests {
         };
         assert_eq!(die.scope, "généalogie (spécialité d’investigation)");
         assert!(die.origin.starts_with("Spécialiste"), "{}", die.origin);
-        assert!(die.featured);
+        // A speciality the engine cannot tell: put forward, not granted.
+        assert!(die.featured && !die.granted);
     }
 
     #[test]

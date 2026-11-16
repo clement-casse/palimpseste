@@ -88,8 +88,9 @@ pub struct RollOptionLine {
     /// Whether it starts picked.
     pub picked: bool,
     /// Whether it is put forward: a test bonus naming the characteristic
-    /// tested or counting it among its usual ones (D-60); the others are
-    /// offered all the same.
+    /// tested or counting it among its usual ones (D-60), and whatever
+    /// aims at the roll itself (a situational modifier, the state of
+    /// health); the others are offered all the same.
     pub featured: bool,
 }
 
@@ -102,6 +103,19 @@ pub struct RollBonusDie {
     pub scope: String,
     /// Whether it is put forward, as [`RollOptionLine::featured`] says.
     pub featured: bool,
+    /// Whether the character has it whatever the test is about: the roll
+    /// then starts with a dé bonus. Otherwise it depends on a circumstance
+    /// the player knows.
+    pub granted: bool,
+}
+
+/// A situational note without an amount: shown, never picked.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Tsify)]
+pub struct RollNote {
+    /// The capacité it comes from, in French.
+    pub origin: String,
+    /// The situation, in a few French words.
+    pub scope: String,
 }
 
 /// What a roll offers within the rules.
@@ -123,7 +137,7 @@ pub struct RollOffer {
     /// The options to pick, named by their position in a request.
     pub options: Vec<RollOptionLine>,
     /// Situational notes without an amount, in French.
-    pub notes: Vec<RollBonusDie>,
+    pub notes: Vec<RollNote>,
     /// The capacités' dé bonus that may apply.
     pub bonus_dice: Vec<RollBonusDie>,
     /// The mode the roll starts in.
@@ -513,6 +527,7 @@ mod fantasy {
                             die.scope(),
                         ),
                         featured: offered.featured(),
+                        granted: offered.granted(),
                     }
                 })
                 .collect(),
@@ -624,9 +639,9 @@ mod contemporain {
 
     use super::{
         ContemporainDocument, Error, Play, RollBonusDie, RollKind, RollLine, RollLineKind,
-        RollMode, RollOffer, RollOptionLine, RollOutcome, RollRequest, base_line, bonus_label,
-        contemporain_creation, contribution_line, dice_line, draw, helpers_text, natural,
-        option_line, picked, plain_line, rolled_dice, unknown,
+        RollMode, RollNote, RollOffer, RollOptionLine, RollOutcome, RollRequest, base_line,
+        bonus_label, contemporain_creation, contribution_line, dice_line, draw, helpers_text,
+        natural, option_line, picked, plain_line, rolled_dice, unknown,
     };
 
     fn named(id: &str) -> String {
@@ -720,10 +735,9 @@ mod contemporain {
             notes: offer
                 .notes()
                 .iter()
-                .map(|note| RollBonusDie {
+                .map(|note| RollNote {
                     origin: named(note.ability().as_str()),
                     scope: note.situation().name().to_owned(),
-                    featured: true,
                 })
                 .collect(),
             bonus_dice: offer
@@ -740,6 +754,8 @@ mod contemporain {
                             die.scope(),
                         ),
                         featured: offered.featured(),
+                        // No COC2 dé bonus holds whatever the test is about.
+                        granted: false,
                     }
                 })
                 .collect(),
