@@ -128,8 +128,8 @@ impl Offered {
     }
 
     /// Whether it is put forward: a test bonus naming the characteristic
-    /// tested or counting it among its usual ones (D-60), the malus of the
-    /// state of health where it is picked.
+    /// tested or counting it among its usual ones (D-60), and the malus of
+    /// the state of health, on every roll.
     #[must_use]
     pub const fn featured(&self) -> bool {
         self.featured
@@ -392,13 +392,14 @@ pub(crate) fn health_state(character: &Character, damage: i32) -> Option<HealthS
         .rfind(|state| state.step() > blackened && state.step() <= reached)
 }
 
-/// The malus of the state of health, picked for a physical action (D-56).
+/// The malus of the state of health, picked for a physical action (D-56)
+/// and put forward on every roll: it is no matter of characteristic.
 fn health(state: Option<HealthState>, picked: bool) -> Option<Offered> {
     state.map(|state| Offered {
         option: RollOption::HealthState(state),
         amount: state.malus(),
         picked,
-        featured: picked,
+        featured: true,
     })
 }
 
@@ -814,16 +815,17 @@ mod tests {
         };
         assert_eq!(featured(Characteristic::Cha), (Some(true), 1, 0));
         assert_eq!(featured(Characteristic::Int), (Some(false), 1, 1));
-        // The malus of the state of health is put forward where it is picked.
-        let offer = played.roll_offer(Roll::Test(Characteristic::Int), Some(HealthState::Affaibli));
-        let health = offer
-            .options()
-            .iter()
-            .find(|o| matches!(o.option(), RollOption::HealthState(_)))
-            .unwrap();
-        assert!(!health.featured());
-        let offer = played.roll_offer(Roll::Test(Characteristic::Con), Some(HealthState::Affaibli));
-        assert!(offer.options().iter().any(|o| o.picked() && o.featured()));
+        // The malus of the state of health is put forward on every roll,
+        // picked or not.
+        for c in [Characteristic::Int, Characteristic::Con] {
+            let offer = played.roll_offer(Roll::Test(c), Some(HealthState::Affaibli));
+            let health = offer
+                .options()
+                .iter()
+                .find(|o| matches!(o.option(), RollOption::HealthState(_)))
+                .unwrap();
+            assert!(health.featured());
+        }
     }
 
     #[test]
