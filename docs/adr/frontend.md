@@ -303,11 +303,12 @@ die (`RollButton`) sits beside each characteristic, each attack value and,
 in a weapon's row, its attack and its DM: wherever a sheet line carries a
 roll (`roll`, `attackRoll`, ADR APP-ROLLS). It opens `RollDialog`, one
 dialog per roll, recreated for another. Before the roll, the dialog shows
-what `rollOffer` returns, from top to bottom: the choice of the die (normal, bonus, malus) as a toggle group
-with the dé bonus put forward; the base beside "Lancer"; the options put
+what `rollOffer` returns, from top to bottom: the choice of the die (normal, bonus, malus) as a toggle group,
+starting as the engine says, with the dé bonus granted under it; the base beside "Lancer"; the options put
 forward (`featured`: the bonuses of the characteristic tested, named or
 usual, D-60) as checkboxes ("Selon les circonstances", unpicked unless
-the engine says otherwise); the notes and a critical for a DM; then, in
+the engine says otherwise), the dé bonus waiting for a circumstance among
+them, each a checkbox that rolls with a dé bonus when picked; the notes and a critical for a DM; then, in
 an accordion folded by default whose title counts what in it is in use,
 the options and dé bonus of other characteristics, the breakdown of the
 base, the allies helping as a count with a minus and a plus, and the Game
