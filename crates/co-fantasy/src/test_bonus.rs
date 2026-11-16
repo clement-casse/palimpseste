@@ -47,9 +47,7 @@ impl TestBonus {
     /// catalogue names them, or the one chosen (Tatouages); empty otherwise.
     #[must_use]
     pub fn characteristics(self) -> &'static [Characteristic] {
-        rows(self)
-            .next()
-            .map_or(&[], |(_, characteristics, ..)| characteristics)
+        rows(self).next().map_or(&[], |row| row.characteristics)
     }
 
     /// The characteristics usually tested for its scope when the catalogue
@@ -57,14 +55,14 @@ impl TestBonus {
     /// on the tests of these.
     #[must_use]
     pub fn usual_characteristics(self) -> &'static [Characteristic] {
-        rows(self).next().map_or(&[], |(_, _, usual, ..)| usual)
+        rows(self).next().map_or(&[], |row| row.usual)
     }
 
     /// The tests the bonus applies to, in French and in a few words
     /// (`discrétion, déguisement`), besides the characteristics named.
     #[must_use]
     pub fn scope(self) -> &'static str {
-        rows(self).next().map_or("", |(_, _, _, scope, _)| scope)
+        rows(self).next().map_or("", |row| row.scope)
     }
 
     /// Whether the bonus applies to the speciality chosen for its capacité
@@ -118,10 +116,7 @@ impl TestBonus {
 
     /// Every bonus of the catalogue, in voie and rank order.
     pub(crate) fn all() -> impl Iterator<Item = Self> {
-        let mut keys: Vec<Self> = BONUSES
-            .iter()
-            .map(|(index, _, _, _, effect)| key(*index, effect))
-            .collect();
+        let mut keys = BONUSES.iter().map(key).collect::<Vec<_>>();
         keys.dedup();
         keys.into_iter()
     }
@@ -130,22 +125,73 @@ impl TestBonus {
 /// A row of the catalogue: the bonus's index within its capacité, the
 /// characteristics named, the usual ones (D-60), the tests in a few
 /// words, and its effect.
-type Bonus = (
-    u8,
-    &'static [Characteristic],
-    &'static [Characteristic],
-    &'static str,
-    Effect,
-);
+#[derive(Debug, Clone, Copy)]
+struct Bonus {
+    index: u8,
+    characteristics: &'static [Characteristic],
+    usual: &'static [Characteristic],
+    scope: &'static str,
+    effect: Effect,
+}
+
+impl Bonus {
+    /// A bonus to the tests of the `characteristics` named, or to tests of
+    /// any when it names none.
+    const fn new(
+        index: u8,
+        characteristics: &'static [Characteristic],
+        scope: &'static str,
+        effect: Effect,
+    ) -> Self {
+        Self {
+            index,
+            characteristics,
+            usual: &[],
+            scope,
+            effect,
+        }
+    }
+
+    /// The same bonus, put forward on the tests of `usual` (D-60).
+    const fn usual(mut self, usual: &'static [Characteristic]) -> Self {
+        self.usual = usual;
+        self
+    }
+}
 
 /// A dé bonus of the catalogue: the characteristics named, the usual ones
-/// (D-60), the tests in a few words, and the capacité with the equipment or option it needs.
-type Die = (
-    &'static [Characteristic],
-    &'static [Characteristic],
-    &'static str,
-    Effect,
-);
+/// (D-60), the tests in a few words, and the capacité with the equipment or
+/// option it needs.
+#[derive(Debug, Clone, Copy)]
+struct Die {
+    characteristics: &'static [Characteristic],
+    usual: &'static [Characteristic],
+    scope: &'static str,
+    effect: Effect,
+}
+
+impl Die {
+    /// A dé bonus to the tests of the `characteristics` named, or to tests
+    /// of any when it names none.
+    const fn new(
+        characteristics: &'static [Characteristic],
+        scope: &'static str,
+        effect: Effect,
+    ) -> Self {
+        Self {
+            characteristics,
+            usual: &[],
+            scope,
+            effect,
+        }
+    }
+
+    /// The same dé bonus, put forward on the tests of `usual` (D-60).
+    const fn usual(mut self, usual: &'static [Characteristic]) -> Self {
+        self.usual = usual;
+        self
+    }
+}
 
 /// The usual characteristics of a bonus to tests of any of them.
 const ALL: &[Characteristic] = &Characteristic::ALL;
@@ -185,19 +231,17 @@ pub(crate) fn stacking(bonus: TestBonus) -> Stacking {
 }
 
 /// The bonus a row of the catalogue gives.
-const fn key(index: u8, effect: &Effect) -> TestBonus {
+const fn key(row: &Bonus) -> TestBonus {
     TestBonus {
-        voie: effect.voie(),
-        rank: Rank::new(effect.rank()),
-        index,
+        voie: row.effect.voie(),
+        rank: Rank::new(row.effect.rank()),
+        index: row.index,
     }
 }
 
 /// The rows of the catalogue giving `bonus`.
 fn rows(bonus: TestBonus) -> impl Iterator<Item = &'static Bonus> {
-    BONUSES
-        .iter()
-        .filter(move |(index, _, _, _, effect)| key(*index, effect) == bonus)
+    BONUSES.iter().filter(move |row| key(row) == bonus)
 }
 
 /// A capacité's dé bonus to some tests: [`Character::bonus_dice`] lists those
@@ -263,35 +307,13 @@ impl BonusDie {
 use Characteristic::{Agi, Cha, Con, For, Int, Per, Vol};
 
 /// A competence bonus of a voie de profil, "rang + 2" in the catalogue.
-const fn competence(
-    voie: Voie,
-    rank: u8,
-    usual: &'static [Characteristic],
-    scope: &'static str,
-) -> Bonus {
-    (
-        1,
-        &[],
-        usual,
-        scope,
-        Effect::new(voie, rank, Amount::Competence),
-    )
+const fn competence(voie: Voie, rank: u8, scope: &'static str) -> Bonus {
+    Bonus::new(1, &[], scope, Effect::new(voie, rank, Amount::Competence))
 }
 
 /// "+ rank" to resist something, an opposed test included (D-50).
-const fn resisting(
-    voie: Voie,
-    rank: u8,
-    usual: &'static [Characteristic],
-    scope: &'static str,
-) -> Bonus {
-    (
-        1,
-        &[],
-        usual,
-        scope,
-        Effect::new(voie, rank, Amount::RankPlus(0)),
-    )
+const fn resisting(voie: Voie, rank: u8, scope: &'static str) -> Bonus {
+    Bonus::new(1, &[], scope, Effect::new(voie, rank, Amount::RankPlus(0)))
 }
 
 /// A voie de peuple's +3 (COF.DER.COMPETENCE).
@@ -299,13 +321,11 @@ const fn peuple(
     voie: Voie,
     rank: u8,
     characteristics: &'static [Characteristic],
-    usual: &'static [Characteristic],
     scope: &'static str,
 ) -> Bonus {
-    (
+    Bonus::new(
         1,
         characteristics,
-        usual,
         scope,
         Effect::flat(voie, rank, PEUPLE_BONUS),
     )
@@ -330,10 +350,9 @@ const fn alone(c: Characteristic) -> &'static [Characteristic] {
 /// Tatouages' +3 to the tests of the characteristic chosen, as the bonus
 /// numbered `index`.
 const fn tattoo(index: u8, c: Characteristic) -> Bonus {
-    (
+    Bonus::new(
         index,
         alone(c),
-        &[],
         EVERY_TEST,
         Effect::flat(Voie::Pagne, 3, 3).when(When::Chosen(AbilityOption::Characteristic(c))),
     )
@@ -343,88 +362,73 @@ const fn tattoo(index: u8, c: Characteristic) -> Bonus {
 /// the rows sharing its index.
 const BONUSES: &[Bonus] = &[
     // Mécanismes, Tir de grenaille, Pilier de bar.
-    competence(
-        Voie::Artilleur,
-        1,
-        &[Int, Agi],
-        "mécanismes, engins de siège",
-    ),
-    competence(Voie::Explosifs, 1, &[Int, Agi], "explosifs, artifices"),
-    competence(
-        Voie::Mercenaire,
-        1,
-        &[Cha, Con],
-        "vie de taverne, résister à l’alcool",
-    ),
+    competence(Voie::Artilleur, 1, "mécanismes, engins de siège").usual(&[Int, Agi]),
+    competence(Voie::Explosifs, 1, "explosifs, artifices").usual(&[Int, Agi]),
+    competence(Voie::Mercenaire, 1, "vie de taverne, résister à l’alcool").usual(&[Cha, Con]),
     // Chant des héros (besides the spell), Acrobate, Grâce féline, Charmant,
     // Rumeurs et légendes.
-    competence(Voie::Musicien, 1, &[Cha], "musique, chant"),
+    competence(Voie::Musicien, 1, "musique, chant").usual(&[Cha]),
     competence(
         Voie::Saltimbanque,
         1,
-        &[Agi, For],
         "acrobaties, équilibre, saut, escalade",
-    ),
-    competence(Voie::Saltimbanque, 2, &[Agi, Cha], "danse, mime, jonglerie"),
-    competence(Voie::Seduction, 1, &[Cha], "séduire, convaincre, mentir"),
+    )
+    .usual(&[Agi, For]),
+    competence(Voie::Saltimbanque, 2, "danse, mime, jonglerie").usual(&[Agi, Cha]),
+    competence(Voie::Seduction, 1, "séduire, convaincre, mentir").usual(&[Cha]),
     competence(
         Voie::Vagabond,
         1,
-        &[Int],
         "légendes, identifier les objets magiques",
-    ),
+    )
+    .usual(&[Int]),
     // Éclectique: +1, and +1 per rank 4 in a barde voie.
-    (1, &[], ALL, ECLECTIQUE, Effect::flat(Voie::Vagabond, 2, 1)),
-    (
+    Bonus::new(1, &[], ECLECTIQUE, Effect::flat(Voie::Vagabond, 2, 1)).usual(ALL),
+    Bonus::new(
         1,
         &[],
-        ALL,
         ECLECTIQUE,
         Effect::new(Voie::Vagabond, 2, Amount::PerVoieAt(Profil::Barde, 4, 1)),
-    ),
+    )
+    .usual(ALL),
     // Survie, Éclaireur (outdoors).
-    competence(
-        Voie::Survie,
-        1,
-        &[For, Agi, Per],
-        "escalade, survie en milieu sauvage",
-    ),
+    competence(Voie::Survie, 1, "escalade, survie en milieu sauvage").usual(&[For, Agi, Per]),
     competence(
         Voie::Traqueur,
         1,
-        &[Agi, Per],
         "discrétion, vigilance, pistage en extérieur",
-    ),
+    )
+    .usual(&[Agi, Per]),
     // Discrétion, Baratin, Agile, Doigts agiles, Aux aguets, Attaque en
     // finesse.
     competence(
         Voie::Assassin,
         1,
-        &[Agi, Cha],
         "discrétion, déguisement, dissimuler une arme",
-    ),
+    )
+    .usual(&[Agi, Cha]),
     competence(
         Voie::Aventurier,
         1,
-        &[Cha],
         "bluff, séduction, négociation, marché noir",
-    ),
-    competence(Voie::Deplacement, 1, &[Agi], "déplacement"),
+    )
+    .usual(&[Cha]),
+    competence(Voie::Deplacement, 1, "déplacement").usual(&[Agi]),
     competence(
         Voie::Roublard,
         1,
-        &[Agi, Int],
         "crochetage, pièges, vol à la tire, estimation",
-    ),
+    )
+    .usual(&[Agi, Int]),
     competence(
         Voie::Roublard,
         2,
-        &[Per],
         "fouille, pièges, passages secrets, embuscades",
-    ),
-    competence(Voie::Spadassin, 1, &[Cha], "intimidation"),
+    )
+    .usual(&[Per]),
+    competence(Voie::Spadassin, 1, "intimidation").usual(&[Cha]),
     // Vigueur, Tatouages (a magic bonus).
-    competence(Voie::Pagne, 1, &[For, Agi], "course, saut, escalade"),
+    competence(Voie::Pagne, 1, "course, saut, escalade").usual(&[For, Agi]),
     tattoo(1, Agi),
     tattoo(2, Con),
     tattoo(3, For),
@@ -433,141 +437,103 @@ const BONUSES: &[Bonus] = &[
     tattoo(6, Int),
     tattoo(7, Vol),
     // Réflexes éclair: AGI to dodge.
-    (
+    Bonus::new(
         1,
         &[Agi],
-        &[],
         "esquiver",
         Effect::new(Voie::Pourfendeur, 1, Amount::Competence),
     ),
     // Proche de la nature, Vigilance, Cri de guerre, Fidèle monture.
-    competence(
-        Voie::Primitif,
-        1,
-        &[Per, Agi],
-        "survie et discrétion en extérieur",
-    ),
-    competence(Voie::Primitif, 3, &[Per], "repérer pièges et embuscades"),
-    competence(Voie::Rage, 1, &[Vol], "résister à la peur"),
-    competence(Voie::Cavalier, 1, &[Agi, Cha], "équitation, dressage"),
+    competence(Voie::Primitif, 1, "survie et discrétion en extérieur").usual(&[Per, Agi]),
+    competence(Voie::Primitif, 3, "repérer pièges et embuscades").usual(&[Per]),
+    competence(Voie::Rage, 1, "résister à la peur").usual(&[Vol]),
+    competence(Voie::Cavalier, 1, "équitation, dressage").usual(&[Agi, Cha]),
     // Ignorer la douleur, Sans peur, Éduqué, Autorité naturelle.
-    competence(Voie::Preux, 1, &[Cha], "haranguer une foule"),
-    competence(
-        Voie::MeneurDHomme,
-        1,
-        &[Int, Cha],
-        "stratégie, commandement",
-    ),
+    competence(Voie::Preux, 1, "haranguer une foule").usual(&[Cha]),
+    competence(Voie::MeneurDHomme, 1, "stratégie, commandement").usual(&[Int, Cha]),
     competence(
         Voie::Noblesse,
         1,
-        &[Int, Cha],
         "histoire, héraldique, géographie, étiquette",
-    ),
-    competence(Voie::Noblesse, 3, &[Cha], "commander, intimider"),
+    )
+    .usual(&[Int, Cha]),
+    competence(Voie::Noblesse, 3, "commander, intimider").usual(&[Cha]),
     // Protéger un allié, Armes de prédilection, Robustesse, Teigneux.
-    competence(Voie::Bouclier, 1, &[Per], "éviter la surprise"),
+    competence(Voie::Bouclier, 1, "éviter la surprise").usual(&[Per]),
     competence(
         Voie::MaitreDArmes,
         1,
-        &[Int, Cha],
         "expertise des armes, réputation martiale",
-    ),
+    )
+    .usual(&[Int, Cha]),
     competence(
         Voie::Resistance,
         1,
-        &[Con],
         "résister à l’effort, à la chaleur, au froid",
-    ),
+    )
+    .usual(&[Con]),
     // Résilient.
-    resisting(
-        Voie::Resistance,
-        2,
-        &[Con],
-        "résister à étourdi et affaibli",
-    ),
-    competence(
-        Voie::Soldat,
-        1,
-        &[Con],
-        "résister à l’alcool et aux privations",
-    ),
+    resisting(Voie::Resistance, 2, "résister à étourdi et affaibli").usual(&[Con]),
+    competence(Voie::Soldat, 1, "résister à l’alcool et aux privations").usual(&[Con]),
     // Injonction, Mirage (besides the spells), Fortifiant, Morsure de la
     // forge (besides the spell), Grosse tête.
-    competence(Voie::Envouteur, 1, &[Cha], "persuasion, séduction"),
-    competence(Voie::Illusions, 1, &[Cha], "tromper"),
-    competence(Voie::Elixirs, 1, &[Int], "alchimie, identifier les potions"),
-    competence(Voie::Metal, 1, &[Int, For], "forge"),
-    competence(Voie::Golem, 1, &[Int], "bricolage, sciences"),
+    competence(Voie::Envouteur, 1, "persuasion, séduction").usual(&[Cha]),
+    competence(Voie::Illusions, 1, "tromper").usual(&[Cha]),
+    competence(Voie::Elixirs, 1, "alchimie, identifier les potions").usual(&[Int]),
+    competence(Voie::Metal, 1, "forge").usual(&[Int, For]),
+    competence(Voie::Golem, 1, "bricolage, sciences").usual(&[Int]),
     // Ténèbres (besides the spell), Langage des animaux, Vitesse du félin,
     // Maître de la survie, Baies magiques and Peau d'écorce (besides the
     // spells).
-    competence(Voie::SombreMagie, 1, &[Int], "savoirs des ténèbres"),
-    competence(Voie::Animaux, 1, &[Cha], "influencer les animaux"),
-    competence(Voie::Fauve, 1, &[For, Agi], "course, escalade, saut"),
-    competence(Voie::Nature, 1, &[Per, Con], "survie en extérieur"),
-    competence(
-        Voie::Protecteur,
-        1,
-        &[Per, Agi],
-        "vigilance et discrétion en extérieur",
-    ),
-    competence(Voie::Vegetaux, 1, &[Int], "connaissance des plantes"),
+    competence(Voie::SombreMagie, 1, "savoirs des ténèbres").usual(&[Int]),
+    competence(Voie::Animaux, 1, "influencer les animaux").usual(&[Cha]),
+    competence(Voie::Fauve, 1, "course, escalade, saut").usual(&[For, Agi]),
+    competence(Voie::Nature, 1, "survie en extérieur").usual(&[Per, Con]),
+    competence(Voie::Protecteur, 1, "vigilance et discrétion en extérieur").usual(&[Per, Agi]),
+    competence(Voie::Vegetaux, 1, "connaissance des plantes").usual(&[Int]),
     // Agilité du singe, Pacifisme, Pas du vent.
-    competence(Voie::Maitrise, 1, &[Agi], "acrobaties, esquive"),
-    competence(Voie::Meditation, 1, &[Cha, Per], "empathie, apaiser"),
-    competence(Voie::Vent, 1, &[For, Agi], "saut, course, escalade"),
+    competence(Voie::Maitrise, 1, "acrobaties, esquive").usual(&[Agi]),
+    competence(Voie::Meditation, 1, "empathie, apaiser").usual(&[Cha, Per]),
+    competence(Voie::Vent, 1, "saut, course, escalade").usual(&[For, Agi]),
     // Prédicateur, Bénédiction and Récupération mineure (besides the
     // spells), Vigueur divine.
-    competence(Voie::Foi, 1, &[Cha], "convaincre, convertir"),
-    competence(Voie::Priere, 1, &[Int], "théologie"),
-    competence(Voie::Soins, 1, &[Int], "médecine"),
-    competence(
-        Voie::Soins,
-        2,
-        &[Con],
-        "résister aux poisons et aux maladies",
-    ),
+    competence(Voie::Foi, 1, "convaincre, convertir").usual(&[Cha]),
+    competence(Voie::Priere, 1, "théologie").usual(&[Int]),
+    competence(Voie::Soins, 1, "médecine").usual(&[Int]),
+    competence(Voie::Soins, 2, "résister aux poisons et aux maladies").usual(&[Con]),
     // Impressionnant, Lumière intérieure, Lumière des étoiles, Don étrange,
     // Petit pote, Petite taille, Diversité, Habitant des tunnels.
-    peuple(Voie::DemiOrc, 1, &[], &[Cha], "intimidation"),
-    peuple(Voie::ElfeHaut, 1, &[Int, Cha], &[], "érudition, arts"),
+    peuple(Voie::DemiOrc, 1, &[], "intimidation").usual(&[Cha]),
+    peuple(Voie::ElfeHaut, 1, &[Int, Cha], "érudition, arts"),
     // Force d'âme.
-    resisting(Voie::ElfeHaut, 2, &[Vol, Con, Agi], "résister aux sorts"),
-    peuple(Voie::ElfeSylvain, 1, &[], &[Per, Con], "survie en forêt"),
-    peuple(Voie::Gnome, 1, &[Int], &[], "sciences"),
-    peuple(
-        Voie::Gnome,
-        2,
-        &[],
-        &[Cha],
-        "relations sociales, sauf intimidation",
-    ),
-    peuple(Voie::Halfelin, 1, &[], &[Agi], "discrétion, vol"),
+    resisting(Voie::ElfeHaut, 2, "résister aux sorts").usual(&[Vol, Con, Agi]),
+    peuple(Voie::ElfeSylvain, 1, &[], "survie en forêt").usual(&[Per, Con]),
+    peuple(Voie::Gnome, 1, &[Int], "sciences"),
+    peuple(Voie::Gnome, 2, &[], "relations sociales, sauf intimidation").usual(&[Cha]),
+    peuple(Voie::Halfelin, 1, &[], "discrétion, vol").usual(&[Agi]),
     // Résistance légendaire.
-    resisting(Voie::Halfelin, 2, &[Vol, Con, Agi], "résister aux sorts"),
-    peuple(Voie::Humain, 1, &[], ALL, "domaines de l’origine"),
+    resisting(Voie::Halfelin, 2, "résister aux sorts").usual(&[Vol, Con, Agi]),
+    peuple(Voie::Humain, 1, &[], "domaines de l’origine").usual(ALL),
     peuple(
         Voie::Nain,
         1,
         &[],
-        &[Int, Per],
         "pierre, architecture, mines, passages secrets",
-    ),
+    )
+    .usual(&[Int, Per]),
     // Occultisme: the voie du mage's rank 1.
-    competence(Voie::Mage, 1, &[Int], "connaissances magiques"),
+    competence(Voie::Mage, 1, "connaissances magiques").usual(&[Int]),
 ];
 
 /// A héroïque capacité's dé bonus to the tests of its characteristic.
 const fn heroic(voie: Voie, rank: u8, c: Characteristic) -> Die {
-    (alone(c), &[], EVERY_TEST, Effect::flat(voie, rank, 1))
+    Die::new(alone(c), EVERY_TEST, Effect::flat(voie, rank, 1))
 }
 
 /// Formation d'élite's dé bonus to the tests of the characteristic chosen.
 const fn elite(c: Characteristic) -> Die {
-    (
+    Die::new(
         alone(c),
-        &[],
         EVERY_TEST,
         Effect::flat(Voie::Noblesse, 5, 1).when(When::Chosen(AbilityOption::Characteristic(c))),
     )
@@ -583,9 +549,8 @@ const BONUS_DICE: &[Die] = &[
     heroic(Voie::Survie, 4, Con),
     heroic(Voie::Traqueur, 4, Per),
     // Combattant héroïque, with AGI raised.
-    (
+    Die::new(
         &[Agi],
-        &[],
         EVERY_TEST,
         Effect::flat(Voie::CombatADeuxArmes, 4, 1)
             .when(When::Chosen(AbilityOption::Characteristic(Agi))),
@@ -593,12 +558,12 @@ const BONUS_DICE: &[Die] = &[
     // Charisme héroïque, Agilité héroïque, Expert en criminalité.
     heroic(Voie::Aventurier, 4, Cha),
     heroic(Voie::Deplacement, 4, Agi),
-    (
+    Die::new(
         &[],
-        &[Int, Per],
         "investigation, contrefaçon",
         Effect::flat(Voie::Roublard, 4, 1),
-    ),
+    )
+    .usual(&[Int, Per]),
     // Force héroïque, Constitution héroïque.
     heroic(Voie::Brute, 4, For),
     heroic(Voie::Pagne, 4, Con),
@@ -630,14 +595,14 @@ const BONUS_DICE: &[Die] = &[
     // Volonté héroïque.
     heroic(Voie::Priere, 4, Vol),
     // Vêtements sacrés, without armour, against mind control.
-    (
+    Die::new(
         &[],
-        &[Vol],
         "résister au contrôle mental",
         Effect::flat(Voie::Spiritualite, 1, 1)
             .only(Condition::NoArmour)
             .when(When::NotChosen(AbilityOption::Armour)),
-    ),
+    )
+    .usual(&[Vol]),
     // Charisme héroïque.
     heroic(Voie::Spiritualite, 4, Cha),
     // Esprit supérieur.
@@ -649,12 +614,12 @@ const BONUS_DICE: &[Die] = &[
 pub(crate) fn gives_bonus_die(voie: Voie, rank: u8) -> bool {
     BONUS_DICE
         .iter()
-        .any(|(.., effect)| (effect.voie(), effect.rank()) == (voie, rank))
+        .any(|die| (die.effect.voie(), die.effect.rank()) == (voie, rank))
 }
 
 /// Whether the effects of `bonus` apply to the character.
 fn applies(character: &Character, values: &Characteristics, bonus: TestBonus) -> bool {
-    let effects: Vec<Effect> = rows(bonus).map(|(_, _, _, _, effect)| *effect).collect();
+    let effects = rows(bonus).map(|row| row.effect).collect::<Vec<_>>();
     ability::any(character, values, &effects)
 }
 
@@ -673,13 +638,13 @@ pub(crate) fn bonus_dice(character: &Character) -> Vec<BonusDie> {
     let values = character.characteristics();
     BONUS_DICE
         .iter()
-        .filter(|(.., effect)| ability::any(character, &values, &[*effect]))
-        .map(|(characteristics, usual, scope, effect)| BonusDie {
-            voie: effect.voie(),
-            rank: Rank::new(effect.rank()),
-            characteristics,
-            usual,
-            scope,
+        .filter(|die| ability::any(character, &values, &[die.effect]))
+        .map(|die| BonusDie {
+            voie: die.effect.voie(),
+            rank: Rank::new(die.effect.rank()),
+            characteristics: die.characteristics,
+            usual: die.usual,
+            scope: die.scope,
         })
         .collect()
 }
@@ -691,7 +656,7 @@ pub(crate) fn value(
     values: &Characteristics,
     bonus: TestBonus,
 ) -> Option<DerivedValue> {
-    let effects: Vec<Effect> = rows(bonus).map(|(_, _, _, _, effect)| *effect).collect();
+    let effects = rows(bonus).map(|row| row.effect).collect::<Vec<_>>();
     ability::any(character, values, &effects)
         .then(|| ability::apply(DerivedValue::new(), character, values, &effects))
 }
@@ -723,8 +688,8 @@ mod tests {
     fn a_die_or_a_bonus_apart_naming_a_characteristic_covers_every_test_of_it() {
         // What a roll reads to apply them without a circumstance (ADR
         // ENG-ROLLS): the scope shown says the same.
-        for (characteristics, _, scope, _) in BONUS_DICE {
-            assert_eq!(!characteristics.is_empty(), *scope == EVERY_TEST);
+        for die in BONUS_DICE {
+            assert_eq!(!die.characteristics.is_empty(), die.scope == EVERY_TEST);
         }
         for bonus in TestBonus::all() {
             let apart = stacking(bonus) == Stacking::Apart;
@@ -744,8 +709,13 @@ mod tests {
             let (named, usual) = (bonus.characteristics(), bonus.usual_characteristics());
             assert_ne!(named.is_empty(), usual.is_empty(), "{bonus:?}");
         }
-        for (named, usual, scope, _) in BONUS_DICE {
-            assert_ne!(named.is_empty(), usual.is_empty(), "{scope}");
+        for die in BONUS_DICE {
+            assert_ne!(
+                die.characteristics.is_empty(),
+                die.usual.is_empty(),
+                "{}",
+                die.scope
+            );
         }
         assert_eq!(
             bonus(Voie::Assassin, 1, 1).usual_characteristics(),
@@ -757,8 +727,13 @@ mod tests {
 
     #[test]
     fn a_resistance_is_the_rank_reached() {
-        let (index, characteristics, usual, scope, effect) =
-            resisting(Voie::ElfeHaut, 2, &[Vol], "résister aux sorts");
+        let Bonus {
+            index,
+            characteristics,
+            usual,
+            scope,
+            effect,
+        } = resisting(Voie::ElfeHaut, 2, "résister aux sorts").usual(&[Vol]);
         assert_eq!(
             (index, characteristics, usual, scope),
             (1, &[][..], &[Vol][..], "résister aux sorts")
@@ -775,32 +750,58 @@ mod tests {
             assert_eq!(alone(c), [c]);
         }
         let place = |effect: Effect| (effect.voie(), effect.rank());
-        let (index, named, usual, scope, effect) =
-            competence(Voie::Assassin, 1, &[Agi], "discrétion");
+        let Bonus {
+            index,
+            characteristics: named,
+            usual,
+            scope,
+            effect,
+        } = competence(Voie::Assassin, 1, "discrétion").usual(&[Agi]);
         assert_eq!(
             (index, named, usual, scope),
             (1, [].as_slice(), [Agi].as_slice(), "discrétion")
         );
         assert_eq!(place(effect), (Voie::Assassin, 1));
-        let (index, named, usual, scope, effect) =
-            peuple(Voie::ElfeHaut, 1, &[Int, Cha], &[], "arts");
+        let Bonus {
+            index,
+            characteristics: named,
+            usual,
+            scope,
+            effect,
+        } = peuple(Voie::ElfeHaut, 1, &[Int, Cha], "arts");
         assert_eq!(
             (index, named, usual, scope),
             (1, [Int, Cha].as_slice(), [].as_slice(), "arts")
         );
         assert_eq!(place(effect), (Voie::ElfeHaut, 1));
-        let (index, named, usual, scope, effect) = tattoo(3, For);
+        let Bonus {
+            index,
+            characteristics: named,
+            usual,
+            scope,
+            effect,
+        } = tattoo(3, For);
         assert_eq!(
             (index, named, usual, scope),
             (3, [For].as_slice(), [].as_slice(), EVERY_TEST)
         );
         assert_eq!(place(effect), (Voie::Pagne, 3));
-        let (named, _, scope, effect) = heroic(Voie::Brute, 4, For);
+        let Die {
+            characteristics: named,
+            scope,
+            effect,
+            ..
+        } = heroic(Voie::Brute, 4, For);
         assert_eq!(
             (named, scope, place(effect)),
             ([For].as_slice(), EVERY_TEST, (Voie::Brute, 4))
         );
-        let (named, _, scope, effect) = elite(Cha);
+        let Die {
+            characteristics: named,
+            scope,
+            effect,
+            ..
+        } = elite(Cha);
         assert_eq!(
             (named, scope, place(effect)),
             ([Cha].as_slice(), EVERY_TEST, (Voie::Noblesse, 5))
@@ -823,7 +824,7 @@ mod tests {
     #[test]
     fn every_bonus_names_its_tests() {
         assert!(TestBonus::all().all(|bonus| !bonus.scope().is_empty()));
-        assert!(BONUS_DICE.iter().all(|(_, _, scope, _)| !scope.is_empty()));
+        assert!(BONUS_DICE.iter().all(|die| !die.scope.is_empty()));
         assert_eq!(
             bonus(Voie::Assassin, 1, 1).scope(),
             "discrétion, déguisement, dissimuler une arme"
@@ -857,10 +858,10 @@ mod tests {
         sorted.dedup();
         assert_eq!(all, sorted);
         assert!(all.iter().all(|b| b.voie.ability_name(b.rank).is_some()));
-        let dice: Vec<_> = BONUS_DICE
+        let dice = BONUS_DICE
             .iter()
-            .map(|(.., effect)| (effect.voie(), effect.rank()))
-            .collect();
+            .map(|die| (die.effect.voie(), die.effect.rank()))
+            .collect::<Vec<_>>();
         let mut sorted = dice.clone();
         sorted.sort();
         assert_eq!(dice, sorted);
