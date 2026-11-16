@@ -85,7 +85,8 @@ pub use peuple::Peuple;
 pub use play::{Equipment, InPlay};
 pub use profil::{Family, Profil, RecoveryDie};
 pub use roll::{
-    Offered, Roll, RollChoices, RollLine, RollOffer, RollOption, RollOutcome, RollSource,
+    Offered, OfferedDie, Roll, RollChoices, RollLine, RollOffer, RollOption, RollOutcome,
+    RollSource,
 };
 pub use situation::{Situation, Situational};
 pub use step::{LevelStep, Placement, Step};

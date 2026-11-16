@@ -136,6 +136,31 @@ impl Offered {
     }
 }
 
+/// A capacité's dé bonus a test offers, with whether it is put forward.
+/// None is the character's whatever the test is about: each waits for a
+/// circumstance the engine does not know (a speciality, the test of a
+/// capacité), so no roll starts with one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OfferedDie {
+    die: BonusDie,
+    featured: bool,
+}
+
+impl OfferedDie {
+    /// The dé bonus.
+    #[must_use]
+    pub const fn die(&self) -> BonusDie {
+        self.die
+    }
+
+    /// Whether it is put forward: it names the characteristic tested or
+    /// counts it among its usual ones (D-60).
+    #[must_use]
+    pub const fn featured(&self) -> bool {
+        self.featured
+    }
+}
+
 /// What a roll offers within the rules: its base with its breakdown, the
 /// options to pick, and what the player should know before rolling.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -145,8 +170,7 @@ pub struct RollOffer {
     damage_dice: Dice,
     options: Vec<Offered>,
     notes: Vec<Situational>,
-    bonus_dice: Vec<BonusDie>,
-    featured_dice: Vec<BonusDie>,
+    bonus_dice: Vec<OfferedDie>,
     mode: RollMode,
     critical_from: Option<i32>,
     critical_bonus: Option<i32>,
@@ -193,15 +217,8 @@ impl RollOffer {
     /// The capacités' dé bonus that may apply to the test: shown for the
     /// player to choose the mode.
     #[must_use]
-    pub fn bonus_dice(&self) -> &[BonusDie] {
+    pub fn bonus_dice(&self) -> &[OfferedDie] {
         &self.bonus_dice
-    }
-
-    /// Those of [`bonus_dice`](Self::bonus_dice) put forward: naming the
-    /// characteristic tested or counting it among their usual ones (D-60).
-    #[must_use]
-    pub fn featured_dice(&self) -> &[BonusDie] {
-        &self.featured_dice
     }
 
     /// The mode the roll starts in: a plain d20, since no capacité gives a
@@ -456,12 +473,13 @@ fn test_offer(
     let bonus_dice = character
         .bonus_dice()
         .into_iter()
-        .filter(|die| die_characteristics(character, *die).is_some_and(|(n, _)| named(n)))
-        .collect::<Vec<_>>();
-    let featured_dice = bonus_dice
-        .iter()
-        .copied()
-        .filter(|die| die_characteristics(character, *die).is_some_and(featured))
+        .filter_map(|die| {
+            let characteristics = die_characteristics(character, die)?;
+            named(characteristics.0).then(|| OfferedDie {
+                die,
+                featured: featured(characteristics),
+            })
+        })
         .collect();
     RollOffer {
         roll: Roll::Test(characteristic),
@@ -470,7 +488,6 @@ fn test_offer(
         options,
         notes: character.situational(Target::Characteristic(characteristic)),
         bonus_dice,
-        featured_dice,
         mode: RollMode::Plain,
         critical_from: None,
         critical_bonus: None,
@@ -493,7 +510,6 @@ fn attack_offer(
         options,
         notes: character.situational(Target::Value(value)),
         bonus_dice: Vec::new(),
-        featured_dice: Vec::new(),
         mode: RollMode::Plain,
         critical_from: Some(critical_from),
         critical_bonus: None,
@@ -509,7 +525,6 @@ fn damage_offer(character: &Character, weapon: Weapon) -> RollOffer {
         options: Vec::new(),
         notes: character.situational(Target::Value(value)),
         bonus_dice: Vec::new(),
-        featured_dice: Vec::new(),
         mode: RollMode::Plain,
         critical_from: None,
         critical_bonus: character
@@ -810,7 +825,7 @@ mod tests {
             (
                 speech,
                 offer.bonus_dice().len(),
-                offer.featured_dice().len(),
+                offer.bonus_dice().iter().filter(|d| d.featured()).count(),
             )
         };
         assert_eq!(featured(Characteristic::Cha), (Some(true), 1, 0));
@@ -979,7 +994,8 @@ mod tests {
             let offered = played(&chosen)
                 .roll_offer(Roll::Test(characteristic), None)
                 .bonus_dice()
-                .contains(&die);
+                .iter()
+                .any(|offered| offered.die() == die);
             let named = test.characteristics();
             assert_eq!(offered, named.is_empty() || named.contains(&characteristic));
             // Never applied by itself: its test is one among others.

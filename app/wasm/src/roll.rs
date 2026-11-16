@@ -502,15 +502,18 @@ mod fantasy {
             bonus_dice: offer
                 .bonus_dice()
                 .iter()
-                .map(|die| RollBonusDie {
-                    origin: named(die.ability().as_str()),
-                    scope: bonus_label(
-                        &document.specialities,
-                        die.ability().as_str(),
-                        die.on_speciality(),
-                        die.scope(),
-                    ),
-                    featured: offer.featured_dice().contains(die),
+                .map(|offered| {
+                    let die = offered.die();
+                    RollBonusDie {
+                        origin: named(die.ability().as_str()),
+                        scope: bonus_label(
+                            &document.specialities,
+                            die.ability().as_str(),
+                            die.on_speciality(),
+                            die.scope(),
+                        ),
+                        featured: offered.featured(),
+                    }
                 })
                 .collect(),
             mode: offer.mode().into(),
@@ -726,15 +729,18 @@ mod contemporain {
             bonus_dice: offer
                 .bonus_dice()
                 .iter()
-                .map(|die| RollBonusDie {
-                    origin: named(die.ability().as_str()),
-                    scope: bonus_label(
-                        &document.specialities,
-                        die.ability().as_str(),
-                        die.on_speciality(),
-                        die.scope(),
-                    ),
-                    featured: offer.featured_dice().contains(die),
+                .map(|offered| {
+                    let die = offered.die();
+                    RollBonusDie {
+                        origin: named(die.ability().as_str()),
+                        scope: bonus_label(
+                            &document.specialities,
+                            die.ability().as_str(),
+                            die.on_speciality(),
+                            die.scope(),
+                        ),
+                        featured: offered.featured(),
+                    }
                 })
                 .collect(),
             mode: offer.mode().into(),
