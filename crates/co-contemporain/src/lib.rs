@@ -75,7 +75,8 @@ pub use label::{label, term_label};
 pub use play::{Equipment, InPlay};
 pub use protection::Protection;
 pub use roll::{
-    Offered, Roll, RollChoices, RollLine, RollOffer, RollOption, RollOutcome, RollSource,
+    Offered, OfferedDie, Roll, RollChoices, RollLine, RollOffer, RollOption, RollOutcome,
+    RollSource,
 };
 pub use situation::{Situation, Situational};
 pub use step::{Placement, SpendingStep, Step};

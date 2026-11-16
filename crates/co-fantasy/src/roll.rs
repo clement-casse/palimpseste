@@ -157,6 +157,38 @@ impl Offered {
     }
 }
 
+/// A capacité's dé bonus a test offers, with whether it is put forward and
+/// whether it is granted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OfferedDie {
+    die: BonusDie,
+    featured: bool,
+    granted: bool,
+}
+
+impl OfferedDie {
+    /// The dé bonus.
+    #[must_use]
+    pub const fn die(&self) -> BonusDie {
+        self.die
+    }
+
+    /// Whether it is put forward: it names the characteristic tested or
+    /// counts it among its usual ones (D-60).
+    #[must_use]
+    pub const fn featured(&self) -> bool {
+        self.featured
+    }
+
+    /// Whether the character has it whatever the test is about, the roll
+    /// then starting with a dé bonus; otherwise it depends on a
+    /// circumstance the engine does not know.
+    #[must_use]
+    pub const fn granted(&self) -> bool {
+        self.granted
+    }
+}
+
 /// What a roll offers within the rules: its base with its breakdown, the
 /// options to pick, and what the player should know before rolling.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -165,8 +197,7 @@ pub struct RollOffer {
     base: DerivedValue,
     damage_dice: Dice,
     options: Vec<Offered>,
-    bonus_dice: Vec<BonusDie>,
-    featured_dice: Vec<BonusDie>,
+    bonus_dice: Vec<OfferedDie>,
     mode: RollMode,
     critical_from: Option<i32>,
 }
@@ -222,15 +253,8 @@ impl RollOffer {
     /// The capacités' dé bonus that may apply to the test: shown for the
     /// player to choose the mode.
     #[must_use]
-    pub fn bonus_dice(&self) -> &[BonusDie] {
+    pub fn bonus_dice(&self) -> &[OfferedDie] {
         &self.bonus_dice
-    }
-
-    /// Those of [`bonus_dice`](Self::bonus_dice) put forward: naming the
-    /// characteristic tested or counting it among their usual ones (D-60).
-    #[must_use]
-    pub fn featured_dice(&self) -> &[BonusDie] {
-        &self.featured_dice
     }
 
     /// The mode the roll starts in: a dé bonus when a capacité gives one to
@@ -474,16 +498,13 @@ fn test_offer(character: &Character, characteristic: Characteristic) -> RollOffe
         .bonus_dice()
         .into_iter()
         .filter(|die| named(die.characteristics()))
+        .map(|die| OfferedDie {
+            die,
+            featured: featured(die.characteristics(), die.usual_characteristics()),
+            granted: unconditional(die, characteristic),
+        })
         .collect::<Vec<_>>();
-    let featured_dice = bonus_dice
-        .iter()
-        .copied()
-        .filter(|die| featured(die.characteristics(), die.usual_characteristics()))
-        .collect();
-    let mode = if bonus_dice
-        .iter()
-        .any(|die| unconditional(*die, characteristic))
-    {
+    let mode = if bonus_dice.iter().any(OfferedDie::granted) {
         RollMode::BonusDie
     } else {
         RollMode::Plain
@@ -494,7 +515,6 @@ fn test_offer(character: &Character, characteristic: Characteristic) -> RollOffe
         damage_dice: Dice::default(),
         options,
         bonus_dice,
-        featured_dice,
         mode,
         critical_from: None,
     }
@@ -525,7 +545,6 @@ pub(crate) fn offer(character: &Character, roll: Roll) -> RollOffer {
         damage_dice,
         options: situational(character, Target::Value(value)),
         bonus_dice: Vec::new(),
-        featured_dice: Vec::new(),
         mode: RollMode::Plain,
         critical_from,
     }
@@ -735,7 +754,10 @@ mod tests {
         let played = played(&character);
         let offer = played.roll_offer(Roll::Test(Characteristic::For));
         assert_eq!(offer.mode(), RollMode::BonusDie);
-        assert_eq!(offer.bonus_dice().len(), 1);
+        let [heroic] = offer.bonus_dice() else {
+            panic!("one dé bonus expected")
+        };
+        assert!(heroic.granted() && heroic.featured());
         let other = played.roll_offer(Roll::Test(Characteristic::Agi));
         assert_eq!(other.mode(), RollMode::Plain);
         assert_eq!(other.bonus_dice(), []);
@@ -743,6 +765,19 @@ mod tests {
         let attack = played.roll_offer(Roll::Attack(AttackMode::Contact));
         assert_eq!(attack.mode(), RollMode::Plain);
         assert_eq!(attack.bonus_dice(), []);
+    }
+
+    #[test]
+    fn a_scoped_bonus_die_is_offered_and_never_starts_the_roll() {
+        // Expert en criminalité: a dé bonus to investigation, whatever the
+        // characteristic; the engine cannot tell, so the roll starts plain.
+        let rogue = ranks(Character::new(), Voie::Roublard, 4);
+        let offer = played(&rogue).roll_offer(Roll::Test(Characteristic::Int));
+        let [expert] = offer.bonus_dice() else {
+            panic!("one dé bonus expected")
+        };
+        assert!(!expert.granted() && expert.featured());
+        assert_eq!(offer.mode(), RollMode::Plain);
     }
 
     #[test]
@@ -796,7 +831,7 @@ mod tests {
             (
                 discretion,
                 offer.bonus_dice().len(),
-                offer.featured_dice().len(),
+                offer.bonus_dice().iter().filter(|d| d.featured()).count(),
             )
         };
         assert_eq!(featured(Characteristic::Agi), (Some(true), 0, 0));
