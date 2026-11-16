@@ -19,8 +19,8 @@
   import { untrack } from "svelte";
 
   import { I32_MAX, I32_MIN, integerOf, signed } from "$lib/character/edits";
-  import type { Document, Mode, Play, RollBonusDie, RollOutcome } from "$lib/engine";
-  import { type Placed, RollController } from "./rollController.svelte";
+  import type { Document, Mode, Play, RollOutcome } from "$lib/engine";
+  import { type Placed, type PlacedDie, RollController } from "./rollController.svelte";
   import RollResult from "./RollResult.svelte";
   import { optionText } from "$lib/format";
 
@@ -56,11 +56,12 @@
   const rolling = untrack(() => new RollController(choices, play, roll, critical, onrolled));
   const offer = rolling.offer;
 
-  // A second tap on the mode chosen would leave none: the group is redrawn.
+  // The group only reads its value when drawn: it is redrawn when the mode
+  // changes, and when a second tap on the mode chosen would leave none.
   let redraws = $state(0);
   function choose(selected: string | string[] | null) {
     const mode = MODES.find((option) => option.mode === selected);
-    if (mode) rolling.mode = mode.mode;
+    if (mode) rolling.chooseMode(mode.mode);
     else redraws += 1;
   }
 
@@ -81,15 +82,17 @@
   {/each}
 {/snippet}
 
-{#snippet dice(shown: RollBonusDie[])}
-  <ul class="text-sm" aria-label="Dés bonus des capacités">
-    {#each shown as die, i (i)}
-      <li>
+{#snippet dice(placed: PlacedDie[])}
+  {#each placed as { die, index } (index)}
+    <Checkbox
+      bind:checked={() => rolling.dicePicked[index], (picked) => rolling.pickDie(index, picked)}
+    >
+      <span>
         Dé bonus : {die.scope}
-        <span class="text-gray-500 dark:text-gray-400">— {die.origin}</span>
-      </li>
-    {/each}
-  </ul>
+        <span class="block text-xs text-gray-500 dark:text-gray-400">{die.origin}</span>
+      </span>
+    </Checkbox>
+  {/each}
 {/snippet}
 
 <Modal open title={offer?.name ?? "Jet"} size="md" oncancel={onclose}>
@@ -101,15 +104,22 @@
     <form class="flex flex-col gap-4" onsubmit={launch}>
       {#if offer.kind !== "damage"}
         <section class="flex flex-col gap-2" aria-label="Dé">
-          {#key redraws}
+          {#key `${rolling.mode} ${redraws}`}
             <ButtonToggleGroup name="Dé" value={rolling.mode} onSelect={choose}>
               {#each MODES as option (option.mode)}
                 <ButtonToggle value={option.mode}>{option.label}</ButtonToggle>
               {/each}
             </ButtonToggleGroup>
           {/key}
-          {#if rolling.featuredDice.length > 0}
-            {@render dice(rolling.featuredDice)}
+          {#if rolling.grantedDice.length > 0}
+            <ul class="text-sm" aria-label="Dés bonus acquis">
+              {#each rolling.grantedDice as die, i (i)}
+                <li>
+                  Dé bonus : {die.scope}
+                  <span class="text-gray-500 dark:text-gray-400">— {die.origin}</span>
+                </li>
+              {/each}
+            </ul>
           {/if}
         </section>
       {/if}
@@ -122,7 +132,7 @@
         >
       </div>
 
-      {#if rolling.featured.length > 0}
+      {#if rolling.featured.length + rolling.featuredDice.length > 0}
         <fieldset class="flex flex-col gap-2">
           <legend class="mb-1 font-semibold text-gray-900 dark:text-white"
             >Selon les circonstances</legend
@@ -131,6 +141,7 @@
             >Cochez ce qui s’applique à ce jet ; le reste sera rappelé avec le résultat.</Helper
           >
           {@render options(rolling.featured)}
+          {@render dice(rolling.featuredDice)}
         </fieldset>
       {/if}
 
@@ -159,17 +170,14 @@
               : ""}
           {/snippet}
           <div class="flex flex-col gap-4">
-            {#if rolling.others.length > 0}
+            {#if rolling.others.length + rolling.otherDice.length > 0}
               <fieldset class="flex flex-col gap-2">
                 <legend class="mb-1 font-semibold text-gray-900 dark:text-white"
                   >Pour d’autres caractéristiques</legend
                 >
                 {@render options(rolling.others)}
+                {@render dice(rolling.otherDice)}
               </fieldset>
-            {/if}
-
-            {#if rolling.otherDice.length > 0}
-              {@render dice(rolling.otherDice)}
             {/if}
 
             <section aria-label="Base">

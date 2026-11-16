@@ -33,6 +33,7 @@ function base(document: Document, roll: string): number {
 const dialog = () => within(screen.getByRole("dialog"));
 const total = () => dialog().getByRole("status", { name: "Total" }).textContent;
 const open = (name: string | RegExp) => fireEvent.click(screen.getAllByRole("button", { name })[0]);
+const mode = (name: string) => dialog().getByRole("radio", { name }).getAttribute("aria-checked");
 const unfold = () =>
   fireEvent.click(dialog().getByRole("button", { name: /^Autres bonus et modificateurs/ }));
 
@@ -88,6 +89,56 @@ describe("rolling from the sheet", () => {
     expect(dialog().getByRole("radio", { name: "Dé bonus" }).getAttribute("aria-checked")).toBe(
       "true",
     );
+  });
+
+  it("starts with the dé bonus the character has on every test", async () => {
+    // Force héroïque: a dé bonus to every FOR test.
+    const document = emptyDocument("fantasy");
+    if (document.engine !== "fantasy") throw new Error("not a COF2 document");
+    document.voies = [{ id: "cof.brute", ranks: [1, 2, 3, 4] }];
+    render(CharacterSheet, { character: character(document) });
+    await open("Lancer : Test de FOR");
+    expect(mode("Dé bonus")).toBe("true");
+    const granted = dialog().getByRole("list", { name: "Dés bonus acquis" });
+    expect(granted.textContent).toContain("Force héroïque");
+    expect(dialog().queryByRole("checkbox", { name: /^Dé bonus/ })).toBeNull();
+  });
+
+  it("offers the dé bonus of a circumstance among the circumstances", async () => {
+    // Expert en criminalité: a dé bonus to investigation, usually INT or
+    // PER (D-60); only the player knows whether the test is one.
+    const document = emptyDocument("fantasy");
+    if (document.engine !== "fantasy") throw new Error("not a COF2 document");
+    document.voies = [{ id: "cof.roublard", ranks: [1, 2, 3, 4] }];
+    render(CharacterSheet, { character: character(document) });
+    await open("Lancer : Test de INT");
+    expect(mode("Dé normal")).toBe("true");
+    const die = () => dialog().getByRole("checkbox", { name: /Dé bonus : investigation/ });
+    await fireEvent.click(die());
+    expect(mode("Dé bonus")).toBe("true");
+    await fireEvent.click(die());
+    expect(mode("Dé normal")).toBe("true");
+    // The die the Game Master imposed comes back once no dé bonus applies.
+    await fireEvent.click(dialog().getByRole("radio", { name: "Dé malus" }));
+    await fireEvent.click(die());
+    expect(mode("Dé bonus")).toBe("true");
+    await fireEvent.click(die());
+    expect(mode("Dé malus")).toBe("true");
+    // Another die chosen by hand sets the dé bonus picked aside.
+    await fireEvent.click(die());
+    await fireEvent.click(dialog().getByRole("radio", { name: "Dé normal" }));
+    expect(die()).toHaveProperty("checked", false);
+    await fireEvent.click(screen.getByRole("button", { name: /Close|Fermer/ }));
+
+    // On another characteristic, it waits folded away.
+    await open("Lancer : Test de FOR");
+    expect(dialog().queryByRole("checkbox", { name: /Dé bonus : investigation/ })).toBeNull();
+    await unfold();
+    await fireEvent.click(die());
+    expect(mode("Dé bonus")).toBe("true");
+    expect(
+      dialog().getByRole("button", { name: /^Autres bonus et modificateurs/ }).textContent,
+    ).toContain("(1 en cours)");
   });
 
   it("adds what the player picks: a bonus, the allies helping, the modifier, a dé bonus", async () => {

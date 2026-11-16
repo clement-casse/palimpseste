@@ -24,11 +24,22 @@ export interface Placed {
   index: number;
 }
 
+/** A dé bonus of the offer, with its position in it. */
+export interface PlacedDie {
+  die: RollBonusDie;
+  index: number;
+}
+
 export class RollController {
   /** What the engine offers for the roll, or why it cannot be prepared. */
   readonly offered: Result<RollOffer>;
   /** Whether each option of the offer is picked, by position. */
   picked = $state<boolean[]>([]);
+  /**
+   * Whether the player says each dé bonus of the offer applies, by
+   * position: those waiting for a circumstance the engine cannot know.
+   */
+  dicePicked = $state<boolean[]>([]);
   /** How the d20 is rolled. */
   mode = $state<Mode>("plain");
   /** How many allies help. */
@@ -42,6 +53,8 @@ export class RollController {
   /** Why the last roll failed. */
   failure = $state<string | null>(null);
 
+  /** The mode to come back to once no dé bonus is picked. */
+  #modeBefore: Mode = "plain";
   readonly #choices: Document;
   readonly #play: Play;
   readonly #roll: string;
@@ -65,6 +78,7 @@ export class RollController {
     this.#onrolled = onrolled;
     this.offered = attempt(() => rollOffer(this.#choices, this.#play, roll));
     this.picked = this.offer?.options.map((option) => option.picked) ?? [];
+    this.dicePicked = this.offer?.bonusDice.map(() => false) ?? [];
     this.mode = this.offer?.mode ?? "plain";
     this.critical = critical;
   }
@@ -87,23 +101,59 @@ export class RollController {
     return this.#placed().filter(({ option }) => !option.featured);
   }
 
-  /** The capacités' dé bonus put forward. */
-  get featuredDice(): RollBonusDie[] {
-    return this.offer?.bonusDice.filter((die) => die.featured) ?? [];
+  /**
+   * The dé bonus the character has whatever the test is about: the roll
+   * starts with a dé bonus, as the engine says.
+   */
+  get grantedDice(): RollBonusDie[] {
+    return this.offer?.bonusDice.filter((die) => die.granted) ?? [];
   }
 
-  /** The capacités' dé bonus folded away. */
-  get otherDice(): RollBonusDie[] {
-    return this.offer?.bonusDice.filter((die) => !die.featured) ?? [];
+  /** The dé bonus of a circumstance, put forward among the options. */
+  get featuredDice(): PlacedDie[] {
+    return this.#placedDice().filter(({ die }) => die.featured);
+  }
+
+  /** The dé bonus of a circumstance, folded away. */
+  get otherDice(): PlacedDie[] {
+    return this.#placedDice().filter(({ die }) => !die.featured);
   }
 
   /**
-   * How many of the settings folded away count in the roll: options picked,
-   * allies helping, the Game Master's modifier.
+   * Says whether the dé bonus at `index` applies: the die is then rolled
+   * with a dé bonus, and as it was before the first one once none applies.
+   */
+  pickDie(index: number, picked: boolean) {
+    const before = this.dicePicked.some(Boolean);
+    this.dicePicked[index] = picked;
+    if (picked && !before) this.#modeBefore = this.mode;
+    if (picked) this.mode = "bonus";
+    else if (!this.dicePicked.some(Boolean)) this.mode = this.#modeBefore;
+  }
+
+  /**
+   * Rolls the die as the player says. Any mode but a dé bonus sets aside
+   * the dé bonus picked: they would no longer be rolled.
+   */
+  chooseMode(mode: Mode) {
+    this.mode = mode;
+    if (mode !== "bonus") this.dicePicked = this.dicePicked.map(() => false);
+  }
+
+  /**
+   * How many of the settings folded away count in the roll: options and
+   * dé bonus picked, allies helping, the Game Master's modifier.
    */
   get foldedInUse(): number {
     const picked = this.others.filter(({ index }) => this.picked[index]).length;
-    return picked + (this.helpers > 0 ? 1 : 0) + (this.modifier !== 0 ? 1 : 0);
+    const dice = this.otherDice.filter(({ index }) => this.dicePicked[index]).length;
+    return picked + dice + (this.helpers > 0 ? 1 : 0) + (this.modifier !== 0 ? 1 : 0);
+  }
+
+  /** The dé bonus waiting for a circumstance, with their positions. */
+  #placedDice(): PlacedDie[] {
+    const placed = this.offer?.bonusDice.map((die, index) => ({ die, index })) ?? [];
+    return placed.filter(({ die }) => !die.granted);
   }
 
   #placed(): Placed[] {
